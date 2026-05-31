@@ -1,0 +1,27 @@
+{
+  "name": "NutriVita",
+  "short_name": "NutriVita",
+  "description": "Votre compagnon nutrition intelligent - Suivi des calories, macros, glycémie et composition corporelle.",
+  "start_url": "/app",
+  "display": "standalone",
+  "background_color": "#F8FAFC",
+  "theme_color": "#6366F1",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "fitness", "lifestyle"],
+  "lang": "fr",
+  "dir": "ltr"
+}
