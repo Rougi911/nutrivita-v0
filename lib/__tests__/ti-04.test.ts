@@ -13,10 +13,10 @@ afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
 
 describe("TI-04 webhook Strava simulé", () => {
-  it("GET /api/activities → activité Strava avec calories_burned → caloriesBurned", async () => {
+  it("POST /api/activities/query → activité Strava avec calories_burned → caloriesBurned", async () => {
     const { getActivities } = await import("../api")
     server.use(
-      http.get(`${API_BASE}/api/activities`, () =>
+      http.post(`${API_BASE}/api/activities/query`, () =>
         HttpResponse.json([
           {
             id: "a-strava-1",

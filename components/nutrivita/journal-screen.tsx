@@ -15,7 +15,15 @@ import {
   Activity,
   Plus,
   X,
+  Wheat,
+  Dumbbell,
+  Droplets,
+  PersonStanding,
+  Bike,
+  Waves,
+  Zap,
 } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 import { useApp } from "@/lib/app-context"
 import { CalorieRing } from "./calorie-ring"
 import { MacroPillCard } from "./macro-pill-card"
@@ -154,7 +162,7 @@ export function JournalScreen() {
         {/* Greeting */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl font-semibold text-foreground">
-            {t("greeting")} {user.name} 👋
+            {t("greeting")} {user.name}
           </h1>
           <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-amber/10 text-amber">
             <Flame className="h-4 w-4" />
@@ -180,19 +188,19 @@ export function JournalScreen() {
         {/* Macro Row */}
         <div className="grid grid-cols-3 gap-3">
           <MacroPillCard
-            icon="🍚"
+            icon={Wheat}
             value={dailyLog.totalCarbs}
             target={carbsTarget}
             label={t("carbs")}
           />
           <MacroPillCard
-            icon="🥩"
+            icon={Dumbbell}
             value={dailyLog.totalProtein}
             target={proteinTarget}
             label={t("protein")}
           />
           <MacroPillCard
-            icon="🥑"
+            icon={Droplets}
             value={dailyLog.totalFat}
             target={fatTarget}
             label={t("fat")}
@@ -292,7 +300,7 @@ export function JournalScreen() {
               {todayActivities.map((act) => (
                 <div key={act.id} className="flex items-center justify-between px-4 py-2.5">
                   <div className="flex items-center gap-2">
-                    <span className="text-base">{activityIcon(act.type)}</span>
+                    {(() => { const Icon = activityIcon(act.type); return <Icon className="h-4 w-4 text-primary" /> })()}
                     <span className="text-sm font-medium text-foreground">
                       {activityLabel(act.type)}
                     </span>
@@ -379,13 +387,13 @@ export function JournalScreen() {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const ACTIVITY_META: Record<string, { icon: string; label: string }> = {
-  course:   { icon: "🏃", label: "Course" },
-  velo:     { icon: "🚴", label: "Vélo" },
-  marche:   { icon: "🚶", label: "Marche" },
-  natation: { icon: "🏊", label: "Natation" },
-  muscu:    { icon: "🏋️", label: "Muscu" },
-  autre:    { icon: "⚡", label: "Autre" },
+const ACTIVITY_META: Record<string, { icon: LucideIcon; label: string }> = {
+  course:   { icon: Activity,        label: "Course" },
+  velo:     { icon: Bike,            label: "Vélo" },
+  marche:   { icon: PersonStanding,  label: "Marche" },
+  natation: { icon: Waves,           label: "Natation" },
+  muscu:    { icon: Dumbbell,        label: "Muscu" },
+  autre:    { icon: Zap,             label: "Autre" },
 }
 
 const MET: Record<string, number> = {
@@ -397,8 +405,8 @@ const MET: Record<string, number> = {
   autre: 3.5,
 }
 
-function activityIcon(type: string) {
-  return ACTIVITY_META[type]?.icon ?? "⚡"
+function activityIcon(type: string): LucideIcon {
+  return ACTIVITY_META[type]?.icon ?? Zap
 }
 
 function activityLabel(type: string) {
@@ -510,7 +518,7 @@ function ActivityVoiceModal({
             </div>
             <div className="p-4 rounded-xl bg-muted/50 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="text-2xl">{activityIcon(detected.type)}</span>
+                {(() => { const Icon = activityIcon(detected.type); return <Icon className="h-6 w-6 text-primary" /> })()}
                 <div>
                   <p className="font-semibold">{activityLabel(detected.type)}</p>
                   <p className="text-sm text-muted-foreground">{detected.duration} min</p>
@@ -546,13 +554,13 @@ function ActivityVoiceModal({
 
 // ─── Activity Manual Modal ────────────────────────────────────────────────────
 
-const ACTIVITY_TYPES = [
-  { key: "course", label: "Course", icon: "🏃" },
-  { key: "velo", label: "Vélo", icon: "🚴" },
-  { key: "marche", label: "Marche", icon: "🚶" },
-  { key: "muscu", label: "Muscu", icon: "🏋️" },
-  { key: "natation", label: "Natation", icon: "🏊" },
-  { key: "autre", label: "Autre", icon: "⚡" },
+const ACTIVITY_TYPES: Array<{ key: string; label: string; icon: LucideIcon }> = [
+  { key: "course",   label: "Course",   icon: Activity },
+  { key: "velo",     label: "Vélo",     icon: Bike },
+  { key: "marche",   label: "Marche",   icon: PersonStanding },
+  { key: "muscu",    label: "Muscu",    icon: Dumbbell },
+  { key: "natation", label: "Natation", icon: Waves },
+  { key: "autre",    label: "Autre",    icon: Zap },
 ]
 
 function ActivityManualModal({
@@ -617,7 +625,7 @@ function ActivityManualModal({
                   : "bg-muted text-foreground border-border"
               )}
             >
-              <span>{a.icon}</span>
+              <a.icon className="h-3.5 w-3.5" />
               {a.label}
             </button>
           ))}
@@ -749,8 +757,8 @@ function VoiceInputModal({ onClose }: { onClose: () => void }) {
             </div>
             <div className="space-y-3">
               {[
-                { name: "Riz blanc", amount: 150, calories: 207, source: "📚" },
-                { name: "Huile d'olive", amount: 15, calories: 124, source: "🇫🇷" },
+                { name: "Riz blanc", amount: 150, calories: 207, source: "CIQUAL" },
+                { name: "Huile d'olive", amount: 15, calories: 124, source: "NutriVita" },
               ].map((item, i) => (
                 <div
                   key={i}
@@ -780,7 +788,7 @@ function VoiceInputModal({ onClose }: { onClose: () => void }) {
                 {t("cancel")}
               </Button>
               <Button
-                className="flex-1 gradient-hero text-white"
+                className="flex-1 bg-primary text-primary-foreground"
                 onClick={onClose}
               >
                 {t("add")}

@@ -1,4 +1,4 @@
-// Types for NutriVita app
+﻿// Types for NutriVita app
 
 import type { GlucoseUnit } from "@/lib/glucose-units"
 
@@ -451,7 +451,7 @@ export const translations = {
     barcode: "باركود",
     searchCiqual: "قاعدة CIQUAL",
     comingSoon: "قريباً",
-    detectedAt: "تم اكتشافه بنسبة",
+    detectedAt: "\u062A\u0645 \u0627\u0643\u062A\u0634\u0627\u0641\u0647 \u0628\u0646\u0633\u0628\u0629",
     estimatedPortion: "الحصة المقدرة",
     ingredients: "المكونات",
     addToLunch: "إضافة إلى الغداء",
@@ -558,12 +558,12 @@ export const translations = {
     manageDiabetes: "إدارة السكري",
     speakNow: "تحدث الآن...",
     analyzing: "جاري التحليل...",
-    serverWaking: "جاري تشغيل الخادم...",
-    offlineBanner: "غير متصل — بيانات محلية",
-    loadingData: "جاري التحميل...",
-    retryLoad: "إعادة المحاولة",
-    errorLoading: "خطأ في التحميل",
-    scanProduct: "مسح منتج",
+    serverWaking: "\u062C\u0627\u0631\u064A \u062A\u0634\u063A\u064A\u0644 \u0627\u0644\u062E\u0627\u062F\u0645...",
+    offlineBanner: "\u063A\u064A\u0631 \u0645\u062A\u0635\u0644 \u2014 \u0628\u064A\u0627\u0646\u0627\u062A \u0645\u062D\u0644\u064A\u0629",
+    loadingData: "\u062C\u0627\u0631\u064A \u0627\u0644\u062A\u062D\u0645\u064A\u0644...",
+    retryLoad: "\u0625\u0639\u0627\u062F\u0629 \u0627\u0644\u0645\u062D\u0627\u0648\u0644\u0629",
+    errorLoading: "\u062E\u0637\u0623 \u0641\u064A \u0627\u0644\u062A\u062D\u0645\u064A\u0644",
+    scanProduct: "\u0645\u0633\u062D \u0645\u0646\u062A\u062C",
     detectedFoods: "الأطعمة المكتشفة",
     cancel: "إلغاء",
     total: "المجموع",

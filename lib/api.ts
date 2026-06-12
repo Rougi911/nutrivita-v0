@@ -200,7 +200,10 @@ export async function getDeficiencies(): Promise<ApiDeficienciesResponse> {
 }
 
 export async function getJournal(date: string): Promise<MealEntry[]> {
-  const raw = await apiFetch<ApiMealEntry[]>(`/api/journal?date=${date}`)
+  const raw = await apiFetch<ApiMealEntry[]>("/api/journal/query", {
+    method: "POST",
+    body: JSON.stringify({ date }),
+  })
   return raw.map(mapMealEntry)
 }
 
@@ -224,7 +227,10 @@ export async function deleteJournalEntry(id: string): Promise<void> {
 }
 
 export async function getWeightHistory(days: number): Promise<WeightEntry[]> {
-  const raw = await apiFetch<ApiWeightEntry[]>(`/api/weight?days=${days}`)
+  const raw = await apiFetch<ApiWeightEntry[]>("/api/weight/query", {
+    method: "POST",
+    body: JSON.stringify({ days }),
+  })
   return raw.map(mapWeightEntry)
 }
 
@@ -237,7 +243,10 @@ export async function addWeightEntryApi(entry: WeightEntry): Promise<WeightEntry
 }
 
 export async function getGlucoseReadings(days: number): Promise<GlucoseReading[]> {
-  const raw = await apiFetch<ApiGlucoseReading[]>(`/api/glucose?days=${days}`)
+  const raw = await apiFetch<ApiGlucoseReading[]>("/api/glucose/query", {
+    method: "POST",
+    body: JSON.stringify({ days }),
+  })
   return raw.map(mapGlucoseReading)
 }
 
@@ -252,7 +261,10 @@ export async function addGlucoseReadingApi(
 }
 
 export async function getActivities(date: string): Promise<ActivityEntry[]> {
-  const raw = await apiFetch<ApiActivityEntry[]>(`/api/activities?date=${date}`)
+  const raw = await apiFetch<ApiActivityEntry[]>("/api/activities/query", {
+    method: "POST",
+    body: JSON.stringify({ date }),
+  })
   return raw.map(mapActivityEntry)
 }
 

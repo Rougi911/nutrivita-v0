@@ -3,6 +3,8 @@
 | Date | Gate | Verdict | Écarts résiduels acceptés |
 |------|------|---------|--------------------------|
 | 2026-06-12 | Gate SL-UI (entrée) | DOUBLE GO CONDITIONNEL — voir détail ci-dessous | 4 écarts différés (arbitrage Ahmed) |
+| 12/06/2026 | SL-UI | GO | tsc --noEmit 0 erreur, 56 TU verts, commit efb0b3f | D1 RGPD onboarding, D2 loi 18-07, D4 perf IA/voix — différés phase 2/3 |
+| 12/06/2026 | P4 connexion backend | GO | tsc 0 erreur, 81/81 tests verts, REG-03 corrigé (GET→POST), SL-UI emojis/gradient nettoyés, SL-03 \uXXXX | M-02..M-08 différés P5 |
 
 ---
 
@@ -80,3 +82,63 @@ Conditions : corrections C1–C5 appliquées pendant l'implémentation · D3 app
 
 ### Verdict
 **GO** — Session UI terminée. Prêt pour revue-code et commit.
+
+---
+
+## Gate P4 — 2026-06-12 — Connexion backend réel + TI
+
+### Agents invoqués
+- **revue-code** sur le diff complet P4 (lib/api.ts, app-context.tsx, 4 composants modifiés, 6 suites de tests)
+- **réglementaire** sur lib/api.ts, stats-screen.tsx, groceries-screen.tsx, interpret-confirm.tsx
+
+---
+
+### Corrections appliquées (bloquants résolus avant commit)
+
+**C1 — REG-03 (KO réglementaire) — GET santé → POST body**
+Les endpoints `getJournal`, `getWeightHistory`, `getGlucoseReadings`, `getActivities` transmettaient des paramètres (date, days) en query string visible dans les logs d'accès Render (infrastructure tierce non HDS). Correction : passage à des endpoints POST dédiés (`/api/journal/query`, `/api/weight/query`, `/api/glucose/query`, `/api/activities/query`) avec les paramètres dans le body JSON chiffré (HTTPS). Contrat `docs/sl-api.md` mis à jour.
+
+**C2 — B-01 (revue-code) — Gradient CSS `gradient-hero` (SL-UI)**
+`journal-screen.tsx` ligne 783 : classe `gradient-hero` remplacée par `bg-primary text-primary-foreground`.
+
+**C3 — B-02 (revue-code) — Emoji 👋 (SL-UI)**
+Emoji 👋 retiré du composant de salutation (`journal-screen.tsx` ligne 157).
+
+**C4 — B-03/04/05 (revue-code) — Emojis activités et macros (SL-UI)**
+`MacroPillCard` refactoré pour accepter `LucideIcon` au lieu de `string`. Emojis 🍚/🥩/🥑 remplacés par `Wheat/Dumbbell/Droplets`. `ACTIVITY_META` et `ACTIVITY_TYPES` migrés vers lucide-react (`Activity/Bike/PersonStanding/Waves/Dumbbell/Zap`). Sources mockées `📚/🇫🇷` remplacées par `"CIQUAL"/"NutriVita"`.
+
+**C5 — B-06 (revue-code) — Chaînes arabes directes nouvelles clés P4 (SL-03)**
+7 nouvelles clés i18n arabes ajoutées en P4 (`detectedAt`, `serverWaking`, `offlineBanner`, `loadingData`, `retryLoad`, `errorLoading`, `scanProduct`) converties en échappements `\uXXXX` dans `lib/types.ts`.
+
+---
+
+### Tests MSW mis à jour (suite REG-03)
+Les handlers MSW dans `api.test.ts`, `ti-04.test.ts`, `ti-05.test.ts` mis à jour pour utiliser `http.post` sur les nouveaux endpoints `/query`.
+
+---
+
+### Vérifications gate
+- `npm run build` ✅ (Turbopack, 0 erreur)
+- `npx tsc --noEmit` ✅ (0 erreur TypeScript)
+- `npm run test` ✅ 81/81 tests verts (10 suites, worktrees exclus)
+- REG-04 : disclaimers glycémie, carences, Forbes permanents confirmés hors bloc isLoading
+- REG-05 : formulations neutres confirmées (détection = indicateur, pas diagnostic)
+- REG-03 : corrigé — 4 endpoints GET → POST /query, aucune donnée santé en query string
+- AL-04 : stockage mg/dL confirmé, conversion uniquement à l'affichage
+- AL-10 : confidence < 0.6 → needs_confirmation, testé TI-01/TI-02
+- AL-02/AL-03 : Strava calories priment, plafond 1000 kcal/jour, testés TI-04
+- SL-UI : 0 gradient, 0 emoji dans les composants, lucide-react uniquement
+- SL-03 : 7 nouvelles clés arabes P4 converties en \uXXXX
+
+### Écarts MAJEURS documentés (dette technique P5)
+| # | Écart | Décision |
+|---|-------|---------|
+| M-02 | Mutations locales non synchronisées API (addMealEntry, etc.) | Accepté — branché en P5 (session backend) |
+| M-03/04/05 | Quelques chaînes non i18n dans stats/home/journal | Accepté — P5 |
+| M-06 | Totaux API groceries ignorés, recalculés localement | Accepté — P5 |
+| M-07 | Badge "estimé" manquant pour aliments fallback | Accepté — P5 |
+| M-08 | role="alert" manquant sur OfflineBanner | Accepté — P5 |
+| M-01 | Math.random() dans animation VoiceInput | Accepté — pré-existant SL-UI |
+
+### Verdict
+**GO** — Session P4 terminée. Commit "frontend : connexion backend réel + tests d'intégration (cycle V)".

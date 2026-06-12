@@ -61,7 +61,8 @@ Output:
 }
 ```
 
-## GET /api/journal?date=YYYY-MM-DD
+## POST /api/journal/query
+Input: `{ date: "YYYY-MM-DD" }` — REG-03 : paramètre de santé en body, pas en query string.
 Output: tableau de MealEntry backend (snake_case) :
 ```json
 [{
@@ -76,20 +77,23 @@ Input: `{ food_id, amount, meal_type, date }` — output: objet MealEntry backen
 
 ## DELETE /api/journal/:id
 
-## GET /api/weight?days=30
+## POST /api/weight/query
+Input: `{ days: number }` — REG-03 : paramètre en body.
 Output: `[{ "date": "2026-06-12", "weight_kg": 81.7, "body_fat": 21.3 }]`
 
 ## POST /api/weight
 Input: `{ date, weight_kg, body_fat? }`
 
-## GET /api/glucose?days=14
+## POST /api/glucose/query
+Input: `{ days: number }` — REG-03 : données glycémiques (cat. 9 RGPD) transmises en body chiffré.
 Output: `[{ "id": "g1", "value": 92, "timestamp": "2026-06-12T07:00:00Z", "type": "fasting", "source": "manual" }]`
 (valeurs toujours en mg/dL — AL-04)
 
 ## POST /api/glucose
 Input: `{ value, timestamp, type, source }` (value en mg/dL)
 
-## GET /api/activities?date=YYYY-MM-DD
+## POST /api/activities/query
+Input: `{ date: "YYYY-MM-DD" }` — REG-03 : paramètre en body.
 Output: `[{ "id": "a1", "type": "Course", "duration": 35, "calories_burned": 310, "date": "2026-06-12", "source": "strava", "created_at": "2026-06-12T06:30:00Z" }]`
 
 ## POST /api/activities

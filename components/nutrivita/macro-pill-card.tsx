@@ -1,10 +1,11 @@
 "use client"
 
+import type { LucideIcon } from "lucide-react"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 
 interface MacroPillCardProps {
-  icon: string
+  icon: LucideIcon
   value: number
   target: number
   label: string
@@ -13,7 +14,7 @@ interface MacroPillCardProps {
 }
 
 export function MacroPillCard({
-  icon,
+  icon: Icon,
   value,
   target,
   label,
@@ -32,7 +33,7 @@ export function MacroPillCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <span className="text-2xl">{icon}</span>
+      <Icon className="h-5 w-5 text-primary" />
       <span className="text-lg font-bold text-foreground">
         {value}
         <span className="text-sm font-normal text-muted-foreground">{unit}</span>

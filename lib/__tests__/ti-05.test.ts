@@ -30,10 +30,10 @@ const MOCK_READINGS_MG_DL = [
 ]
 
 describe("TI-05 changement unité glycémie", () => {
-  it("GET /api/glucose retourne toujours en mg/dL (AL-04)", async () => {
+  it("POST /api/glucose/query retourne toujours en mg/dL (AL-04)", async () => {
     const { getGlucoseReadings } = await import("../api")
     server.use(
-      http.get(`${API_BASE}/api/glucose`, () =>
+      http.post(`${API_BASE}/api/glucose/query`, () =>
         HttpResponse.json(
           MOCK_READINGS_MG_DL.slice(0, 5).map((v, i) => ({
             id: `g${i}`,

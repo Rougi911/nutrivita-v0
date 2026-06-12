@@ -70,7 +70,7 @@ describe("getJournal", () => {
   it("mappe meal_type et created_at → camelCase", async () => {
     const { getJournal } = await import("../api")
     server.use(
-      http.get(`${API_BASE}/api/journal`, () =>
+      http.post(`${API_BASE}/api/journal/query`, () =>
         HttpResponse.json([
           {
             id: "m1",
@@ -95,7 +95,7 @@ describe("getGlucoseReadings", () => {
   it("retourne les valeurs en mg/dL (AL-04)", async () => {
     const { getGlucoseReadings } = await import("../api")
     server.use(
-      http.get(`${API_BASE}/api/glucose`, () =>
+      http.post(`${API_BASE}/api/glucose/query`, () =>
         HttpResponse.json([
           { id: "g1", value: 92, timestamp: "2026-06-12T07:00:00Z", type: "fasting", source: "manual" },
         ])
