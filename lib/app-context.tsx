@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react"
 import {
   type Language,
   type User,
@@ -21,6 +21,13 @@ import {
   sampleScannedProducts,
   defaultWaterIntake,
 } from "@/lib/mock-data"
+import {
+  getJournal,
+  getGlucoseReadings as fetchGlucoseReadings,
+  getWeightHistory,
+  getActivities,
+  setSlowStartCallback,
+} from "@/lib/api"
 
 interface AppContextType {
   // User
@@ -79,6 +86,10 @@ interface AppContextType {
   setSelectedMealType: (type: MealEntry["mealType"] | null) => void
   waterIntake: number
   setWaterIntake: (n: number) => void
+  isLoading: boolean
+  isOffline: boolean
+  serverWaking: boolean
+  reloadData: () => void
 }
 
 const defaultUser: User = {
@@ -118,11 +129,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isOnboarded, setIsOnboarded] = useState(true)
   const [language, setLanguageState] = useState<Language>("fr")
   const [currentDate, setCurrentDate] = useState(today)
-  const [mealEntries, setMealEntries] = useState<MealEntry[]>(sampleMealEntries)
-  const [glucoseReadings, setGlucoseReadings] = useState<GlucoseReading[]>(sampleGlucoseReadings)
-  const [weightHistory, setWeightHistory] = useState<WeightEntry[]>(sampleWeightHistory)
-  const [activities, setActivities] = useState<ActivityEntry[]>(sampleActivities)
-  const [scannedProducts, setScannedProducts] = useState<ScannedProduct[]>(sampleScannedProducts)
+  const [mealEntries, setMealEntries] = useState<MealEntry[]>([])
+  const [glucoseReadings, setGlucoseReadings] = useState<GlucoseReading[]>([])
+  const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([])
+  const [activities, setActivities] = useState<ActivityEntry[]>([])
+  const [scannedProducts, setScannedProducts] = useState<ScannedProduct[]>([])
   const [glucoseTarget, setGlucoseTarget] = useState<{ low: number; high: number }>(defaultUser.glucoseTarget)
   const [isDiabetic, setIsDiabetic] = useState(defaultUser.isDiabetic)
   const [activeTab, setActiveTab] = useState("home")
@@ -130,6 +141,53 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [showFoodSearch, setShowFoodSearch] = useState(false)
   const [selectedMealType, setSelectedMealType] = useState<MealEntry["mealType"] | null>(null)
   const [waterIntake, setWaterIntake] = useState(defaultWaterIntake)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isOffline, setIsOffline] = useState(false)
+  const [serverWaking, setServerWaking] = useState(false)
+  const loadCountRef = useRef(0)
+
+  const loadData = useCallback(async (date: string) => {
+    const loadId = ++loadCountRef.current
+    setIsLoading(true)
+    setIsOffline(false)
+
+    setSlowStartCallback(() => {
+      if (loadCountRef.current === loadId) setServerWaking(true)
+    })
+
+    try {
+      const [meals, glucose, weight, acts] = await Promise.all([
+        getJournal(date),
+        fetchGlucoseReadings(14),
+        getWeightHistory(30),
+        getActivities(date),
+      ])
+      if (loadCountRef.current !== loadId) return
+      setMealEntries(meals)
+      setGlucoseReadings(glucose)
+      setWeightHistory(weight)
+      setActivities(acts)
+      setIsOffline(false)
+    } catch {
+      if (loadCountRef.current !== loadId) return
+      // Offline fallback — données mock pour navigation dégradée
+      setMealEntries(sampleMealEntries)
+      setGlucoseReadings(sampleGlucoseReadings)
+      setWeightHistory(sampleWeightHistory)
+      setActivities(sampleActivities)
+      setIsOffline(true)
+    } finally {
+      if (loadCountRef.current === loadId) {
+        setIsLoading(false)
+        setServerWaking(false)
+        setSlowStartCallback(null)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    loadData(currentDate)
+  }, [currentDate, loadData])
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang)
@@ -264,6 +322,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setSelectedMealType,
         waterIntake,
         setWaterIntake,
+        isLoading,
+        isOffline,
+        serverWaking,
+        reloadData: () => loadData(currentDate),
       }}
     >
       {children}
