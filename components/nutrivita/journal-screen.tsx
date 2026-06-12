@@ -23,6 +23,8 @@ import { MealSectionCard } from "./meal-section-card"
 import { Button } from "@/components/ui/button"
 import { MEALS, type ActivityEntry } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { Skeleton } from "@/components/ui/skeleton"
+import { OfflineBanner } from "@/components/nutrivita/offline-banner"
 
 export function JournalScreen() {
   const {
@@ -38,6 +40,7 @@ export function JournalScreen() {
     addActivity,
     removeActivity,
     todayBurnedCalories,
+    isLoading,
   } = useApp()
 
   const [showVoiceInput, setShowVoiceInput] = useState(false)
@@ -109,6 +112,14 @@ export function JournalScreen() {
 
   return (
     <div className={cn("flex flex-col pb-32", isRTL && "rtl")}>
+      <OfflineBanner />
+      {isLoading && (
+        <div className="px-4 space-y-3 py-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-16 w-full rounded-2xl" />
+          ))}
+        </div>
+      )}
       {/* Header */}
       <div className="px-4 pt-6 pb-4 bg-background">
         {/* Date Navigator */}

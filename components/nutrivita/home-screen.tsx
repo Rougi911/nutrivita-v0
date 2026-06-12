@@ -6,6 +6,8 @@ import { CalorieRing } from "./calorie-ring"
 import { MealSectionCard } from "./meal-section-card"
 import { toGlucoseUnit, formatGlucose } from "@/lib/glucose-units"
 import { MEALS } from "@/lib/types"
+import { Skeleton } from "@/components/ui/skeleton"
+import { OfflineBanner } from "@/components/nutrivita/offline-banner"
 
 interface HomeScreenProps {
   onOpenSettings: () => void
@@ -86,6 +88,7 @@ export function HomeScreen({ onOpenSettings, onOpenGlucose }: HomeScreenProps) {
     setWaterIntake,
     setSelectedMealType,
     setShowAddSheet,
+    isLoading,
   } = useApp()
 
   // Latest glucose reading
@@ -119,6 +122,7 @@ export function HomeScreen({ onOpenSettings, onOpenGlucose }: HomeScreenProps) {
 
   return (
     <div className="bg-background min-h-screen">
+      <OfflineBanner />
       {/* Header */}
       <div className="px-4 pt-5 pb-3 flex items-start justify-between">
         <div>
@@ -145,12 +149,23 @@ export function HomeScreen({ onOpenSettings, onOpenGlucose }: HomeScreenProps) {
         {/* Calorie ring + macros */}
         <div className="rounded-2xl bg-card border border-border p-4">
           <div className="flex items-center gap-5">
-            <CalorieRing
-              consumed={dailyLog.totalCalories}
-              target={user.targetCalories}
-              burned={todayBurnedCalories}
-              size={130}
-            />
+            {isLoading ? (
+              <div className="flex flex-col items-center gap-3 py-4">
+                <Skeleton className="w-40 h-40 rounded-full" />
+                <div className="flex gap-4">
+                  <Skeleton className="w-20 h-4" />
+                  <Skeleton className="w-20 h-4" />
+                  <Skeleton className="w-20 h-4" />
+                </div>
+              </div>
+            ) : (
+              <CalorieRing
+                consumed={dailyLog.totalCalories}
+                target={user.targetCalories}
+                burned={todayBurnedCalories}
+                size={130}
+              />
+            )}
             <div className="flex-1 space-y-3 min-w-0">
               <MacroBar
                 label={t("protein")}
