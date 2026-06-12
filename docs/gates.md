@@ -5,6 +5,7 @@
 | 2026-06-12 | Gate SL-UI (entrée) | DOUBLE GO CONDITIONNEL — voir détail ci-dessous | 4 écarts différés (arbitrage Ahmed) |
 | 12/06/2026 | SL-UI | GO | tsc --noEmit 0 erreur, 56 TU verts, commit efb0b3f | D1 RGPD onboarding, D2 loi 18-07, D4 perf IA/voix — différés phase 2/3 |
 | 12/06/2026 | P4 connexion backend | GO | tsc 0 erreur, 81/81 tests verts, REG-03 corrigé (GET→POST), SL-UI emojis/gradient nettoyés, SL-03 \uXXXX | M-02..M-08 différés P5 |
+| 13/06/2026 | P4.5 alignement backend POST /query | GO | 4 POST /query ajoutés (journal, glucose, weight, activities), alias /api/activities, 93/93 TU verts, REG-03 précisé (dates ≠ données santé) | — |
 
 ---
 
@@ -142,3 +143,47 @@ Les handlers MSW dans `api.test.ts`, `ti-04.test.ts`, `ti-05.test.ts` mis à jou
 
 ### Verdict
 **GO** — Session P4 terminée. Commit "frontend : connexion backend réel + tests d'intégration (cycle V)".
+
+---
+
+## Gate P4.5 — 2026-06-13 — Alignement backend POST /query
+
+### Contexte
+Le frontend (P4) appelle POST /api/journal/query, POST /api/glucose/query, POST /api/weight/query, POST /api/activities/query. Le backend ne disposait pas de ces routes — alignement effectué en P4.5.
+
+### Constat REG-03 (affinement)
+Les paramètres `date`, `days`, `from`, `to` sont des paramètres **temporels** (plage d'historique), pas des valeurs de santé. REG-03 ne les vise pas strictement. Le choix POST /body (fait en P4 côté frontend) est conservé pour cohérence avec le contrat déployé, mais ne constitue pas une correction réglementaire obligatoire. La règle REG-03 a été précisée dans `.claude/agents/reglementaire.md`.
+
+### Changements appliqués
+
+**C1 — routes/journal.js**
+Extraction de `queryJournalByDate(db, userId, date, lang)`. Ajout `POST /query` lisant `date` dans `req.body`. Export `module.exports.queryJournalByDate`.
+
+**C2 — routes/glucose.js**
+Extraction de `queryGlucoseRange(db, userId, from, to)`. Ajout `POST /query` convertissant `{ days }` → from/to ISO. Export `module.exports.queryGlucoseRange`.
+
+**C3 — routes/weight.js**
+Extraction de `queryWeightRange(db, userId, from, to)`. Ajout `POST /query` convertissant `{ days }` → from/to date-only. Export `module.exports.queryWeightRange`.
+
+**C4 — routes/activity.js**
+Ajout de `queryActivitiesByDate(db, userId, date)` (nouvelle fonction — liste plate d'activités par date, sans la logique riche du GET /bilan/:date). Ajout `POST /query`. Export `module.exports.queryActivitiesByDate`.
+
+**C5 — server.js**
+Ajout `app.use('/api/activities', activityRoutes)` — alias pluriel, contrat frontend.
+
+**C6 — backend/package.json + tests/p4.test.js**
+Jest installé (devDependency). Script `"test": "jest --testPathPatterns=tests/"`. Fichier `tests/p4.test.js` : 14 tests couvrant les 4 fonctions partagées + calcul date from/to.
+
+**C7 — .claude/agents/reglementaire.md**
+Précision REG-03 : paramètres temporels (date, days) ≠ données de santé → GET ?date= ne déclenche pas REG-03.
+
+### Vérifications gate
+- `npm test` → 93/93 verts (5 suites : glucoseMetrics, activityCap, p2, p3, p4)
+- GET / conservé sur toutes les routes (backward compatible)
+- POST /query ajouté sur les 4 routes (contrat frontend P4)
+- /api/activities (pluriel) monté en alias de /api/activity
+- Aucune donnée de santé exposée en query string (valeurs glycémiques, poids — jamais en URL)
+- REG-03 précisé dans l'agent réglementaire
+
+### Verdict
+**GO** — Session P4.5 terminée. Commit "backend : POST /query routes + alias /api/activities + tests p4 (cycle V)".
