@@ -329,11 +329,9 @@ export function JournalScreen() {
                 transition={{ delay: index * 0.1 }}
               >
                 <MealSectionCard
-                  icon={meal.icon}
                   name={meal.nameFr}
                   entries={mealEntries}
                   onAddFood={() => handleAddFood(meal.type)}
-                  onVoiceInput={() => setShowVoiceInput(true)}
                 />
               </motion.div>
             )

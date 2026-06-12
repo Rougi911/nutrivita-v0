@@ -1,7 +1,8 @@
 "use client"
 
+import { useState } from "react"
 import { motion } from "framer-motion"
-import { Star, ChevronRight, Leaf } from "lucide-react"
+import { Camera, ChevronRight, Droplets, Globe, Lock, Mic, ShoppingCart, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface LandingPageProps {
@@ -9,318 +10,238 @@ interface LandingPageProps {
 }
 
 const features = [
-  {
-    icon: "🍽️",
-    title: "Journal alimentaire intelligent",
-    description: "Suivez vos repas avec saisie vocale et reconnaissance photo",
-  },
-  {
-    icon: "🩸",
-    title: "Suivi glycémique (diabète)",
-    description: "Import CGM, analyse GMI/TIR, alertes personnalisées",
-  },
-  {
-    icon: "🎤",
-    title: "Saisie vocale multilingue",
-    description: "Parlez en français, arabe ou anglais",
-  },
-  {
-    icon: "⚖️",
-    title: "Composition corporelle",
-    description: "Modèle Forbes pour estimer masse grasse et musculaire",
-  },
-  {
-    icon: "🌍",
-    title: "FR / عربي / EN",
-    description: "Interface complète en 3 langues avec support RTL",
-  },
-  {
-    icon: "🔒",
-    title: "100% privé, RGPD",
-    description: "Vos données restent sur votre appareil",
-  },
+  { icon: Camera,       title: "Détection par photo",       desc: "L'IA identifie le plat et calcule les calories automatiquement" },
+  { icon: Droplets,     title: "Suivi glycémique",          desc: "Import CGM, analyse GMI/TIR, alertes personnalisées" },
+  { icon: ShoppingCart, title: "Scan des courses",          desc: "Nutri-Score, additifs à risque, alternatives plus saines" },
+  { icon: Mic,          title: "Saisie vocale",             desc: "Parlez en français, arabe ou anglais" },
+  { icon: Globe,        title: "FR / عربي / EN",            desc: "Interface complète en 3 langues avec support RTL" },
+  { icon: Lock,         title: "Données protégées · RGPD",  desc: "Vos données restent sur votre appareil, chiffrées" },
 ]
 
 const testimonials = [
-  {
-    name: "Samira B.",
-    location: "Alger",
-    text: "Enfin une app qui comprend nos plats traditionnels ! Le couscous, le tajine... tout y est.",
-    rating: 5,
-  },
-  {
-    name: "Pierre M.",
-    location: "Lyon",
-    text: "La saisie vocale est incroyable. Je dis juste ce que je mange et c'est enregistré.",
-    rating: 5,
-  },
-  {
-    name: "Fatima Z.",
-    location: "Paris",
-    text: "Je gère mon diabète bien plus facilement avec le suivi glycémique intégré.",
-    rating: 5,
-  },
+  { name: "Samira B.", location: "Alger", text: "Enfin une app qui comprend nos plats ! Le couscous, le tajine... tout y est.", rating: 5 },
+  { name: "Pierre M.", location: "Lyon",  text: "La saisie vocale est incroyable. Je dis juste ce que je mange.", rating: 5 },
+  { name: "Fatima Z.", location: "Paris", text: "Je gère mon diabète bien plus facilement avec le suivi glycémique.", rating: 5 },
 ]
 
+type Tab = "user" | "pro"
+
 export function LandingPage({ onGetStarted }: LandingPageProps) {
+  const [tab, setTab] = useState<Tab>("user")
+  const [proEmail, setProEmail] = useState("")
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <section className="relative min-h-screen flex flex-col">
-        {/* Dark gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-primary/30" />
-        
-        {/* Floating food illustrations */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {["🥗", "🍎", "🥑", "🍳", "🥕", "🍇"].map((emoji, i) => (
-            <motion.div
-              key={i}
-              className="absolute text-4xl opacity-20"
-              style={{
-                left: `${10 + i * 15}%`,
-                top: `${20 + (i % 3) * 25}%`,
-              }}
-              animate={{
-                y: [0, -20, 0],
-                rotate: [0, 10, -10, 0],
-              }}
-              transition={{
-                duration: 4 + i,
-                repeat: Infinity,
-                delay: i * 0.5,
-              }}
+      {/* ─── Nav ────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border">
+        <div className="max-w-4xl mx-auto px-5 h-14 flex items-center justify-between">
+          {/* Logo — "N" + NutriVita, no emoji */}
+          <div className="flex items-center gap-2">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-primary-foreground text-[15px] font-bold"
+              style={{ backgroundColor: "var(--primary)" }}
             >
-              {emoji}
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Content */}
-        <div className="relative z-10 flex-1 flex flex-col">
-          {/* Header */}
-          <header className="p-6 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-white">
-              <Leaf className="h-8 w-8 text-emerald-400" />
-              <span className="text-xl font-bold">NutriVita</span>
+              N
             </div>
-            <Button
-              variant="ghost"
-              onClick={onGetStarted}
-              className="text-white hover:bg-white/10"
-            >
-              Connexion
+            <span className="text-[16px] font-semibold text-foreground">NutriVita</span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Tab toggle: Utilisateur / Praticien */}
+            <div className="hidden sm:flex rounded-full border border-border overflow-hidden">
+              {(["user", "pro"] as Tab[]).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className={`px-3.5 py-1.5 text-[13px] font-medium transition-colors ${
+                    tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                  }`}
+                >
+                  {t === "user" ? "Utilisateur" : "Praticien"}
+                </button>
+              ))}
+            </div>
+            <Button size="sm" className="rounded-xl h-9 gap-1.5 text-[13px]" onClick={onGetStarted}>
+              Commencer <ChevronRight className="h-3.5 w-3.5" />
             </Button>
-          </header>
+          </div>
+        </div>
+      </header>
 
-          {/* Hero content */}
-          <div className="flex-1 flex flex-col items-center justify-center px-6 text-center text-white">
-            <motion.h1
-              className="text-4xl md:text-6xl font-bold mb-4 text-balance"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              Mangez mieux.
-              <br />
-              Vivez mieux.
-            </motion.h1>
-            <motion.p
-              className="text-xl text-white/80 mb-8"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              L&apos;app nutrition conçue pour la France et l&apos;Algérie
-            </motion.p>
+      {/* ─── User tab content ──────────────────────────────── */}
+      {tab === "user" && (
+        <>
+          {/* Hero — flat, 2-column on desktop */}
+          <section className="max-w-4xl mx-auto px-5 pt-16 pb-12">
+            <div className="flex flex-col md:flex-row items-center gap-10">
+              <motion.div
+                className="flex-1 text-center md:text-left"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <h1 className="text-[32px] md:text-[42px] font-semibold text-foreground leading-tight mb-4">
+                  Comprenez ce que vous mangez,<br className="hidden md:block" /> en une photo
+                </h1>
+                <p className="text-[16px] text-muted-foreground mb-6">
+                  Photo, voix, calories, poids, glycémie et courses — en FR, عربي et EN
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
+                  <Button size="lg" className="h-12 rounded-2xl gap-2 px-6 text-[15px]" onClick={onGetStarted}>
+                    Commencer gratuitement <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="mt-4 text-[12px] text-muted-foreground">
+                  Données protégées · RGPD
+                </p>
+              </motion.div>
 
-            <motion.div
-              className="flex flex-col sm:flex-row gap-4 w-full max-w-md"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-            >
+              {/* Phone mock */}
+              <motion.div
+                className="shrink-0 w-52 h-96 rounded-[36px] bg-card border-2 border-border flex items-center justify-center"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3 }}
+              >
+                <p className="text-[13px] text-muted-foreground">Aperçu de l&apos;app</p>
+              </motion.div>
+            </div>
+          </section>
+
+          {/* Features — 4-icon row */}
+          <section className="border-t border-border bg-muted/30 py-12 px-5">
+            <div className="max-w-4xl mx-auto">
+              <h2 className="text-[22px] font-semibold text-foreground text-center mb-8">Fonctionnalités</h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {features.map((feat, i) => {
+                  const Icon = feat.icon
+                  return (
+                    <motion.div
+                      key={i}
+                      className="rounded-2xl border border-border bg-background p-4"
+                      initial={{ opacity: 0, y: 16 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.07 }}
+                      viewport={{ once: true }}
+                    >
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
+                        style={{ backgroundColor: "var(--badge-positive-bg)" }}
+                      >
+                        <Icon className="h-5 w-5" style={{ color: "var(--primary)" }} />
+                      </div>
+                      <p className="text-[14px] font-semibold text-foreground leading-tight mb-1">{feat.title}</p>
+                      <p className="text-[12px] text-muted-foreground leading-snug">{feat.desc}</p>
+                    </motion.div>
+                  )
+                })}
+              </div>
+            </div>
+          </section>
+
+          {/* Testimonials */}
+          <section className="py-12 px-5">
+            <div className="max-w-4xl mx-auto">
+              <h2 className="text-[22px] font-semibold text-foreground text-center mb-8">Ce qu&apos;ils en disent</h2>
+              <div className="grid md:grid-cols-3 gap-4">
+                {testimonials.map((t, i) => (
+                  <motion.div
+                    key={i}
+                    className="rounded-2xl border border-border bg-card p-4"
+                    initial={{ opacity: 0, y: 16 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.1 }}
+                    viewport={{ once: true }}
+                  >
+                    <div className="flex mb-3">
+                      {Array.from({ length: 5 }).map((_, j) => (
+                        <Star
+                          key={j}
+                          className={`h-3.5 w-3.5 ${j < t.rating ? "fill-current" : ""}`}
+                          style={{ color: j < t.rating ? "var(--amber)" : "var(--muted-foreground)" }}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-[13px] text-foreground mb-3">&ldquo;{t.text}&rdquo;</p>
+                    <p className="text-[12px] text-muted-foreground">
+                      <span className="font-medium text-foreground">{t.name}</span>, {t.location}
+                    </p>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* CTA — flat teal, no gradient */}
+          <section className="py-12 px-5" style={{ backgroundColor: "var(--primary)" }}>
+            <div className="max-w-xl mx-auto text-center text-primary-foreground">
+              <h2 className="text-[24px] font-semibold mb-3">
+                Prêt à transformer votre alimentation ?
+              </h2>
+              <p className="text-primary-foreground/80 mb-6 text-[14px]">
+                Rejoignez des milliers d&apos;utilisateurs déjà inscrits
+              </p>
               <Button
                 size="lg"
                 onClick={onGetStarted}
-                className="w-full gradient-hero text-white text-lg h-14 rounded-2xl"
+                className="bg-background text-foreground hover:bg-background/90 h-12 px-8 rounded-2xl text-[15px]"
               >
-                Commencer gratuitement
-                <ChevronRight className="ml-2 h-5 w-5" />
+                Créer mon compte gratuit <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="flex-1 h-14 rounded-2xl border-white/30 text-white hover:bg-white/10"
-              >
-                Voir la démo
-              </Button>
-            </motion.div>
+            </div>
+          </section>
+        </>
+      )}
 
-            {/* Social proof */}
-            <motion.div
-              className="mt-8 flex items-center gap-2"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.8 }}
-            >
-              <div className="flex">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Star
-                    key={i}
-                    className="h-5 w-5 text-amber-400 fill-amber-400"
-                  />
-                ))}
-              </div>
-              <span className="text-white/80">4.8/5 • 10,000+ utilisateurs</span>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-20 px-6">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-bold text-center text-foreground mb-4">
-            Fonctionnalités
-          </h2>
-          <p className="text-center text-muted-foreground mb-12">
-            Tout ce dont vous avez besoin pour atteindre vos objectifs
-          </p>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((feature, index) => (
-              <motion.div
-                key={index}
-                className="p-6 rounded-2xl bg-card border border-border"
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                viewport={{ once: true }}
-              >
-                <span className="text-4xl mb-4 block">{feature.icon}</span>
-                <h3 className="text-lg font-semibold text-foreground mb-2">
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {feature.description}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Screenshots Section */}
-      <section className="py-20 px-6 bg-muted/50">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-bold text-center text-foreground mb-12">
-            Découvrez l&apos;interface
-          </h2>
-
-          <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
-            {["Journal", "Repas", "Bilan", "Glycémie", "Réglages"].map(
-              (screen, i) => (
-                <motion.div
-                  key={screen}
-                  className="flex-shrink-0 w-64 h-[500px] rounded-3xl bg-gradient-to-br from-primary/20 to-secondary/20 border border-border flex items-center justify-center snap-center"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.1 }}
-                  viewport={{ once: true }}
-                >
-                  <span className="text-muted-foreground">{screen}</span>
-                </motion.div>
-              )
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Section */}
-      <section className="py-20 px-6">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-bold text-center text-foreground mb-12">
-            Ce qu&apos;ils en disent
-          </h2>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((testimonial, index) => (
-              <motion.div
-                key={index}
-                className="p-6 rounded-2xl bg-card border border-border"
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                viewport={{ once: true }}
-              >
-                <div className="flex mb-3">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <Star
-                      key={i}
-                      className={`h-4 w-4 ${
-                        i <= testimonial.rating
-                          ? "text-amber-400 fill-amber-400"
-                          : "text-muted"
-                      }`}
-                    />
-                  ))}
-                </div>
-                <p className="text-foreground mb-4">"{testimonial.text}"</p>
-                <div className="text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">
-                    {testimonial.name}
-                  </span>
-                  , {testimonial.location}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 px-6 gradient-hero">
-        <div className="max-w-2xl mx-auto text-center text-white">
-          <h2 className="text-3xl font-bold mb-4">
-            Prêt à transformer votre alimentation ?
-          </h2>
-          <p className="text-white/80 mb-8">
-            Rejoignez des milliers d&apos;utilisateurs qui ont déjà changé leur vie
-          </p>
-          <Button
-            size="lg"
-            onClick={onGetStarted}
-            className="bg-white text-primary hover:bg-white/90 text-lg h-14 px-8 rounded-2xl"
+      {/* ─── Pro tab content ───────────────────────────────── */}
+      {tab === "pro" && (
+        <section className="max-w-xl mx-auto px-5 pt-16 pb-12 text-center">
+          <div
+            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
+            style={{ backgroundColor: "var(--badge-positive-bg)" }}
           >
-            Créer mon compte gratuit
-            <ChevronRight className="ml-2 h-5 w-5" />
-          </Button>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-12 px-6 border-t border-border">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <Leaf className="h-6 w-6 text-primary" />
-              <span className="font-bold">NutriVita</span>
-            </div>
-            <div className="flex gap-6 text-sm text-muted-foreground">
-              <a href="#" className="hover:text-foreground">
-                Politique de confidentialité
-              </a>
-              <a href="#" className="hover:text-foreground">
-                Mentions légales
-              </a>
-              <a href="#" className="hover:text-foreground">
-                Contact
-              </a>
-            </div>
-            <div className="text-sm text-muted-foreground">
-              © 2026 NutriVita. Tous droits réservés.
-            </div>
+            <span className="text-[28px] font-bold" style={{ color: "var(--primary)" }}>N</span>
           </div>
+          <h2 className="text-[24px] font-semibold text-foreground mb-3">Espace professionnel</h2>
+          <p className="text-[14px] text-muted-foreground mb-6">
+            Bientôt disponible — réservé aux praticiens partenaires (diététiciens, endocrinologues)
+          </p>
+          <div className="flex flex-col gap-3 max-w-sm mx-auto">
+            <input
+              type="email"
+              placeholder="votre@email.fr"
+              value={proEmail}
+              onChange={(e) => setProEmail(e.target.value)}
+              className="h-12 rounded-xl border border-border bg-card px-4 text-[14px] text-foreground outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <Button className="h-12 rounded-xl" disabled={!proEmail.includes("@")}>
+              Être prévenu du lancement
+            </Button>
+          </div>
+          <p className="mt-4 text-[11px] text-muted-foreground">
+            Données protégées · RGPD
+          </p>
+        </section>
+      )}
+
+      {/* ─── Footer ──────────────────────────────────────────── */}
+      <footer className="border-t border-border py-8 px-5">
+        <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-[13px] text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <div
+              className="w-6 h-6 rounded-md flex items-center justify-center text-primary-foreground text-[11px] font-bold"
+              style={{ backgroundColor: "var(--primary)" }}
+            >
+              N
+            </div>
+            <span className="font-semibold text-foreground">NutriVita</span>
+          </div>
+          <div className="flex gap-5">
+            <a href="#" className="hover:text-foreground transition-colors">Politique de confidentialité</a>
+            <a href="#" className="hover:text-foreground transition-colors">Mentions légales</a>
+            <a href="#" className="hover:text-foreground transition-colors">Contact</a>
+          </div>
+          <p>© 2026 NutriVita</p>
         </div>
       </footer>
     </div>

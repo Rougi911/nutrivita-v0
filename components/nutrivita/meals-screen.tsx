@@ -121,7 +121,9 @@ export function MealsScreen() {
             {food.isFavorite && (
               <Star className="absolute top-2 right-2 h-4 w-4 text-amber fill-amber" />
             )}
-            <span className="text-4xl mb-2">{food.emoji}</span>
+            <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center mb-2 text-[16px] font-semibold text-muted-foreground">
+              {food.name.charAt(0)}
+            </div>
             <p className="font-medium text-sm truncate w-full">{food.name}</p>
             <p className="text-xs text-muted-foreground">{food.cuisine}</p>
             <p className="text-sm font-semibold text-primary mt-1">

@@ -196,7 +196,9 @@ export function FoodSearchSheet() {
                       onClick={() => setSelectedFood(food)}
                       whileTap={{ scale: 0.95 }}
                     >
-                      <span className="text-3xl">{food.emoji}</span>
+                      <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center mx-auto mb-1 text-[15px] font-semibold text-muted-foreground">
+                        {food.name.charAt(0)}
+                      </div>
                       <p className="text-xs font-medium mt-1 truncate">
                         {food.name}
                       </p>
@@ -225,7 +227,9 @@ export function FoodSearchSheet() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
-                  <span className="text-3xl">{food.emoji}</span>
+                  <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0 text-[15px] font-semibold text-muted-foreground">
+                    {food.name.charAt(0)}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{food.name}</p>
                     <p className="text-xs text-muted-foreground">
@@ -262,7 +266,9 @@ export function FoodSearchSheet() {
               >
                 {/* Food header */}
                 <div className="flex items-center gap-4 mb-6">
-                  <span className="text-5xl">{selectedFood.emoji}</span>
+                  <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center text-[22px] font-semibold text-muted-foreground shrink-0">
+                    {selectedFood.name.charAt(0)}
+                  </div>
                   <div>
                     <h2 className="text-xl font-bold">{selectedFood.name}</h2>
                     <p className="text-sm text-muted-foreground">

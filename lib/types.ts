@@ -1,5 +1,9 @@
 // Types for NutriVita app
 
+import type { GlucoseUnit } from "@/lib/glucose-units"
+
+export type { GlucoseUnit }
+
 export type Language = "fr" | "ar" | "en"
 
 export interface User {
@@ -20,9 +24,13 @@ export interface User {
   units: {
     weight: "kg" | "lbs"
     height: "cm" | "ft"
-    glucose: "mg/dL" | "mmol/L"
+    glucose: GlucoseUnit
     energy: "kcal" | "kJ"
   }
+  /** Glucose target range stored in mg/dL */
+  glucoseTarget: { low: number; high: number }
+  /** Hide glucose features when false */
+  isDiabetic: boolean
   language: Language
   darkMode: boolean
   streak: number
@@ -33,7 +41,6 @@ export interface FoodItem {
   name: string
   nameAr?: string
   nameEn?: string
-  emoji: string
   cuisine: string
   calories: number // per 100g
   protein: number // g per 100g
@@ -76,9 +83,10 @@ export interface WeightEntry {
 
 export interface GlucoseReading {
   id: string
+  /** Always stored in mg/dL internally (AL-04). */
   value: number
   timestamp: string
-  type: "fasting" | "pre-meal" | "post-meal" | "random" | "cgm"
+  type: "fasting" | "pre-meal" | "post-meal" | "pontuelle" | "cgm"
   source: "manual" | "libreview"
 }
 
@@ -93,24 +101,23 @@ export interface ActivityEntry {
 }
 
 export interface GlucoseStats {
-  gmi: number // Glucose Management Indicator
-  tir: number // Time in Range percentage
-  cv: number // Coefficient of Variation
+  gmi: number
+  tir: number
+  cv: number
   average: number
   min: number
   max: number
   distribution: {
-    veryLow: number // <54 mg/dL
-    low: number // 54-70
-    inRange: number // 70-180
-    high: number // 180-250
-    veryHigh: number // >250
+    veryLow: number
+    low: number
+    inRange: number
+    high: number
+    veryHigh: number
   }
 }
 
 export interface Meal {
   type: "breakfast" | "lunch" | "snack" | "dinner"
-  icon: string
   name: string
   nameFr: string
   nameAr: string
@@ -118,172 +125,38 @@ export interface Meal {
 }
 
 export const MEALS: Meal[] = [
-  {
-    type: "breakfast",
-    icon: "🌅",
-    name: "breakfast",
-    nameFr: "Petit-déjeuner",
-    nameAr: "الفطور",
-    nameEn: "Breakfast",
-  },
-  {
-    type: "lunch",
-    icon: "☀️",
-    name: "lunch",
-    nameFr: "Déjeuner",
-    nameAr: "الغداء",
-    nameEn: "Lunch",
-  },
-  {
-    type: "snack",
-    icon: "🍎",
-    name: "snack",
-    nameFr: "Collation",
-    nameAr: "وجبة خفيفة",
-    nameEn: "Snack",
-  },
-  {
-    type: "dinner",
-    icon: "🌙",
-    name: "dinner",
-    nameFr: "Dîner",
-    nameAr: "العشاء",
-    nameEn: "Dinner",
-  },
+  { type: "breakfast", name: "breakfast", nameFr: "Petit-déjeuner", nameAr: "الفطور", nameEn: "Breakfast" },
+  { type: "lunch",     name: "lunch",     nameFr: "Déjeuner",        nameAr: "الغداء", nameEn: "Lunch" },
+  { type: "snack",     name: "snack",     nameFr: "Collation",       nameAr: "وجبة خفيفة", nameEn: "Snack" },
+  { type: "dinner",    name: "dinner",    nameFr: "Dîner",           nameAr: "العشاء", nameEn: "Dinner" },
 ]
 
-// Sample food database
+/** AL-08 / EB-04 — Scanned product from barcode. */
+export interface ScannedProduct {
+  barcode: string
+  name: string
+  nutriScore: "A" | "B" | "C" | "D" | "E" | null
+  score: number // 0–100 (AL-08)
+  verdict: "Excellent" | "Médiocre" | "Mauvais"
+  additives: string[] // e.g. ["E150d", "E471"]
+  timesThisMonth: number
+  sucres?: number  // g per 100g
+  sel?: number     // g per 100g
+  ags?: number     // g per 100g (acides gras saturés)
+}
+
+// Sample food database (no emojis — IDs are stable)
 export const SAMPLE_FOODS: FoodItem[] = [
-  {
-    id: "1",
-    name: "Laban",
-    nameAr: "لبن",
-    nameEn: "Laban",
-    emoji: "🥛",
-    cuisine: "Maghreb",
-    calories: 63,
-    protein: 3.5,
-    carbs: 4.8,
-    fat: 3.2,
-    source: "nutrivita",
-  },
-  {
-    id: "2",
-    name: "Pain complet",
-    nameAr: "خبز كامل",
-    nameEn: "Whole wheat bread",
-    emoji: "🍞",
-    cuisine: "Française",
-    calories: 262,
-    protein: 9,
-    carbs: 49,
-    fat: 3.4,
-    source: "ciqual",
-  },
-  {
-    id: "3",
-    name: "Couscous royal",
-    nameAr: "كسكس ملكي",
-    nameEn: "Royal couscous",
-    emoji: "🥘",
-    cuisine: "Maghreb",
-    calories: 178,
-    protein: 12,
-    carbs: 22,
-    fat: 5,
-    source: "nutrivita",
-  },
-  {
-    id: "4",
-    name: "Salade niçoise",
-    nameAr: "سلطة نيسواز",
-    nameEn: "Niçoise salad",
-    emoji: "🥗",
-    cuisine: "Française",
-    calories: 285,
-    protein: 18,
-    carbs: 12,
-    fat: 22,
-    source: "ciqual",
-  },
-  {
-    id: "5",
-    name: "Tajine poulet",
-    nameAr: "طاجين دجاج",
-    nameEn: "Chicken tagine",
-    emoji: "🍲",
-    cuisine: "Maghreb",
-    calories: 195,
-    protein: 22,
-    carbs: 8,
-    fat: 9,
-    source: "nutrivita",
-  },
-  {
-    id: "6",
-    name: "Croissant",
-    nameAr: "كرواسون",
-    nameEn: "Croissant",
-    emoji: "🥐",
-    cuisine: "Française",
-    calories: 406,
-    protein: 8,
-    carbs: 45,
-    fat: 21,
-    source: "ciqual",
-  },
-  {
-    id: "7",
-    name: "Riz blanc",
-    nameAr: "أرز أبيض",
-    nameEn: "White rice",
-    emoji: "🍚",
-    cuisine: "International",
-    calories: 130,
-    protein: 2.7,
-    carbs: 28,
-    fat: 0.3,
-    source: "ciqual",
-  },
-  {
-    id: "8",
-    name: "Huile d'olive",
-    nameAr: "زيت الزيتون",
-    nameEn: "Olive oil",
-    emoji: "🫒",
-    cuisine: "Méditerranée",
-    calories: 884,
-    protein: 0,
-    carbs: 0,
-    fat: 100,
-    source: "ciqual",
-  },
-  {
-    id: "9",
-    name: "Poulet grillé",
-    nameAr: "دجاج مشوي",
-    nameEn: "Grilled chicken",
-    emoji: "🍗",
-    cuisine: "International",
-    calories: 165,
-    protein: 31,
-    carbs: 0,
-    fat: 3.6,
-    source: "ciqual",
-  },
-  {
-    id: "10",
-    name: "Omelette",
-    nameAr: "أومليت",
-    nameEn: "Omelette",
-    emoji: "🍳",
-    cuisine: "Française",
-    calories: 154,
-    protein: 11,
-    carbs: 1,
-    fat: 12,
-    source: "ciqual",
-  },
+  { id: "1",  name: "Laban",         nameAr: "لبن",                  nameEn: "Laban",              cuisine: "Maghreb",        calories: 63,  protein: 3.5, carbs: 4.8, fat: 3.2, source: "nutrivita" },
+  { id: "2",  name: "Pain complet",  nameAr: "خبز كامل", nameEn: "Whole wheat bread", cuisine: "Française",  calories: 262, protein: 9,   carbs: 49,  fat: 3.4, source: "ciqual" },
+  { id: "3",  name: "Couscous royal",nameAr: "كسكس ملكي", nameEn: "Royal couscous", cuisine: "Maghreb",  calories: 178, protein: 12,  carbs: 22,  fat: 5,   source: "nutrivita" },
+  { id: "4",  name: "Salade niçoise",nameAr: "سلطة نيسواز", nameEn: "Niçoise salad", cuisine: "Française", calories: 285, protein: 18, carbs: 12, fat: 22, source: "ciqual" },
+  { id: "5",  name: "Tajine poulet", nameAr: "طاجين دجاج", nameEn: "Chicken tagine", cuisine: "Maghreb", calories: 195, protein: 22, carbs: 8, fat: 9, source: "nutrivita" },
+  { id: "6",  name: "Croissant",     nameAr: "كرواسون",  nameEn: "Croissant",          cuisine: "Française",  calories: 406, protein: 8,   carbs: 45,  fat: 21,  source: "ciqual" },
+  { id: "7",  name: "Riz blanc",     nameAr: "أرز أبيض",  nameEn: "White rice",         cuisine: "International", calories: 130, protein: 2.7, carbs: 28, fat: 0.3, source: "ciqual" },
+  { id: "8",  name: "Huile d'olive", nameAr: "زيت الزيتون", nameEn: "Olive oil", cuisine: "Méditerranée", calories: 884, protein: 0, carbs: 0, fat: 100, source: "ciqual" },
+  { id: "9",  name: "Poulet grillé", nameAr: "دجاج مشوي", nameEn: "Grilled chicken", cuisine: "International", calories: 165, protein: 31, carbs: 0, fat: 3.6, source: "ciqual" },
+  { id: "10", name: "Omelette",      nameAr: "أومليت",         nameEn: "Omelette",           cuisine: "Française",  calories: 154, protein: 11,  carbs: 1,   fat: 12,  source: "ciqual" },
 ]
 
 // Translations
@@ -295,8 +168,11 @@ export const translations = {
     stats: "Bilan",
     glucose: "Glycémie",
     settings: "Réglages",
+    home: "Accueil",
+    groceries: "Courses",
+    add: "Ajouter",
 
-    // Journal
+    // Journal / Home
     greeting: "Bonjour",
     streak: "jours de suite",
     remaining: "restantes",
@@ -306,6 +182,11 @@ export const translations = {
     fat: "Lipides",
     weight: "Poids",
     vsYesterday: "vs hier",
+    todayMeals: "Aujourd'hui",
+    hydration: "Hydratation",
+    glasses: "verres",
+    activity: "Activité",
+    stravaSource: "Strava",
 
     // Quick actions
     voice: "Vocal",
@@ -321,6 +202,19 @@ export const translations = {
     dinner: "Dîner",
     addFood: "Ajouter",
 
+    // Add sheet
+    addMeal: "Ajouter",
+    recentFoods: "Récents",
+    detectByPhoto: "L'IA détecte le plat",
+    sayMeal: "J'ai mangé...",
+    barcode: "Code-barres",
+    searchCiqual: "Base CIQUAL",
+    comingSoon: "Bientôt disponible",
+    detectedAt: "Détecté à",
+    estimatedPortion: "Portion estimée",
+    ingredients: "Ingrédients",
+    addToLunch: "Ajouter au déjeuner",
+
     // Food search
     searchFood: "Rechercher un aliment...",
     search: "Recherche",
@@ -334,7 +228,7 @@ export const translations = {
     today: "Aujourd'hui",
     days7: "7 jours",
     days30: "30 jours",
-    evolution: "Évolution",
+    year: "Année",
     weekSummary: "Bilan semaine",
     average: "Moyenne",
     bestDay: "Meilleur jour",
@@ -342,17 +236,29 @@ export const translations = {
     weightLost: "Poids perdu",
     muscleGained: "Muscle gagné",
     fatLost: "Graisse",
-    bodyFat: "Body fat %",
-    forbesEstimate: "Estimation Forbes",
+    bodyFat: "Masse grasse %",
+    muscleMass: "Masse musculaire",
+    forbesEstimate: "Estimation par formule — ne remplace pas une analyse médicale",
     export: "Exporter",
+    weightEvolution: "Évolution du poids",
+    caloriesPerDay: "Calories par jour",
+    macroBreakdown: "Répartition macros",
+    glucoseSummary: "Glycémie",
+    inTarget: "dans la cible",
+    deficiencies: "Carences potentielles",
+    deficiencyDisclaimer: "Estimation indicative — ne remplace pas un bilan sanguin",
+    probable: "Probable",
+    toMonitor: "À surveiller",
+    insufficientGlucoseData: "Données insuffisantes",
 
     // Glucose
-    glucoseTracking: "Suivi Glycémique",
+    glucoseTracking: "Glycémie",
+    glucoseDisclaimer: "Indicateur de tendance — ne remplace pas un avis médical",
     last14Days: "14 derniers jours",
     gmi: "GMI",
     estimatedHba1c: "HbA1c estimé",
     tir: "TIR",
-    targetRange: "70-180 mg/dL",
+    targetRange: "70–180 mg/dL",
     cv: "CV",
     stability: "Stabilité",
     stable: "Stable",
@@ -365,6 +271,17 @@ export const translations = {
     addReading: "Ajouter",
     importCsv: "Importer LibreView",
     measurements: "mesures",
+    hypoAlert: "épisode(s) de glycémie < 54 mg/dL détecté(s) sur la période",
+    noGlucoseData: "Aucune mesure sur cette période",
+    addFirstReading: "Ajouter une mesure",
+    fasting: "À jeun",
+    preMeal: "Avant repas",
+    postMeal: "Après repas",
+    pontuelle: "Ponctuelle",
+    contextStats: "Moyennes par contexte",
+    periodLabel7d: "7 jours",
+    periodLabel14d: "14 jours",
+    periodLabel30d: "30 jours",
 
     // Settings
     profile: "Profil",
@@ -393,6 +310,15 @@ export const translations = {
     privacyPolicy: "Politique de confidentialité",
     legalNotice: "Mentions légales",
     rateApp: "Évaluer l'app",
+    healthGroup: "Santé",
+    glucoseTargetLabel: "Cible glycémique",
+    diabeticToggle: "Je suis diabétique",
+    diabeticToggleHint: "Affiche les fonctions glycémie dans l'app",
+    confirmDelete: "Confirmer la suppression",
+    irreversible: "Cette action est irréversible.",
+    deleteAccountConfirm: "Êtes-vous sûr de vouloir supprimer votre compte ? Toutes vos données seront définitivement supprimées.",
+    saveProfile: "Enregistrer",
+    profileEdit: "Modifier le profil",
 
     // Goals
     loseWeight: "Perdre du poids",
@@ -405,11 +331,9 @@ export const translations = {
     analyzing: "Analyse en cours...",
     detectedFoods: "Aliments détectés",
     cancel: "Annuler",
-    add: "Ajouter",
     total: "Total",
 
     // Activity
-    activity: "Activité",
     addActivity: "Ajouter une activité",
     duration: "Durée",
     caloriesBurned: "kcal brûlées",
@@ -418,6 +342,23 @@ export const translations = {
     voiceActivity: "Activité vocale",
     speakActivity: "Dites par ex. : \"30 minutes de course\"",
     noActivity: "Aucune activité ajoutée",
+
+    // Groceries
+    myGroceries: "Mes courses",
+    monthlyOverview: "Bilan du mois",
+    addedSugars: "Sucres ajoutés",
+    salt: "Sel",
+    saturatedFat: "Graisses saturées",
+    vsOmsReference: "vs repère OMS",
+    riskAdditives: "additif(s) à risque ce mois-ci",
+    presentIn: "présents dans",
+    products: "produits",
+    scannedProducts: "Produits scannés",
+    seeAlternatives: "Voir des alternatives plus saines",
+    timesThisMonth: "×",
+    excellent: "Excellent",
+    mediocre: "Médiocre",
+    bad: "Mauvais",
 
     // Onboarding
     welcome: "Bienvenue sur NutriVita",
@@ -443,32 +384,36 @@ export const translations = {
     dailyGoal: "Objectif",
     perDay: "/jour",
     startJourney: "Commencer mon parcours",
+    diabeticQuestion: "Suivez-vous votre glycémie ?",
+    diabeticYes: "Oui, j'active le suivi glycémique",
+    diabeticNo: "Non, passer cette étape",
 
     // Landing
-    heroTitle: "Mangez mieux. Vivez mieux.",
-    heroSubtitle: "L'app nutrition conçue pour la France et l'Algérie",
+    heroTitle: "Comprenez ce que vous mangez, en une photo",
+    heroSubtitle: "Photo, voix, calories, poids, glycémie et courses — en FR, عربي et EN",
     startFree: "Commencer gratuitement",
-    seeDemo: "Voir la démo",
-    users: "utilisateurs",
+    proSpace: "Espace praticien",
+    dataProtected: "Données protégées · RGPD",
+    proTabTitle: "Espace professionnel",
+    proComingSoon: "Bientôt disponible — réservé aux praticiens partenaires",
+    proNotifyEmail: "Être prévenu du lancement",
+    userTabTitle: "Utilisateur",
     features: "Fonctionnalités",
-    smartJournal: "Journal alimentaire intelligent",
-    glucoseTracking2: "Suivi glycémique (diabète)",
-    voiceInput: "Saisie vocale multilingue",
-    bodyComposition: "Composition corporelle",
-    multiLanguage: "FR / عربي / EN",
-    privateRgpd: "100% privé, RGPD",
-    readyToTransform: "Prêt à transformer votre alimentation ?",
-    createFreeAccount: "Créer mon compte gratuit",
+    featurePhoto: "Détection par photo",
+    featureGlucose: "Suivi glycémique",
+    featureBarcode: "Scan des courses",
+    featurePro: "Suivi par un diététicien",
+    users: "utilisateurs",
   },
   ar: {
-    // Navigation
     journal: "اليومية",
     meals: "الوجبات",
     stats: "الإحصائيات",
     glucose: "السكر",
     settings: "الإعدادات",
-
-    // Journal
+    home: "الرئيسية",
+    groceries: "التسوق",
+    add: "إضافة",
     greeting: "مرحباً",
     streak: "أيام متتالية",
     remaining: "متبقية",
@@ -478,22 +423,32 @@ export const translations = {
     fat: "دهون",
     weight: "الوزن",
     vsYesterday: "مقارنة بالأمس",
-
-    // Quick actions
+    todayMeals: "اليوم",
+    hydration: "الترطيب",
+    glasses: "أكواب",
+    activity: "النشاط",
+    stravaSource: "Strava",
     voice: "صوتي",
     photo: "صورة",
     scanner: "ماسح",
     favorites: "المفضلة",
     copyYesterday: "نسخ الأمس",
-
-    // Meals
     breakfast: "الفطور",
     lunch: "الغداء",
     snack: "وجبة خفيفة",
     dinner: "العشاء",
     addFood: "إضافة",
-
-    // Food search
+    addMeal: "إضافة",
+    recentFoods: "الأخيرة",
+    detectByPhoto: "الذكاء الاصطناعي يكتشف الطبق",
+    sayMeal: "أكلت...",
+    barcode: "باركود",
+    searchCiqual: "قاعدة CIQUAL",
+    comingSoon: "قريباً",
+    detectedAt: "تم اكتشافه بنسبة",
+    estimatedPortion: "الحصة المقدرة",
+    ingredients: "المكونات",
+    addToLunch: "إضافة إلى الغداء",
     searchFood: "ابحث عن طعام...",
     search: "بحث",
     recentlyAdded: "أضيف مؤخراً",
@@ -501,12 +456,10 @@ export const translations = {
     addToMeal: "أضف إلى",
     portion: "الحصة",
     customize: "تخصيص",
-
-    // Stats
     today: "اليوم",
     days7: "7 أيام",
     days30: "30 يوم",
-    evolution: "التطور",
+    year: "سنة",
     weekSummary: "ملخص الأسبوع",
     average: "المتوسط",
     bestDay: "أفضل يوم",
@@ -515,16 +468,26 @@ export const translations = {
     muscleGained: "العضلات المكتسبة",
     fatLost: "الدهون",
     bodyFat: "نسبة الدهون",
-    forbesEstimate: "تقدير Forbes",
+    muscleMass: "كتلة عضلية",
+    forbesEstimate: "تقدير بالمعادلة — لا يغني عن تحليل طبي",
     export: "تصدير",
-
-    // Glucose
-    glucoseTracking: "تتبع السكر",
+    weightEvolution: "تطور الوزن",
+    caloriesPerDay: "سعرات يومية",
+    macroBreakdown: "توزيع الماكرو",
+    glucoseSummary: "السكر",
+    inTarget: "في الهدف",
+    deficiencies: "نقص محتمل",
+    deficiencyDisclaimer: "تقدير استرشادي — لا يغني عن تحليل الدم",
+    probable: "محتمل",
+    toMonitor: "يستحق المتابعة",
+    insufficientGlucoseData: "بيانات غير كافية",
+    glucoseTracking: "متابعة السكر",
+    glucoseDisclaimer: "مؤشر اتجاه — لا يغني عن استشارة طبية",
     last14Days: "آخر 14 يوم",
     gmi: "GMI",
     estimatedHba1c: "HbA1c المقدر",
     tir: "TIR",
-    targetRange: "70-180 mg/dL",
+    targetRange: "70–180 mg/dL",
     cv: "CV",
     stability: "الاستقرار",
     stable: "مستقر",
@@ -537,8 +500,17 @@ export const translations = {
     addReading: "إضافة",
     importCsv: "استيراد LibreView",
     measurements: "قياسات",
-
-    // Settings
+    hypoAlert: "حلقة(حلقات) غلوكوز < 54 مج/دل مكتشفة",
+    noGlucoseData: "لا توجد قياسات في هذه الفترة",
+    addFirstReading: "إضافة قياس",
+    fasting: "صائم",
+    preMeal: "قبل الوجبة",
+    postMeal: "بعد الوجبة",
+    pontuelle: "عشوائية",
+    contextStats: "متوسطات حسب السياق",
+    periodLabel7d: "7 أيام",
+    periodLabel14d: "14 يوم",
+    periodLabel30d: "30 يوم",
     profile: "الملف الشخصي",
     edit: "تعديل",
     objective: "الهدف",
@@ -565,23 +537,24 @@ export const translations = {
     privacyPolicy: "سياسة الخصوصية",
     legalNotice: "إشعار قانوني",
     rateApp: "قيّم التطبيق",
-
-    // Goals
+    healthGroup: "الصحة",
+    glucoseTargetLabel: "هدف السكر",
+    diabeticToggle: "أعاني من السكري",
+    diabeticToggleHint: "يعرض وظائف الغلوكوز في التطبيق",
+    confirmDelete: "تأكيد الحذف",
+    irreversible: "هذا الإجراء لا رجعة منه.",
+    deleteAccountConfirm: "هل أنت متأكد من حذف حسابك؟",
+    saveProfile: "حفظ",
+    profileEdit: "تعديل الملف",
     loseWeight: "إنقاص الوزن",
     maintainWeight: "الحفاظ على الوزن",
     gainMuscle: "بناء العضلات",
     manageDiabetes: "إدارة السكري",
-
-    // Voice
     speakNow: "تحدث الآن...",
     analyzing: "جاري التحليل...",
     detectedFoods: "الأطعمة المكتشفة",
     cancel: "إلغاء",
-    add: "إضافة",
     total: "المجموع",
-
-    // Activity
-    activity: "النشاط",
     addActivity: "إضافة نشاط",
     duration: "المدة",
     caloriesBurned: "سعرات محروقة",
@@ -590,8 +563,21 @@ export const translations = {
     voiceActivity: "نشاط صوتي",
     speakActivity: "قل مثلاً: \"30 دقيقة جري\"",
     noActivity: "لم يُضَف أي نشاط",
-
-    // Onboarding
+    myGroceries: "مشترياتي",
+    monthlyOverview: "ملخص الشهر",
+    addedSugars: "سكريات مضافة",
+    salt: "ملح",
+    saturatedFat: "دهون مشبعة",
+    vsOmsReference: "مقابل مرجع WHO",
+    riskAdditives: "مضافات خطرة هذا الشهر",
+    presentIn: "موجودة في",
+    products: "منتجات",
+    scannedProducts: "المنتجات الممسوحة",
+    seeAlternatives: "عرض بدائل أصح",
+    timesThisMonth: "×",
+    excellent: "ممتاز",
+    mediocre: "متوسط",
+    bad: "سيئ",
     welcome: "مرحباً بك في NutriVita",
     tagline: "رفيقك الذكي للتغذية",
     getStarted: "ابدأ",
@@ -615,32 +601,34 @@ export const translations = {
     dailyGoal: "الهدف",
     perDay: "/يوم",
     startJourney: "ابدأ رحلتي",
-
-    // Landing
-    heroTitle: "كُل أفضل. عِش أفضل.",
-    heroSubtitle: "تطبيق التغذية المصمم لفرنسا والجزائر",
+    diabeticQuestion: "هل تتابع سكر الدم؟",
+    diabeticYes: "نعم، أفعّل متابعة الغلوكوز",
+    diabeticNo: "لا، تخطي هذه الخطوة",
+    heroTitle: "افهم ما تأكل، بصورة واحدة",
+    heroSubtitle: "صورة، صوت، سعرات، وزن، سكر ومشتريات",
     startFree: "ابدأ مجاناً",
-    seeDemo: "شاهد العرض",
-    users: "مستخدم",
+    proSpace: "فضاء الطبيب",
+    dataProtected: "بيانات محمية · RGPD",
+    proTabTitle: "الفضاء المهني",
+    proComingSoon: "قريباً",
+    proNotifyEmail: "إعلامي بالإطلاق",
+    userTabTitle: "مستخدم",
     features: "المميزات",
-    smartJournal: "يومية غذائية ذكية",
-    glucoseTracking2: "تتبع السكر (السكري)",
-    voiceInput: "إدخال صوتي متعدد اللغات",
-    bodyComposition: "تركيب الجسم",
-    multiLanguage: "FR / عربي / EN",
-    privateRgpd: "100% خاص، RGPD",
-    readyToTransform: "مستعد لتحويل نظامك الغذائي؟",
-    createFreeAccount: "أنشئ حسابك المجاني",
+    featurePhoto: "كشف بالصورة",
+    featureGlucose: "متابعة السكر",
+    featureBarcode: "مسح المشتريات",
+    featurePro: "متابعة بواسطة اختصاصي",
+    users: "مستخدم",
   },
   en: {
-    // Navigation
     journal: "Journal",
     meals: "Meals",
     stats: "Stats",
     glucose: "Glucose",
     settings: "Settings",
-
-    // Journal
+    home: "Home",
+    groceries: "Groceries",
+    add: "Add",
     greeting: "Hello",
     streak: "day streak",
     remaining: "remaining",
@@ -650,22 +638,32 @@ export const translations = {
     fat: "Fat",
     weight: "Weight",
     vsYesterday: "vs yesterday",
-
-    // Quick actions
+    todayMeals: "Today",
+    hydration: "Hydration",
+    glasses: "glasses",
+    activity: "Activity",
+    stravaSource: "Strava",
     voice: "Voice",
     photo: "Photo",
     scanner: "Scanner",
     favorites: "Favorites",
     copyYesterday: "Copy yesterday",
-
-    // Meals
     breakfast: "Breakfast",
     lunch: "Lunch",
     snack: "Snack",
     dinner: "Dinner",
     addFood: "Add",
-
-    // Food search
+    addMeal: "Add",
+    recentFoods: "Recent",
+    detectByPhoto: "AI detects the dish",
+    sayMeal: "I ate...",
+    barcode: "Barcode",
+    searchCiqual: "CIQUAL database",
+    comingSoon: "Coming soon",
+    detectedAt: "Detected at",
+    estimatedPortion: "Estimated portion",
+    ingredients: "Ingredients",
+    addToLunch: "Add to lunch",
     searchFood: "Search for food...",
     search: "Search",
     recentlyAdded: "Recently added",
@@ -673,12 +671,10 @@ export const translations = {
     addToMeal: "Add to",
     portion: "Portion",
     customize: "Customize",
-
-    // Stats
     today: "Today",
     days7: "7 days",
     days30: "30 days",
-    evolution: "Evolution",
+    year: "Year",
     weekSummary: "Week summary",
     average: "Average",
     bestDay: "Best day",
@@ -687,16 +683,26 @@ export const translations = {
     muscleGained: "Muscle gained",
     fatLost: "Fat",
     bodyFat: "Body fat %",
-    forbesEstimate: "Forbes estimate",
+    muscleMass: "Muscle mass",
+    forbesEstimate: "Formula estimate — does not replace a medical analysis",
     export: "Export",
-
-    // Glucose
-    glucoseTracking: "Glucose Tracking",
+    weightEvolution: "Weight evolution",
+    caloriesPerDay: "Calories per day",
+    macroBreakdown: "Macro breakdown",
+    glucoseSummary: "Glucose",
+    inTarget: "in target",
+    deficiencies: "Potential deficiencies",
+    deficiencyDisclaimer: "Indicative estimate — does not replace a blood test",
+    probable: "Probable",
+    toMonitor: "To monitor",
+    insufficientGlucoseData: "Insufficient data",
+    glucoseTracking: "Glucose",
+    glucoseDisclaimer: "Trend indicator — does not replace medical advice",
     last14Days: "Last 14 days",
     gmi: "GMI",
     estimatedHba1c: "Estimated HbA1c",
     tir: "TIR",
-    targetRange: "70-180 mg/dL",
+    targetRange: "70–180 mg/dL",
     cv: "CV",
     stability: "Stability",
     stable: "Stable",
@@ -709,8 +715,17 @@ export const translations = {
     addReading: "Add",
     importCsv: "Import LibreView",
     measurements: "measurements",
-
-    // Settings
+    hypoAlert: "episode(s) with glucose < 54 mg/dL detected in this period",
+    noGlucoseData: "No readings in this period",
+    addFirstReading: "Add a reading",
+    fasting: "Fasting",
+    preMeal: "Pre-meal",
+    postMeal: "Post-meal",
+    pontuelle: "Spot check",
+    contextStats: "Averages by context",
+    periodLabel7d: "7 days",
+    periodLabel14d: "14 days",
+    periodLabel30d: "30 days",
     profile: "Profile",
     edit: "Edit",
     objective: "Objective",
@@ -737,23 +752,24 @@ export const translations = {
     privacyPolicy: "Privacy policy",
     legalNotice: "Legal notice",
     rateApp: "Rate app",
-
-    // Goals
+    healthGroup: "Health",
+    glucoseTargetLabel: "Glucose target",
+    diabeticToggle: "I monitor my glucose",
+    diabeticToggleHint: "Shows glucose features in the app",
+    confirmDelete: "Confirm deletion",
+    irreversible: "This action is irreversible.",
+    deleteAccountConfirm: "Are you sure you want to delete your account? All data will be permanently deleted.",
+    saveProfile: "Save",
+    profileEdit: "Edit profile",
     loseWeight: "Lose weight",
     maintainWeight: "Maintain weight",
     gainMuscle: "Build muscle",
     manageDiabetes: "Manage diabetes",
-
-    // Voice
     speakNow: "Speak now...",
     analyzing: "Analyzing...",
     detectedFoods: "Detected foods",
     cancel: "Cancel",
-    add: "Add",
     total: "Total",
-
-    // Activity
-    activity: "Activity",
     addActivity: "Add activity",
     duration: "Duration",
     caloriesBurned: "kcal burned",
@@ -762,8 +778,21 @@ export const translations = {
     voiceActivity: "Voice activity",
     speakActivity: "Say e.g.: \"30 minutes running\"",
     noActivity: "No activity added",
-
-    // Onboarding
+    myGroceries: "My groceries",
+    monthlyOverview: "Monthly overview",
+    addedSugars: "Added sugars",
+    salt: "Salt",
+    saturatedFat: "Saturated fat",
+    vsOmsReference: "vs WHO reference",
+    riskAdditives: "risk additive(s) this month",
+    presentIn: "present in",
+    products: "products",
+    scannedProducts: "Scanned products",
+    seeAlternatives: "See healthier alternatives",
+    timesThisMonth: "×",
+    excellent: "Excellent",
+    mediocre: "Mediocre",
+    bad: "Bad",
     welcome: "Welcome to NutriVita",
     tagline: "Your smart nutrition companion",
     getStarted: "Get started",
@@ -787,22 +816,24 @@ export const translations = {
     dailyGoal: "Goal",
     perDay: "/day",
     startJourney: "Start my journey",
-
-    // Landing
-    heroTitle: "Eat better. Live better.",
-    heroSubtitle: "The nutrition app designed for France and Algeria",
+    diabeticQuestion: "Do you monitor your blood glucose?",
+    diabeticYes: "Yes, enable glucose tracking",
+    diabeticNo: "No, skip this step",
+    heroTitle: "Understand what you eat, in one photo",
+    heroSubtitle: "Photo, voice, calories, weight, glucose and groceries — in FR, عربي and EN",
     startFree: "Start for free",
-    seeDemo: "See demo",
-    users: "users",
+    proSpace: "Healthcare space",
+    dataProtected: "Protected data · GDPR",
+    proTabTitle: "Healthcare space",
+    proComingSoon: "Coming soon — reserved for partner practitioners",
+    proNotifyEmail: "Be notified of launch",
+    userTabTitle: "User",
     features: "Features",
-    smartJournal: "Smart food journal",
-    glucoseTracking2: "Glucose tracking (diabetes)",
-    voiceInput: "Multilingual voice input",
-    bodyComposition: "Body composition",
-    multiLanguage: "FR / عربي / EN",
-    privateRgpd: "100% private, GDPR",
-    readyToTransform: "Ready to transform your diet?",
-    createFreeAccount: "Create my free account",
+    featurePhoto: "Photo detection",
+    featureGlucose: "Glucose tracking",
+    featureBarcode: "Grocery scanning",
+    featurePro: "Dietician monitoring",
+    users: "users",
   },
 }
 

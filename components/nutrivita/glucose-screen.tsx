@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { motion } from "framer-motion"
-import { Plus, Upload, Mic } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import { AlertTriangle, ArrowLeft, Mic, Plus, Upload } from "lucide-react"
 import {
   ScatterChart,
   Scatter,
@@ -15,8 +15,8 @@ import {
   Cell,
 } from "recharts"
 import { useApp } from "@/lib/app-context"
-import { GradientHeader } from "./gradient-header"
-import { MetricCard } from "./metric-card"
+import { toGlucoseUnit, fromGlucoseUnit, formatGlucose, convertThreshold } from "@/lib/glucose-units"
+import { computeGlucoseMetrics, getGlucoseStatus } from "@/lib/glucose-metrics"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -27,459 +27,524 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
+import type { GlucoseUnit } from "@/lib/types"
 
 type GlucosePeriod = "7d" | "14d" | "30d"
+type MeasurementType = "fasting" | "pre-meal" | "post-meal" | "pontuelle"
 
-interface GlucoseZone {
-  label: string
-  min: number
-  max: number
-  color: string
-  bgColor: string
+interface GlucoseScreenProps {
+  onBack?: () => void
 }
 
-const GLUCOSE_ZONES: GlucoseZone[] = [
-  { label: "Très basse", min: 0, max: 54, color: "#EF4444", bgColor: "bg-red-500/20" },
-  { label: "Basse", min: 54, max: 70, color: "#F97316", bgColor: "bg-orange-500/20" },
-  { label: "Cible", min: 70, max: 180, color: "#10B981", bgColor: "bg-emerald/20" },
-  { label: "Haute", min: 180, max: 250, color: "#F97316", bgColor: "bg-orange-500/20" },
-  { label: "Très haute", min: 250, max: 400, color: "#EF4444", bgColor: "bg-red-500/20" },
-]
+const ZONE_COLORS = {
+  veryLow: "var(--risk)",
+  low: "var(--amber)",
+  inRange: "var(--primary)",
+  high: "var(--amber)",
+  veryHigh: "var(--risk)",
+}
 
-export function GlucoseScreen() {
-  const { t, glucoseReadings, addGlucoseReading, isRTL } = useApp()
+function getPointColor(value: number, targetLow: number, targetHigh: number): string {
+  if (value < 54) return "var(--risk)"
+  if (value < targetLow) return "var(--amber)"
+  if (value <= targetHigh) return "var(--primary)"
+  if (value <= 250) return "var(--amber)"
+  return "var(--risk)"
+}
+
+export function GlucoseScreen({ onBack }: GlucoseScreenProps) {
+  const {
+    t,
+    glucoseReadings,
+    addGlucoseReading,
+    isRTL,
+    user,
+    glucoseTarget,
+  } = useApp()
+
   const [period, setPeriod] = useState<GlucosePeriod>("14d")
   const [showAddModal, setShowAddModal] = useState(false)
+
+  const displayUnit = user.units.glucose
 
   // Filter readings by period
   const filteredReadings = useMemo(() => {
     const days = period === "7d" ? 7 : period === "14d" ? 14 : 30
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
-    return glucoseReadings.filter(
-      (r) => new Date(r.timestamp).getTime() > cutoff
-    )
+    return glucoseReadings.filter((r) => new Date(r.timestamp).getTime() > cutoff)
   }, [glucoseReadings, period])
 
-  // Calculate glucose stats
-  const stats = useMemo(() => {
-    if (filteredReadings.length === 0) {
-      return {
-        gmi: 0,
-        tir: 0,
-        cv: 0,
-        average: 0,
-        min: 0,
-        max: 0,
-        distribution: { veryLow: 0, low: 0, inRange: 0, high: 0, veryHigh: 0 },
-        counts: { veryLow: 0, low: 0, inRange: 0, high: 0, veryHigh: 0 },
-      }
-    }
+  const values = filteredReadings.map((r) => r.value)
 
-    const values = filteredReadings.map((r) => r.value)
-    const avg = values.reduce((s, v) => s + v, 0) / values.length
-    const std = Math.sqrt(
-      values.reduce((s, v) => s + Math.pow(v - avg, 2), 0) / values.length
-    )
+  // AL-05 guard: N<12 → insufficientData
+  const metrics = useMemo(
+    () => computeGlucoseMetrics(values, glucoseTarget.low, glucoseTarget.high),
+    [values, glucoseTarget]
+  )
 
-    // Count by zone
-    const veryLow = values.filter((v) => v < 54).length
-    const low = values.filter((v) => v >= 54 && v < 70).length
-    const inRange = values.filter((v) => v >= 70 && v <= 180).length
-    const high = values.filter((v) => v > 180 && v <= 250).length
-    const veryHigh = values.filter((v) => v > 250).length
-    const total = values.length
+  // Hypo alert: count episodes < 54 mg/dL
+  const hypoCount = values.filter((v) => v < 54).length
 
-    return {
-      gmi: (3.31 + 0.02392 * avg).toFixed(1), // GMI formula
-      tir: Math.round((inRange / total) * 100),
-      cv: Math.round((std / avg) * 100),
-      average: Math.round(avg),
-      min: Math.round(Math.min(...values)),
-      max: Math.round(Math.max(...values)),
-      distribution: {
-        veryLow: Math.round((veryLow / total) * 100),
-        low: Math.round((low / total) * 100),
-        inRange: Math.round((inRange / total) * 100),
-        high: Math.round((high / total) * 100),
-        veryHigh: Math.round((veryHigh / total) * 100),
-      },
-      counts: { veryLow, low, inRange, high, veryHigh },
-    }
-  }, [filteredReadings])
+  // Context stats per measurement type (b)
+  const contextStats = useMemo(() => {
+    const types: MeasurementType[] = ["fasting", "pre-meal", "post-meal", "pontuelle"]
+    return types.map((type) => {
+      const subset = filteredReadings.filter((r) => r.type === type)
+      if (subset.length === 0) return null
+      const avg = subset.reduce((s, r) => s + r.value, 0) / subset.length
+      const exceedsTarget = avg > glucoseTarget.high
+      return { type, avg: Math.round(avg), count: subset.length, exceedsTarget }
+    }).filter(Boolean)
+  }, [filteredReadings, glucoseTarget])
 
-  // Prepare chart data
+  const typeLabels: Record<string, string> = {
+    fasting: t("fasting"),
+    "pre-meal": t("preMeal"),
+    "post-meal": t("postMeal"),
+    pontuelle: t("pontuelle"),
+  }
+
+  // Chart data — values displayed in user's chosen unit
   const chartData = useMemo(() => {
     return filteredReadings.map((r) => {
       const date = new Date(r.timestamp)
       return {
         x: date.getTime(),
-        y: r.value,
-        hour: date.getHours(),
+        y: toGlucoseUnit(r.value, displayUnit),
+        rawMgDl: r.value,
+        type: r.type,
       }
     })
-  }, [filteredReadings])
+  }, [filteredReadings, displayUnit])
 
-  const getPointColor = (value: number) => {
-    if (value < 54) return "#EF4444"
-    if (value < 70) return "#F97316"
-    if (value <= 180) return "#10B981"
-    if (value <= 250) return "#F97316"
-    return "#EF4444"
+  // Y axis domain converted to display unit [40, 350] mg/dL
+  const yMin = parseFloat(toGlucoseUnit(40,  displayUnit).toFixed(2))
+  const yMax = parseFloat(toGlucoseUnit(350, displayUnit).toFixed(2))
+  const yTargetLow  = toGlucoseUnit(glucoseTarget.low,  displayUnit)
+  const yTargetHigh = toGlucoseUnit(glucoseTarget.high, displayUnit)
+  const y54  = toGlucoseUnit(54,  displayUnit)
+  const y250 = toGlucoseUnit(250, displayUnit)
+
+  const periodLabel =
+    period === "7d" ? t("periodLabel7d") :
+    period === "14d" ? t("periodLabel14d") : t("periodLabel30d")
+
+  const statusColors: Record<"good" | "warning" | "danger", string> = {
+    good:    "var(--primary)",
+    warning: "var(--amber)",
+    danger:  "var(--risk)",
   }
-
-  const getStatusForMetric = (
-    metric: "gmi" | "tir" | "cv",
-    value: number
-  ): "good" | "warning" | "danger" => {
-    if (metric === "gmi") {
-      if (value < 7) return "good"
-      if (value < 8) return "warning"
-      return "danger"
-    }
-    if (metric === "tir") {
-      if (value >= 70) return "good"
-      if (value >= 50) return "warning"
-      return "danger"
-    }
-    if (metric === "cv") {
-      if (value < 36) return "good"
-      return "warning"
-    }
-    return "neutral"
-  }
-
-  const periods: { id: GlucosePeriod; label: string }[] = [
-    { id: "7d", label: "7j" },
-    { id: "14d", label: "14j" },
-    { id: "30d", label: "30j" },
-  ]
 
   return (
-    <div className={cn("flex flex-col pb-32 min-h-screen", isRTL && "rtl")}>
-      <GradientHeader
-        title={t("glucoseTracking")}
-        subtitle={t("last14Days")}
-        icon="🩸"
-        variant="glucose"
-      />
-
-      <div className="px-4 -mt-4 space-y-4">
-        {/* Metrics Dashboard */}
-        <div className="grid grid-cols-2 gap-3">
-          <MetricCard
-            label={t("gmi")}
-            value={stats.gmi}
-            unit="%"
-            status={getStatusForMetric("gmi", Number(stats.gmi))}
-            statusText={t("estimatedHba1c")}
-            gradient="gradient-glucose"
-          />
-          <MetricCard
-            label={t("tir")}
-            value={stats.tir}
-            unit="%"
-            status={getStatusForMetric("tir", stats.tir)}
-            statusText={`${t("targetRange")}`}
-            gradient="gradient-glucose"
-          />
-          <MetricCard
-            label={t("cv")}
-            value={stats.cv}
-            unit="%"
-            status={getStatusForMetric("cv", stats.cv)}
-            statusText={`${t("stable")} <36%`}
-          />
-          <MetricCard
-            label={t("mean")}
-            value={stats.average}
-            unit="mg/dL"
-            statusText={`Min ${stats.min}, Max ${stats.max}`}
-          />
+    <div className={cn("flex flex-col min-h-screen bg-background pb-8", isRTL && "rtl")}>
+      {/* Flat header */}
+      <div className="px-4 pt-5 pb-3 flex items-center gap-3">
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0"
+            aria-label="Retour"
+          >
+            <ArrowLeft className="h-4 w-4 text-foreground" />
+          </button>
+        )}
+        <div className="flex-1">
+          <h1 className="text-[18px] font-semibold text-foreground">{t("glucoseTracking")}</h1>
+          <p className="text-[13px] text-muted-foreground mt-0.5">{periodLabel}</p>
         </div>
-
-        {/* Period Selector */}
         <div className="flex gap-2">
-          {periods.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setPeriod(p.id)}
-              className={cn(
-                "flex-1 py-2 rounded-xl text-sm font-medium transition-colors",
-                period === p.id
-                  ? "bg-glucose-pink text-white"
-                  : "bg-card border border-border text-muted-foreground"
-              )}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Glucose Chart */}
-        <div className="p-4 rounded-2xl bg-card border border-border">
-          <h3 className="font-semibold mb-4">Mesures de glycémie</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: -10 }}>
-              {/* Zone backgrounds */}
-              <ReferenceArea y1={0} y2={54} fill="#EF4444" fillOpacity={0.1} />
-              <ReferenceArea y1={54} y2={70} fill="#F97316" fillOpacity={0.1} />
-              <ReferenceArea y1={70} y2={180} fill="#10B981" fillOpacity={0.1} />
-              <ReferenceArea y1={180} y2={250} fill="#F97316" fillOpacity={0.1} />
-              <ReferenceArea y1={250} y2={350} fill="#EF4444" fillOpacity={0.1} />
-
-              <XAxis
-                type="number"
-                dataKey="x"
-                domain={["dataMin", "dataMax"]}
-                tickFormatter={(v) => {
-                  const d = new Date(v)
-                  return `${d.getDate()}/${d.getMonth() + 1}`
-                }}
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 10 }}
-              />
-              <YAxis
-                type="number"
-                dataKey="y"
-                domain={[40, 300]}
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 10 }}
-              />
-
-              {/* Reference lines */}
-              <ReferenceLine y={70} stroke="#10B981" strokeDasharray="3 3" />
-              <ReferenceLine y={180} stroke="#10B981" strokeDasharray="3 3" />
-
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "var(--card)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "0.75rem",
-                }}
-                formatter={(value: number) => [`${value} mg/dL`, "Glycémie"]}
-                labelFormatter={(label) => {
-                  const d = new Date(label)
-                  return d.toLocaleString("fr-FR")
-                }}
-              />
-
-              <Scatter data={chartData} fill="#8884d8">
-                {chartData.map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={getPointColor(entry.y)}
-                  />
-                ))}
-              </Scatter>
-            </ScatterChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Distribution Bar */}
-        <div className="p-4 rounded-2xl bg-card border border-border">
-          <h3 className="font-semibold mb-3">Répartition</h3>
-          <div className="h-6 flex rounded-lg overflow-hidden mb-4">
-            {[
-              { key: "veryLow", color: "bg-red-500" },
-              { key: "low", color: "bg-orange-500" },
-              { key: "inRange", color: "bg-emerald" },
-              { key: "high", color: "bg-orange-500" },
-              { key: "veryHigh", color: "bg-red-500" },
-            ].map((zone) => {
-              const pct =
-                stats.distribution[zone.key as keyof typeof stats.distribution]
-              return pct > 0 ? (
-                <div
-                  key={zone.key}
-                  className={cn(zone.color)}
-                  style={{ width: `${pct}%` }}
-                />
-              ) : null
-            })}
-          </div>
-
-          {/* Distribution Detail */}
-          <div className="space-y-2">
-            {[
-              {
-                label: t("veryLow"),
-                range: "<54",
-                key: "veryLow",
-                color: "border-red-500",
-              },
-              {
-                label: t("low"),
-                range: "54-70",
-                key: "low",
-                color: "border-orange-500",
-              },
-              {
-                label: t("target"),
-                range: "70-180",
-                key: "inRange",
-                color: "border-emerald",
-              },
-              {
-                label: t("high"),
-                range: "180-250",
-                key: "high",
-                color: "border-orange-500",
-              },
-              {
-                label: t("veryHigh"),
-                range: ">250",
-                key: "veryHigh",
-                color: "border-red-500",
-              },
-            ].map((zone) => {
-              const pct =
-                stats.distribution[zone.key as keyof typeof stats.distribution]
-              const count =
-                stats.counts[zone.key as keyof typeof stats.counts]
-              return (
-                <div
-                  key={zone.key}
-                  className={cn(
-                    "flex items-center gap-3 p-2 rounded-lg border-l-4",
-                    zone.color
-                  )}
-                >
-                  <div className="flex-1">
-                    <span className="text-sm font-medium">{zone.label}</span>
-                    <span className="text-xs text-muted-foreground ml-2">
-                      ({zone.range})
-                    </span>
-                  </div>
-                  <span className="text-sm font-semibold">{pct}%</span>
-                  <div className="w-20 h-2 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className={cn(
-                        "h-full rounded-full",
-                        zone.color.replace("border-", "bg-")
-                      )}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                  <span className="text-xs text-muted-foreground w-16 text-right">
-                    {count} {t("measurements")}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 rounded-xl text-[13px]"
+            onClick={() => setShowAddModal(true)}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {t("addReading")}
+          </Button>
         </div>
       </div>
 
-      {/* FAB */}
-      <motion.button
-        className="fixed bottom-28 right-4 h-14 w-14 rounded-full gradient-glucose text-white shadow-lg flex items-center justify-center"
-        whileTap={{ scale: 0.9 }}
-        onClick={() => setShowAddModal(true)}
-      >
-        <Plus className="h-6 w-6" />
-      </motion.button>
+      {/* REG-04 disclaimer — permanent, non-dismissable */}
+      <div className="mx-4 mb-3 px-3 py-2 rounded-xl border border-border bg-muted/40">
+        <p className="text-[11px] text-muted-foreground leading-snug">
+          {t("glucoseDisclaimer")}
+        </p>
+      </div>
 
-      {/* Add Modal */}
-      {showAddModal && (
-        <AddGlucoseModal
-          onClose={() => setShowAddModal(false)}
-          onAdd={(value, type) => {
-            addGlucoseReading({
-              value,
-              type,
-              timestamp: new Date().toISOString(),
-              source: "manual",
-            })
-            setShowAddModal(false)
-          }}
-        />
-      )}
+      <div className="px-4 space-y-4">
+        {/* Hypo alert card (c) — neutral text, no therapeutic advice (REG-05) */}
+        {hypoCount > 0 && (
+          <div
+            className="rounded-2xl border px-4 py-3 flex items-start gap-3"
+            style={{ borderColor: "var(--risk)", backgroundColor: "var(--risk-bg)" }}
+          >
+            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" style={{ color: "var(--risk)" }} />
+            <p className="text-[13px] font-medium" style={{ color: "var(--risk)" }}>
+              {hypoCount} {t("hypoAlert")}
+            </p>
+          </div>
+        )}
+
+        {/* Period selector */}
+        <div className="flex gap-2">
+          {(["7d", "14d", "30d"] as GlucosePeriod[]).map((p) => {
+            const labels: Record<GlucosePeriod, string> = { "7d": "7j", "14d": "14j", "30d": "30j" }
+            return (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={cn(
+                  "flex-1 py-2 rounded-xl text-sm font-medium transition-colors",
+                  period === p
+                    ? "text-white"
+                    : "bg-card border border-border text-muted-foreground"
+                )}
+                style={period === p ? { backgroundColor: "var(--glucose)" } : undefined}
+              >
+                {labels[p]}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Empty state (d) */}
+        {filteredReadings.length === 0 ? (
+          <div className="rounded-2xl border border-border bg-card p-8 flex flex-col items-center gap-3 text-center">
+            <div
+              className="w-12 h-12 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: "var(--glucose-bg)" }}
+            >
+              <Plus className="h-6 w-6" style={{ color: "var(--glucose)" }} />
+            </div>
+            <p className="text-[15px] font-semibold text-foreground">{t("noGlucoseData")}</p>
+            <Button
+              variant="outline"
+              className="rounded-xl"
+              onClick={() => setShowAddModal(true)}
+            >
+              {t("addFirstReading")}
+            </Button>
+          </div>
+        ) : (
+          <>
+            {/* Metrics (AL-05 guard) */}
+            {metrics.insufficientData ? (
+              <div className="rounded-2xl border border-border bg-card px-4 py-3">
+                <p className="text-[13px] text-muted-foreground text-center">
+                  {t("insufficientGlucoseData")} — {metrics.count} / 12 {t("measurements")} minimum
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {/* GMI */}
+                <div className="rounded-2xl border border-border bg-card p-3">
+                  <p className="text-[12px] text-muted-foreground mb-1">{t("gmi")}</p>
+                  <p className="text-[24px] font-semibold leading-none" style={{ color: statusColors[getGlucoseStatus("gmi", metrics.gmi)] }}>
+                    {metrics.gmi.toFixed(1)}%
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-1">{t("estimatedHba1c")}</p>
+                </div>
+                {/* TIR */}
+                <div className="rounded-2xl border border-border bg-card p-3">
+                  <p className="text-[12px] text-muted-foreground mb-1">{t("tir")}</p>
+                  <p className="text-[24px] font-semibold leading-none" style={{ color: statusColors[getGlucoseStatus("tir", metrics.tir)] }}>
+                    {metrics.tir}%
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-1">{t("inTarget")}</p>
+                </div>
+                {/* CV */}
+                <div className="rounded-2xl border border-border bg-card p-3">
+                  <p className="text-[12px] text-muted-foreground mb-1">{t("cv")}</p>
+                  <p className="text-[24px] font-semibold leading-none" style={{ color: statusColors[getGlucoseStatus("cv", metrics.cv)] }}>
+                    {metrics.cv}%
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-1">{t("stability")}</p>
+                </div>
+                {/* Mean */}
+                <div className="rounded-2xl border border-border bg-card p-3">
+                  <p className="text-[12px] text-muted-foreground mb-1">{t("mean")}</p>
+                  <p className="text-[24px] font-semibold leading-none text-foreground">
+                    {formatGlucose(metrics.average, displayUnit)}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-1">{displayUnit}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Chart */}
+            <div className="rounded-2xl border border-border bg-card p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-[14px] font-semibold text-foreground">
+                  {filteredReadings.length} {t("measurements")}
+                </h3>
+                <span className="text-[12px] text-muted-foreground">{displayUnit}</span>
+              </div>
+              <ResponsiveContainer width="100%" height={200}>
+                <ScatterChart margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
+                  {/* Zone bands */}
+                  <ReferenceArea y1={yMin}       y2={y54}         fill="var(--risk)"    fillOpacity={0.08} />
+                  <ReferenceArea y1={y54}        y2={yTargetLow}  fill="var(--amber)"   fillOpacity={0.08} />
+                  <ReferenceArea y1={yTargetLow} y2={yTargetHigh} fill="var(--primary)" fillOpacity={0.06} />
+                  <ReferenceArea y1={yTargetHigh} y2={y250}       fill="var(--amber)"   fillOpacity={0.08} />
+                  <ReferenceArea y1={y250}       y2={yMax}        fill="var(--risk)"    fillOpacity={0.08} />
+
+                  <XAxis
+                    type="number"
+                    dataKey="x"
+                    domain={["dataMin", "dataMax"]}
+                    tickFormatter={(v) => {
+                      const d = new Date(v)
+                      return `${d.getDate()}/${d.getMonth() + 1}`
+                    }}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                  />
+                  <YAxis
+                    type="number"
+                    dataKey="y"
+                    domain={[yMin, yMax]}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                    tickFormatter={(v) =>
+                      displayUnit === "g/L" ? v.toFixed(1) : Math.round(v).toString()
+                    }
+                  />
+
+                  <ReferenceLine y={yTargetLow}  stroke="var(--primary)" strokeDasharray="3 3" strokeOpacity={0.6} />
+                  <ReferenceLine y={yTargetHigh} stroke="var(--primary)" strokeDasharray="3 3" strokeOpacity={0.6} />
+
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "var(--card)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "0.75rem",
+                      fontSize: "12px",
+                    }}
+                    formatter={(value: number) => [
+                      `${displayUnit === "g/L" ? value.toFixed(2) : Math.round(value)} ${displayUnit}`,
+                      t("glucoseTracking"),
+                    ]}
+                    labelFormatter={(label) => new Date(label).toLocaleString("fr-FR")}
+                  />
+
+                  <Scatter data={chartData} fill="var(--glucose)">
+                    {chartData.map((entry, idx) => (
+                      <Cell
+                        key={`cell-${idx}`}
+                        fill={getPointColor(entry.rawMgDl, glucoseTarget.low, glucoseTarget.high)}
+                      />
+                    ))}
+                  </Scatter>
+                </ScatterChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Distribution bar */}
+            <div className="rounded-2xl border border-border bg-card p-4">
+              <h3 className="text-[14px] font-semibold text-foreground mb-3">Répartition</h3>
+              <div className="h-5 flex rounded-lg overflow-hidden mb-3">
+                {[
+                  { key: "veryLow",  color: "var(--risk)" },
+                  { key: "low",      color: "var(--amber)" },
+                  { key: "inRange",  color: "var(--primary)" },
+                  { key: "high",     color: "var(--amber)" },
+                  { key: "veryHigh", color: "var(--risk)" },
+                ].map((zone) => {
+                  const pct = metrics.distribution[zone.key as keyof typeof metrics.distribution]
+                  return pct > 0 ? (
+                    <div
+                      key={zone.key}
+                      style={{ width: `${pct}%`, backgroundColor: zone.color }}
+                    />
+                  ) : null
+                })}
+              </div>
+
+              <div className="space-y-1.5">
+                {[
+                  { key: "veryLow",  label: t("veryLow"),  range: `<${convertThreshold(54, displayUnit)}` },
+                  { key: "low",      label: t("low"),       range: `${convertThreshold(glucoseTarget.low, displayUnit)}` },
+                  { key: "inRange",  label: t("target"),    range: `${convertThreshold(glucoseTarget.low, displayUnit)}–${convertThreshold(glucoseTarget.high, displayUnit)}` },
+                  { key: "high",     label: t("high"),      range: `>${convertThreshold(glucoseTarget.high, displayUnit)}` },
+                  { key: "veryHigh", label: t("veryHigh"),  range: `>${convertThreshold(250, displayUnit)}` },
+                ].map((zone) => {
+                  const pct = metrics.distribution[zone.key as keyof typeof metrics.distribution]
+                  const count = metrics.counts[zone.key as keyof typeof metrics.counts]
+                  return (
+                    <div key={zone.key} className="flex items-center gap-2 text-[12px]">
+                      <div
+                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: ZONE_COLORS[zone.key as keyof typeof ZONE_COLORS] }}
+                      />
+                      <span className="text-foreground flex-1">{zone.label}</span>
+                      <span className="text-muted-foreground">{zone.range}</span>
+                      <span className="font-semibold text-foreground w-8 text-right">{pct}%</span>
+                      <span className="text-muted-foreground w-10 text-right">{count}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Context stats (b) */}
+            {contextStats.length > 0 && (
+              <div className="rounded-2xl border border-border bg-card p-4">
+                <h3 className="text-[14px] font-semibold text-foreground mb-3">{t("contextStats")}</h3>
+                <div className="space-y-2">
+                  {contextStats.map((stat) =>
+                    stat ? (
+                      <div key={stat.type} className="flex items-center justify-between">
+                        <span className="text-[13px] text-muted-foreground">
+                          {typeLabels[stat.type]} ({stat.count})
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[13px] font-semibold text-foreground">
+                            {formatGlucose(stat.avg, displayUnit)}
+                          </span>
+                          {stat.exceedsTarget && (
+                            <span
+                              className="px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                              style={{
+                                backgroundColor: "var(--amber-bg)",
+                                color: "var(--amber)",
+                              }}
+                            >
+                              ↑
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ) : null
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Import button */}
+            <Button variant="outline" className="w-full gap-2 rounded-xl">
+              <Upload className="h-4 w-4" />
+              {t("importCsv")}
+            </Button>
+          </>
+        )}
+      </div>
+
+      {/* Add reading modal */}
+      <AnimatePresence>
+        {showAddModal && (
+          <AddGlucoseModal
+            displayUnit={displayUnit}
+            targetLow={glucoseTarget.low}
+            targetHigh={glucoseTarget.high}
+            onClose={() => setShowAddModal(false)}
+            onAdd={(valueMgDl, type) => {
+              addGlucoseReading({
+                value: valueMgDl,
+                type,
+                timestamp: new Date().toISOString(),
+                source: "manual",
+              })
+              setShowAddModal(false)
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }
 
 function AddGlucoseModal({
+  displayUnit,
+  targetLow,
+  targetHigh,
   onClose,
   onAdd,
 }: {
+  displayUnit: GlucoseUnit
+  targetLow: number
+  targetHigh: number
   onClose: () => void
-  onAdd: (value: number, type: "fasting" | "pre-meal" | "post-meal" | "random") => void
+  onAdd: (valueMgDl: number, type: MeasurementType) => void
 }) {
   const { t } = useApp()
-  const [value, setValue] = useState("")
-  const [type, setType] = useState<"fasting" | "pre-meal" | "post-meal" | "random">(
-    "random"
-  )
+  const [raw, setRaw] = useState("")
+  const [type, setType] = useState<MeasurementType>("pontuelle")
 
   const handleSubmit = () => {
-    const numValue = parseInt(value)
-    if (numValue > 0) {
-      onAdd(numValue, type)
+    const num = parseFloat(raw)
+    if (!isNaN(num) && num > 0) {
+      // Convert from display unit → mg/dL for storage (AL-04)
+      const mgDl = fromGlucoseUnit(num, displayUnit)
+      onAdd(Math.round(mgDl), type)
     }
   }
 
+  const placeholder =
+    displayUnit === "g/L" ? "Ex: 1.20" :
+    displayUnit === "mmol/L" ? "Ex: 6.7" : "Ex: 120"
+
   return (
     <motion.div
-      className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <motion.div
-        className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl p-6 safe-bottom"
+        className="relative w-full max-w-md mx-auto bg-background rounded-t-3xl border-t border-border p-6"
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
-        transition={{ type: "spring", damping: 25 }}
+        exit={{ y: "100%" }}
+        transition={{ type: "spring", damping: 28, stiffness: 280 }}
       >
-        <h3 className="text-lg font-semibold mb-6">Ajouter une mesure</h3>
+        <div className="flex justify-center mb-4">
+          <div className="w-9 h-1 rounded-full bg-muted-foreground/25" />
+        </div>
+        <h3 className="text-[17px] font-semibold mb-4">{t("addReading")}</h3>
 
         <div className="space-y-4">
-          {/* Value input */}
           <div className="flex items-center gap-3">
             <Input
               type="number"
-              placeholder="Ex: 120"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              className="flex-1 h-12 text-lg"
+              placeholder={placeholder}
+              value={raw}
+              onChange={(e) => setRaw(e.target.value)}
+              className="flex-1 h-12 text-[16px]"
               autoFocus
             />
-            <span className="text-muted-foreground">mg/dL</span>
-            <Button variant="outline" size="icon" className="h-12 w-12">
-              <Mic className="h-5 w-5" />
-            </Button>
+            <span className="text-muted-foreground text-[13px] shrink-0">{displayUnit}</span>
+            {/* Mic disabled with tooltip (g) */}
+            <div title="Vocal bientôt disponible">
+              <Button variant="outline" size="icon" className="h-12 w-12 opacity-40" disabled>
+                <Mic className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
 
-          {/* Type selector */}
-          <Select value={type} onValueChange={(v) => setType(v as typeof type)}>
+          <Select value={type} onValueChange={(v) => setType(v as MeasurementType)}>
             <SelectTrigger className="h-12">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="fasting">À jeun</SelectItem>
-              <SelectItem value="pre-meal">Avant repas</SelectItem>
-              <SelectItem value="post-meal">Après repas</SelectItem>
-              <SelectItem value="random">Aléatoire</SelectItem>
+              <SelectItem value="fasting">{t("fasting")}</SelectItem>
+              <SelectItem value="pre-meal">{t("preMeal")}</SelectItem>
+              <SelectItem value="post-meal">{t("postMeal")}</SelectItem>
+              <SelectItem value="pontuelle">{t("pontuelle")}</SelectItem>
             </SelectContent>
           </Select>
 
-          {/* Import option */}
-          <Button variant="outline" className="w-full gap-2">
-            <Upload className="h-4 w-4" />
-            {t("importCsv")}
-          </Button>
-
-          {/* Actions */}
           <div className="flex gap-3 pt-2">
-            <Button variant="outline" className="flex-1" onClick={onClose}>
+            <Button variant="outline" className="flex-1 rounded-xl" onClick={onClose}>
               {t("cancel")}
             </Button>
             <Button
-              className="flex-1 gradient-glucose text-white"
+              className="flex-1 rounded-xl"
               onClick={handleSubmit}
-              disabled={!value}
+              disabled={!raw || isNaN(parseFloat(raw))}
             >
               {t("add")}
             </Button>

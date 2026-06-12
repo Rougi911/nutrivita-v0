@@ -1,0 +1,185 @@
+"use client"
+
+import { AlertTriangle, ScanLine } from "lucide-react"
+import { useApp } from "@/lib/app-context"
+import { getMonthlyScannedStats } from "@/lib/mock-data"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import type { ScannedProduct } from "@/lib/types"
+
+function NutriScoreBadge({ score }: { score: "A" | "B" | "C" | "D" | "E" | null }) {
+  if (!score) return null
+  const colors: Record<string, { bg: string; text: string }> = {
+    A: { bg: "#038141", text: "#fff" },
+    B: { bg: "#85BB2F", text: "#fff" },
+    C: { bg: "#FECB02", text: "#000" },
+    D: { bg: "#EE8100", text: "#fff" },
+    E: { bg: "#E63312", text: "#fff" },
+  }
+  const c = colors[score]
+  return (
+    <div
+      className="w-7 h-7 rounded-lg flex items-center justify-center text-[13px] font-bold shrink-0"
+      style={{ backgroundColor: c.bg, color: c.text }}
+    >
+      {score}
+    </div>
+  )
+}
+
+function ProductCard({ product }: { product: ScannedProduct }) {
+  const { t } = useApp()
+
+  const verdictStyle =
+    product.verdict === "Excellent"
+      ? { bg: "var(--badge-positive-bg)", color: "var(--badge-positive)" }
+      : product.verdict === "Mauvais"
+      ? { bg: "var(--risk-bg)", color: "var(--risk)" }
+      : { bg: "var(--amber-bg)", color: "var(--amber)" }
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-3">
+      <NutriScoreBadge score={product.nutriScore} />
+      <div className="flex-1 min-w-0">
+        <p className="text-[14px] font-medium text-foreground truncate">{product.name}</p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span
+            className="px-2 py-0.5 rounded-full text-[10px] font-semibold"
+            style={{ backgroundColor: verdictStyle.bg, color: verdictStyle.color }}
+          >
+            {product.verdict === "Excellent" ? t("excellent") :
+             product.verdict === "Mauvais"   ? t("bad")       : t("mediocre")}
+          </span>
+          {product.additives.length > 0 && (
+            <span className="text-[11px] text-muted-foreground">
+              {product.additives.slice(0, 2).join(", ")}
+            </span>
+          )}
+        </div>
+      </div>
+      <span className="text-[12px] text-muted-foreground shrink-0">
+        {t("timesThisMonth")}{product.timesThisMonth}
+      </span>
+    </div>
+  )
+}
+
+function ProgressBar({
+  label,
+  value,
+  percent,
+  danger,
+}: {
+  label: string
+  value: number
+  percent: number
+  danger?: boolean
+}) {
+  const color = percent > 80 ? "var(--risk)" : percent > 55 ? "var(--amber)" : "var(--primary)"
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[13px] text-foreground">{label}</span>
+        <span className="text-[12px] font-semibold text-foreground">{percent}%</span>
+      </div>
+      <div className="h-2 rounded-full bg-muted overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-500"
+          style={{ width: `${Math.min(100, percent)}%`, backgroundColor: color }}
+        />
+      </div>
+    </div>
+  )
+}
+
+export function GroceriesScreen() {
+  const { t, scannedProducts, isRTL } = useApp()
+
+  const stats = getMonthlyScannedStats(scannedProducts)
+
+  const riskProductsCount = scannedProducts.filter(
+    (p) => p.additives.some((a) =>
+      ["E150d", "E471", "E250", "E338", "E476"].includes(a)
+    )
+  ).length
+
+  // Sort: worst first
+  const sorted = [...scannedProducts].sort((a, b) => a.score - b.score)
+
+  return (
+    <div className={cn("flex flex-col min-h-screen bg-background pb-8", isRTL && "rtl")}>
+      {/* Header */}
+      <div className="px-4 pt-5 pb-3 flex items-center justify-between">
+        <div>
+          <h1 className="text-[18px] font-semibold text-foreground">{t("myGroceries")}</h1>
+          <p className="text-[13px] text-muted-foreground mt-0.5">{scannedProducts.length} {t("products")}</p>
+        </div>
+        <Button size="sm" className="gap-1.5 rounded-xl">
+          <ScanLine className="h-4 w-4" />
+          {t("scanner")}
+        </Button>
+      </div>
+
+      <div className="px-4 space-y-4">
+
+        {/* Bilan du mois */}
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <h3 className="text-[14px] font-semibold text-foreground mb-3">{t("monthlyOverview")}</h3>
+          <div className="space-y-3">
+            <ProgressBar
+              label={t("addedSugars")}
+              value={stats.sucres}
+              percent={stats.sucresPercent}
+            />
+            <ProgressBar
+              label={t("salt")}
+              value={stats.sel}
+              percent={stats.selPercent}
+            />
+            <ProgressBar
+              label={t("saturatedFat")}
+              value={stats.ags}
+              percent={stats.agsPercent}
+            />
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-2">{t("vsOmsReference")}</p>
+        </div>
+
+        {/* Additives alert card */}
+        {stats.riskAdditives.length > 0 && (
+          <div
+            className="rounded-2xl border px-4 py-3 flex items-start gap-3"
+            style={{ borderColor: "var(--risk)", backgroundColor: "var(--risk-bg)" }}
+          >
+            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" style={{ color: "var(--risk)" }} />
+            <div>
+              <p className="text-[13px] font-semibold" style={{ color: "var(--risk)" }}>
+                {stats.riskAdditives.length} {t("riskAdditives")}
+              </p>
+              <p className="text-[12px] mt-0.5" style={{ color: "var(--risk)" }}>
+                {stats.riskAdditives.join(", ")} — {t("presentIn")} {riskProductsCount} {t("products")}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Scanned products list */}
+        <div className="rounded-2xl border border-border bg-card overflow-hidden">
+          <div className="px-4 py-3 border-b border-border">
+            <h3 className="text-[14px] font-semibold text-foreground">{t("scannedProducts")}</h3>
+          </div>
+          <div className="divide-y divide-border">
+            {sorted.map((product) => (
+              <ProductCard key={product.barcode} product={product} />
+            ))}
+          </div>
+        </div>
+
+        {/* See alternatives button */}
+        <Button variant="outline" className="w-full gap-2 rounded-xl">
+          {t("seeAlternatives")}
+        </Button>
+      </div>
+    </div>
+  )
+}

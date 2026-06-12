@@ -18,13 +18,17 @@ export function CalorieRing({
   size = 200,
   className,
 }: CalorieRingProps) {
-  const effectiveTarget = target + burned
+  const cappedBurned = Math.min(burned, 1000) // AL-03 plafond 1000 kcal
+  const effectiveTarget = target + cappedBurned
   const percentage = Math.min((consumed / effectiveTarget) * 100, 100)
   const overTarget = consumed > effectiveTarget
   const remaining = effectiveTarget - consumed
   const radius = (size - 20) / 2
   const circumference = 2 * Math.PI * radius
   const strokeDashoffset = circumference - (percentage / 100) * circumference
+
+  const trackColor = "var(--muted)"
+  const progressColor = overTarget ? "var(--destructive)" : "var(--primary)"
 
   return (
     <div className={cn("relative", className)} style={{ width: size, height: size }}>
@@ -34,29 +38,21 @@ export function CalorieRing({
         className="rotate-[-90deg]"
         viewBox={`0 0 ${size} ${size}`}
       >
-        {/* Background circle */}
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="currentColor"
+          stroke={trackColor}
           strokeWidth={12}
-          className="text-muted/30"
+          strokeOpacity={0.3}
         />
-        {/* Progress circle with gradient */}
-        <defs>
-          <linearGradient id="calorieGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor={overTarget ? "#EF4444" : "#6366F1"} />
-            <stop offset="100%" stopColor={overTarget ? "#F97316" : "#8B5CF6"} />
-          </linearGradient>
-        </defs>
         <motion.circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="url(#calorieGradient)"
+          stroke={progressColor}
           strokeWidth={12}
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -65,36 +61,27 @@ export function CalorieRing({
           transition={{ duration: 1, ease: "easeOut" }}
         />
       </svg>
-      {/* Center content */}
+
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <motion.span
-          className="hero-number text-foreground"
+          className="text-3xl font-semibold text-foreground tabular-nums"
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3 }}
         >
-          {consumed.toLocaleString()}
+          {remaining > 0 ? remaining.toLocaleString() : "0"}
         </motion.span>
-        <span className="text-muted-foreground text-base">
-          / {effectiveTarget.toLocaleString()} kcal
-        </span>
+        <span className="text-[13px] text-muted-foreground mt-0.5">kcal restantes</span>
       </div>
-      {/* Bottom label */}
-      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5">
-        <span
-          className={cn(
-            "text-sm font-medium whitespace-nowrap",
-            overTarget ? "text-destructive" : "text-emerald"
-          )}
-        >
-          {overTarget
-            ? `+${Math.abs(remaining).toLocaleString()} kcal`
-            : `${remaining.toLocaleString()} kcal restantes`}
+
+      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-center">
+        <span className="text-xs text-muted-foreground whitespace-nowrap">
+          {consumed.toLocaleString()} / {effectiveTarget.toLocaleString()} kcal
         </span>
-        {burned > 0 && (
-          <span className="text-xs font-medium text-emerald whitespace-nowrap">
-            +{burned.toLocaleString()} kcal activité
-          </span>
+        {cappedBurned > 0 && (
+          <p className="text-[11px] text-primary whitespace-nowrap">
+            +{cappedBurned.toLocaleString()} activité
+          </p>
         )}
       </div>
     </div>

@@ -1,16 +1,13 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { motion } from "framer-motion"
-import { FileText, AlertTriangle, Droplets } from "lucide-react"
+import { AlertTriangle, FileText, TrendingDown, TrendingUp } from "lucide-react"
 import {
   BarChart,
   Bar,
   XAxis,
   YAxis,
   ResponsiveContainer,
-  AreaChart,
-  Area,
   LineChart,
   Line,
   PieChart,
@@ -18,444 +15,366 @@ import {
   Cell,
   ReferenceLine,
   Tooltip,
+  ScatterChart,
+  Scatter,
 } from "recharts"
 import { useApp } from "@/lib/app-context"
 import { GradientHeader } from "./gradient-header"
-import { MetricCard } from "./metric-card"
+import { computeGlucoseMetrics } from "@/lib/glucose-metrics"
+import { deurenbergBodyFat, leanBodyMass, bmi } from "@/lib/body-composition"
+import { formatGlucose } from "@/lib/glucose-units"
+import {
+  sampleWeekCalories,
+  sampleMonthCalories,
+  type DayCalories,
+} from "@/lib/mock-data"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-type Period = "today" | "7days" | "30days" | "evolution"
+type Segment = "jour" | "semaine" | "mois" | "annee"
+
+const SEGMENTS: { id: Segment; labelKey: string }[] = [
+  { id: "jour",    labelKey: "today" },
+  { id: "semaine", labelKey: "days7" },
+  { id: "mois",    labelKey: "days30" },
+  { id: "annee",   labelKey: "year" },
+]
+
+// Static deficiency data (no Math.random)
+const DEFICIENCIES = [
+  { name: "Vitamine D", level: 38,  status: "probable"  as const },
+  { name: "Magnésium",  level: 55,  status: "probable"  as const },
+  { name: "Oméga-3",    level: 62,  status: "toMonitor" as const },
+  { name: "Fer",        level: 74,  status: "toMonitor" as const },
+]
+
+function getBarFill(calories: number, target: number): string {
+  const ratio = calories / target
+  if (ratio <= 1.0) return "var(--primary)"
+  if (ratio <= 1.1) return "var(--amber)"
+  return "var(--risk)"
+}
 
 export function StatsScreen() {
-  const { t, dailyLog, user, weightHistory, isRTL } = useApp()
-  const [period, setPeriod] = useState<Period>("7days")
+  const { t, dailyLog, user, weightHistory, glucoseReadings, isRTL } = useApp()
+  const [segment, setSegment] = useState<Segment>("semaine")
 
-  // Generate sample data for charts
-  const weekData = useMemo(() => {
-    const days = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
-    return days.map((day, i) => ({
-      day,
-      calories: 1800 + Math.random() * 800,
-      target: user.targetCalories,
-    }))
-  }, [user.targetCalories])
+  // Body composition from latest weight entry
+  const latest = weightHistory.length > 0 ? weightHistory[weightHistory.length - 1] : null
+  const first  = weightHistory.length > 0 ? weightHistory[0] : null
+  const currentWeight = latest?.weight ?? user.weight
+  const bmiVal  = bmi(currentWeight, user.height)
+  const bfPct   = deurenbergBodyFat(currentWeight, user.height, user.age, user.sex)
+  const lbm     = leanBodyMass(currentWeight, bfPct)
+  const weightDelta = first && latest ? (latest.weight - first.weight) : 0
+  const fatDeltaKg  = first && latest
+    ? ((latest.bodyFat ?? bfPct) * latest.weight / 100) - ((first.bodyFat ?? bfPct) * first.weight / 100)
+    : 0
 
-  const monthData = useMemo(() => {
-    return Array.from({ length: 30 }, (_, i) => ({
-      day: i + 1,
-      calories: 1700 + Math.random() * 900,
-      weight: 77.5 - i * 0.08 + Math.random() * 0.3,
-    }))
-  }, [])
+  // Calorie data for charts (stable, from mock-data)
+  const calData: DayCalories[] = segment === "semaine" ? sampleWeekCalories : sampleMonthCalories
+  const avgCalories = calData.length
+    ? Math.round(calData.reduce((s, d) => s + d.calories, 0) / calData.length)
+    : 0
 
-  const macroData = [
-    { name: "Glucides", value: dailyLog.totalCarbs, color: "#6366F1" },
-    { name: "Protéines", value: dailyLog.totalProtein, color: "#10B981" },
-    { name: "Lipides", value: dailyLog.totalFat, color: "#F59E0B" },
+  // Macro donut (today)
+  const macroDonut = [
+    { name: t("protein"), value: dailyLog.totalProtein, color: "var(--glucose)" },
+    { name: t("carbs"),   value: dailyLog.totalCarbs,   color: "var(--amber)"   },
+    { name: t("fat"),     value: dailyLog.totalFat,     color: "var(--lipids)"  },
   ]
 
-  const getBarColor = (calories: number) => {
-    const ratio = calories / user.targetCalories
-    if (ratio <= 1) return "#10B981"
-    if (ratio <= 1.1) return "#F59E0B"
-    return "#EF4444"
-  }
+  // Glucose summary for stats (7-day readings)
+  const weekGlucose = useMemo(() => {
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000
+    return glucoseReadings
+      .filter((r) => new Date(r.timestamp).getTime() > cutoff)
+      .map((r) => r.value)
+  }, [glucoseReadings])
 
-  // Calculate week stats
-  const avgCalories = Math.round(
-    weekData.reduce((sum, d) => sum + d.calories, 0) / weekData.length
-  )
-  const bestDay = weekData.reduce((best, d) =>
-    Math.abs(d.calories - user.targetCalories) <
-    Math.abs(best.calories - user.targetCalories)
-      ? d
-      : best
-  )
-  const hardestDay = weekData.reduce((worst, d) =>
-    d.calories > worst.calories ? d : worst
+  const glucoseMetrics = useMemo(
+    () => computeGlucoseMetrics(weekGlucose, 70, 180),
+    [weekGlucose]
   )
 
-  // Calculate body composition changes
-  const latestWeight = weightHistory[weightHistory.length - 1]
-  const firstWeight = weightHistory[0]
-  const weightLost = firstWeight
-    ? (firstWeight.weight - (latestWeight?.weight || firstWeight.weight)).toFixed(1)
-    : "0"
-  const fatLost = firstWeight
-    ? (
-        (firstWeight.bodyFat || 0) * firstWeight.weight / 100 -
-        (latestWeight?.bodyFat || 0) * (latestWeight?.weight || 0) / 100
-      ).toFixed(1)
-    : "0"
-  const muscleGained = firstWeight
-    ? (
-        (latestWeight?.muscleMass || 0) - (firstWeight.muscleMass || 0)
-      ).toFixed(1)
-    : "0"
-
-  const periods: { id: Period; label: string }[] = [
-    { id: "today", label: t("today") },
-    { id: "7days", label: t("days7") },
-    { id: "30days", label: t("days30") },
-    { id: "evolution", label: t("evolution") },
-  ]
+  // Mini glucose scatter (7 pts sampled evenly for the stats card)
+  const glucoseMiniData = useMemo(() => {
+    if (weekGlucose.length === 0) return []
+    const step = Math.max(1, Math.floor(weekGlucose.length / 7))
+    return weekGlucose.filter((_, i) => i % step === 0).slice(0, 7).map((v, i) => ({ x: i, y: v }))
+  }, [weekGlucose])
 
   return (
-    <div className={cn("flex flex-col pb-32 min-h-screen", isRTL && "rtl")}>
-      <GradientHeader
-        title={t("stats")}
-        subtitle="Analysez vos progrès"
-        variant="emerald"
-      >
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-white hover:bg-white/20"
-        >
-          <FileText className="h-5 w-5" />
-        </Button>
-      </GradientHeader>
+    <div className={cn("flex flex-col min-h-screen bg-background pb-8", isRTL && "rtl")}>
+      {/* Flat header */}
+      <div className="px-4 pt-5 pb-3 flex items-center justify-between">
+        <div>
+          <h1 className="text-[18px] font-semibold text-foreground">{t("stats")}</h1>
+          <p className="text-[13px] text-muted-foreground mt-0.5">Analysez vos progrès</p>
+        </div>
+        <button className="w-8 h-8 rounded-full bg-muted flex items-center justify-center" aria-label={t("export")}>
+          <FileText className="h-4 w-4 text-muted-foreground" />
+        </button>
+      </div>
 
-      {/* Period selector */}
-      <div className="flex gap-2 p-4 -mt-4">
-        {periods.map((p) => (
+      {/* Segment selector — 4 tabs, NO evolution tab */}
+      <div className="flex gap-1.5 px-4 mb-4">
+        {SEGMENTS.map((seg) => (
           <button
-            key={p.id}
-            onClick={() => setPeriod(p.id)}
+            key={seg.id}
+            onClick={() => setSegment(seg.id)}
             className={cn(
-              "flex-1 py-2 px-3 rounded-xl text-sm font-medium transition-colors",
-              period === p.id
-                ? "bg-secondary text-secondary-foreground"
-                : "bg-card text-muted-foreground border border-border"
+              "flex-1 py-2 rounded-xl text-[13px] font-medium transition-colors",
+              segment === seg.id
+                ? "bg-primary text-primary-foreground"
+                : "bg-card border border-border text-muted-foreground"
             )}
           >
-            {p.label}
+            {t(seg.labelKey as Parameters<typeof t>[0])}
           </button>
         ))}
       </div>
 
-      <div className="px-4 space-y-6">
-        {/* Today View */}
-        {period === "today" && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-4"
-          >
-            {/* Macros Donut */}
-            <div className="p-4 rounded-2xl bg-card border border-border">
-              <h3 className="font-semibold mb-4">Répartition des macros</h3>
-              <div className="flex items-center justify-center">
-                <ResponsiveContainer width={200} height={200}>
-                  <PieChart>
-                    <Pie
-                      data={macroData}
-                      innerRadius={60}
-                      outerRadius={90}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {macroData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
+      <div className="px-4 space-y-4">
+
+        {/* ─── 1. Weight line chart ──────────────────────────────────────────── */}
+        {weightHistory.length > 0 && (
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-[14px] font-semibold text-foreground">{t("weightEvolution")}</h3>
+              <div className="flex items-center gap-1.5">
+                {weightDelta < 0 ? (
+                  <TrendingDown className="h-4 w-4" style={{ color: "var(--primary)" }} />
+                ) : (
+                  <TrendingUp className="h-4 w-4" style={{ color: "var(--amber)" }} />
+                )}
+                <span
+                  className="text-[13px] font-semibold"
+                  style={{ color: weightDelta < 0 ? "var(--primary)" : "var(--amber)" }}
+                >
+                  {weightDelta > 0 ? "+" : ""}{weightDelta.toFixed(1)} kg
+                </span>
               </div>
-              <div className="flex justify-center gap-6 mt-4">
-                {macroData.map((m) => (
+            </div>
+            <ResponsiveContainer width="100%" height={150}>
+              <LineChart data={weightHistory.slice(segment === "semaine" ? -7 : -30)}>
+                <XAxis
+                  dataKey="date"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                  tickFormatter={(v) => new Date(v).getDate().toString()}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  domain={["dataMin - 0.5", "dataMax + 0.5"]}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                  width={28}
+                />
+                <Tooltip
+                  contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "0.75rem", fontSize: "12px" }}
+                  formatter={(v: number) => [`${v.toFixed(1)} kg`, "Poids"]}
+                  labelFormatter={(v) => new Date(v).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="weight"
+                  stroke="var(--primary)"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {/* ─── 2. Body composition ──────────────────────────────────────────── */}
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <h3 className="text-[14px] font-semibold text-foreground mb-3">{t("bodyFat")}</h3>
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            <div className="text-center">
+              <p className="text-[22px] font-semibold text-foreground">{bfPct.toFixed(1)}</p>
+              <p className="text-[11px] text-muted-foreground">% graisse</p>
+            </div>
+            <div className="text-center">
+              <p className="text-[22px] font-semibold text-foreground">{lbm.toFixed(1)}</p>
+              <p className="text-[11px] text-muted-foreground">kg maigre</p>
+            </div>
+            <div className="text-center">
+              <p className="text-[22px] font-semibold text-foreground">{bmiVal.toFixed(1)}</p>
+              <p className="text-[11px] text-muted-foreground">IMC</p>
+            </div>
+          </div>
+          {/* Forbes disclaimer REG-04 */}
+          <div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-muted/40">
+            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "var(--amber)" }} />
+            <p className="text-[11px] text-muted-foreground leading-snug">{t("forbesEstimate")}</p>
+          </div>
+        </div>
+
+        {/* ─── 3. Calorie bar chart + macro donut ──────────────────────────── */}
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[14px] font-semibold text-foreground">{t("caloriesPerDay")}</h3>
+            <span className="text-[13px] text-muted-foreground">moy. {avgCalories} kcal</span>
+          </div>
+          <ResponsiveContainer width="100%" height={160}>
+            <BarChart data={calData} barCategoryGap="30%">
+              <XAxis
+                dataKey="label"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+              />
+              <YAxis hide />
+              <ReferenceLine
+                y={user.targetCalories}
+                stroke="var(--primary)"
+                strokeDasharray="3 3"
+                strokeOpacity={0.7}
+              />
+              <Tooltip
+                contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "0.75rem", fontSize: "12px" }}
+                formatter={(v: number) => [`${Math.round(v)} kcal`, "Calories"]}
+              />
+              <Bar dataKey="calories" radius={[6, 6, 0, 0]}>
+                {calData.map((entry, idx) => (
+                  <Cell key={idx} fill={getBarFill(entry.calories, user.targetCalories)} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Macro donut (shown in "jour" segment or always) */}
+        {segment === "jour" && (
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <h3 className="text-[14px] font-semibold text-foreground mb-3">{t("macroBreakdown")}</h3>
+            <div className="flex items-center gap-4">
+              <ResponsiveContainer width={120} height={120}>
+                <PieChart>
+                  <Pie
+                    data={macroDonut}
+                    innerRadius={38}
+                    outerRadius={55}
+                    paddingAngle={4}
+                    dataKey="value"
+                  >
+                    {macroDonut.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex-1 space-y-2">
+                {macroDonut.map((m) => (
                   <div key={m.name} className="flex items-center gap-2">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: m.color }}
-                    />
-                    <span className="text-sm">
-                      {m.name}: {m.value}g
-                    </span>
+                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: m.color }} />
+                    <span className="text-[12px] text-foreground flex-1">{m.name}</span>
+                    <span className="text-[12px] font-semibold text-foreground">{m.value}g</span>
                   </div>
                 ))}
               </div>
             </div>
+          </div>
+        )}
 
-            {/* Water Intake */}
-            <div className="p-4 rounded-2xl bg-card border border-border">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Droplets className="h-5 w-5 text-blue-500" />
-                  Hydratation
-                </h3>
-                <span className="text-sm text-muted-foreground">
-                  {dailyLog.waterIntake}/8 verres
+        {/* ─── 4. Glycemia summary (with N<12 guard AL-05) ─────────────────── */}
+        {user.isDiabetic && (
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-[14px] font-semibold text-foreground">{t("glucoseSummary")}</h3>
+              {!glucoseMetrics.insufficientData && (
+                <span
+                  className="px-2.5 py-1 rounded-full text-[11px] font-semibold"
+                  style={{ backgroundColor: "var(--glucose-bg)", color: "var(--glucose)" }}
+                >
+                  TIR {glucoseMetrics.tir}% {t("inTarget")}
+                </span>
+              )}
+            </div>
+
+            {glucoseMetrics.insufficientData ? (
+              <p className="text-[13px] text-muted-foreground py-2 text-center">
+                {t("insufficientGlucoseData")} — {glucoseMetrics.count}/12 mesures min.
+              </p>
+            ) : (
+              <>
+                <div className="flex gap-3 mb-3">
+                  <div className="flex-1 text-center">
+                    <p className="text-[18px] font-semibold text-foreground">
+                      {formatGlucose(glucoseMetrics.average, user.units.glucose)}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">{t("mean")}</p>
+                  </div>
+                  <div className="flex-1 text-center">
+                    <p className="text-[18px] font-semibold" style={{ color: "var(--glucose)" }}>
+                      {glucoseMetrics.gmi.toFixed(1)}%
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">{t("gmi")}</p>
+                  </div>
+                </div>
+
+                {/* 7-point mini chart */}
+                {glucoseMiniData.length > 0 && (
+                  <ResponsiveContainer width="100%" height={60}>
+                    <ScatterChart margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
+                      <XAxis type="number" dataKey="x" hide />
+                      <YAxis type="number" dataKey="y" domain={[60, 220]} hide />
+                      <ReferenceLine y={70}  stroke="var(--primary)" strokeDasharray="2 2" strokeOpacity={0.5} />
+                      <ReferenceLine y={180} stroke="var(--primary)" strokeDasharray="2 2" strokeOpacity={0.5} />
+                      <Scatter data={glucoseMiniData} fill="var(--glucose)" />
+                    </ScatterChart>
+                  </ResponsiveContainer>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ─── 5. Deficiencies (REG-04 disclaimer mandatory) ───────────────── */}
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <h3 className="text-[14px] font-semibold text-foreground mb-3">{t("deficiencies")}</h3>
+          <div className="space-y-2.5 mb-3">
+            {DEFICIENCIES.map((d) => (
+              <div key={d.name} className="flex items-center gap-3">
+                <span className="text-[13px] text-foreground flex-1">{d.name}</span>
+                <div className="w-24 h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${d.level}%`,
+                      backgroundColor: d.level < 50 ? "var(--risk)" : d.level < 70 ? "var(--amber)" : "var(--primary)",
+                    }}
+                  />
+                </div>
+                <span
+                  className="px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0"
+                  style={
+                    d.status === "probable"
+                      ? { backgroundColor: "var(--risk-bg)", color: "var(--risk)" }
+                      : { backgroundColor: "var(--amber-bg)", color: "var(--amber)" }
+                  }
+                >
+                  {d.status === "probable" ? t("probable") : t("toMonitor")}
                 </span>
               </div>
-              <div className="flex gap-2">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      "flex-1 h-10 rounded-lg transition-colors",
-                      i < dailyLog.waterIntake
-                        ? "bg-blue-500"
-                        : "bg-muted"
-                    )}
-                  />
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        )}
+            ))}
+          </div>
+          {/* REG-04 — disclaimer obligatoire, non ignorable */}
+          <div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-muted/40">
+            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "var(--amber)" }} />
+            <p className="text-[11px] text-muted-foreground leading-snug">{t("deficiencyDisclaimer")}</p>
+          </div>
+        </div>
 
-        {/* 7 Days View */}
-        {period === "7days" && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-4"
-          >
-            {/* Bar Chart */}
-            <div className="p-4 rounded-2xl bg-card border border-border">
-              <h3 className="font-semibold mb-4">Calories par jour</h3>
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={weekData}>
-                  <XAxis
-                    dataKey="day"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 12 }}
-                  />
-                  <YAxis hide />
-                  <ReferenceLine
-                    y={user.targetCalories}
-                    stroke="#6366F1"
-                    strokeDasharray="3 3"
-                    label={{
-                      value: "Objectif",
-                      position: "right",
-                      fontSize: 10,
-                    }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "var(--card)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "0.75rem",
-                    }}
-                  />
-                  <Bar
-                    dataKey="calories"
-                    radius={[8, 8, 0, 0]}
-                    fill="#10B981"
-                  >
-                    {weekData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={getBarColor(entry.calories)}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Week Summary */}
-            <div className="p-4 rounded-2xl bg-card border border-border">
-              <h3 className="font-semibold mb-4">{t("weekSummary")}</h3>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="text-center p-3 rounded-xl bg-muted/50">
-                  <p className="text-2xl font-bold text-foreground">
-                    {avgCalories}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{t("average")}</p>
-                </div>
-                <div className="text-center p-3 rounded-xl bg-emerald/10">
-                  <p className="text-2xl font-bold text-emerald">
-                    {bestDay.day}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{t("bestDay")}</p>
-                </div>
-                <div className="text-center p-3 rounded-xl bg-destructive/10">
-                  <p className="text-2xl font-bold text-destructive">
-                    {hardestDay.day}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {t("hardestDay")}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* 30 Days View */}
-        {period === "30days" && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-4"
-          >
-            {/* Area Chart */}
-            <div className="p-4 rounded-2xl bg-card border border-border">
-              <h3 className="font-semibold mb-4">Tendance sur 30 jours</h3>
-              <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={monthData}>
-                  <defs>
-                    <linearGradient
-                      id="colorCalories"
-                      x1="0"
-                      y1="0"
-                      x2="0"
-                      y2="1"
-                    >
-                      <stop offset="5%" stopColor="#6366F1" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#6366F1" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis
-                    dataKey="day"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 10 }}
-                    tickFormatter={(v) => (v % 5 === 0 ? v : "")}
-                  />
-                  <YAxis hide />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "var(--card)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "0.75rem",
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="calories"
-                    stroke="#6366F1"
-                    fillOpacity={1}
-                    fill="url(#colorCalories)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Month Stats */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="p-3 rounded-xl bg-card border border-border text-center">
-                <p className="text-xl font-bold">
-                  {Math.round(
-                    monthData.reduce((s, d) => s + d.calories, 0) / 30
-                  )}
-                </p>
-                <p className="text-xs text-muted-foreground">Moy. kcal</p>
-              </div>
-              <div className="p-3 rounded-xl bg-card border border-border text-center">
-                <p className="text-xl font-bold">
-                  {Math.round(Math.min(...monthData.map((d) => d.calories)))}
-                </p>
-                <p className="text-xs text-muted-foreground">Min kcal</p>
-              </div>
-              <div className="p-3 rounded-xl bg-card border border-border text-center">
-                <p className="text-xl font-bold">
-                  {Math.round(Math.max(...monthData.map((d) => d.calories)))}
-                </p>
-                <p className="text-xs text-muted-foreground">Max kcal</p>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Evolution View */}
-        {period === "evolution" && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-4"
-          >
-            {/* Weight Chart */}
-            <div className="p-4 rounded-2xl bg-card border border-border">
-              <h3 className="font-semibold mb-4">Évolution du poids</h3>
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={weightHistory}>
-                  <defs>
-                    <linearGradient
-                      id="colorWeight"
-                      x1="0"
-                      y1="0"
-                      x2="0"
-                      y2="1"
-                    >
-                      <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis
-                    dataKey="date"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 10 }}
-                    tickFormatter={(v) => new Date(v).getDate().toString()}
-                  />
-                  <YAxis
-                    domain={["dataMin - 1", "dataMax + 1"]}
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 10 }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "var(--card)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "0.75rem",
-                    }}
-                    formatter={(value: number) => [`${value.toFixed(1)} kg`, "Poids"]}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="weight"
-                    stroke="#8B5CF6"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Body Composition Summary */}
-            <div className="grid grid-cols-2 gap-3">
-              <MetricCard
-                label={t("weightLost")}
-                value={weightLost}
-                unit="kg"
-                status={Number(weightLost) > 0 ? "good" : "neutral"}
-                statusText={Number(weightLost) > 0 ? "En progrès" : ""}
-              />
-              <MetricCard
-                label={t("muscleGained")}
-                value={muscleGained}
-                unit="kg"
-                status={Number(muscleGained) > 0 ? "good" : "neutral"}
-                statusText={Number(muscleGained) > 0 ? "En hausse" : ""}
-              />
-              <MetricCard
-                label={t("fatLost")}
-                value={fatLost}
-                unit="kg"
-                status={Number(fatLost) > 0 ? "good" : "neutral"}
-              />
-              <MetricCard
-                label={t("bodyFat")}
-                value={(latestWeight?.bodyFat || 18.2).toFixed(1)}
-                unit="%"
-                status="neutral"
-              />
-            </div>
-
-            {/* Forbes Disclaimer */}
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-amber/10 text-amber">
-              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-              <span className="text-sm">{t("forbesEstimate")}</span>
-            </div>
-          </motion.div>
-        )}
+        {/* Export button */}
+        <Button variant="outline" className="w-full gap-2 rounded-xl">
+          <FileText className="h-4 w-4" />
+          {t("export")}
+        </Button>
       </div>
     </div>
   )
