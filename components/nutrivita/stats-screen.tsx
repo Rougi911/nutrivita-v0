@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { AlertTriangle, FileText, TrendingDown, TrendingUp } from "lucide-react"
 import {
   BarChart,
@@ -19,6 +19,9 @@ import {
   Scatter,
 } from "recharts"
 import { useApp } from "@/lib/app-context"
+import { getDeficiencies } from "@/lib/api"
+import type { ApiDeficiency } from "@/lib/api-types"
+import { Skeleton } from "@/components/ui/skeleton"
 import { GradientHeader } from "./gradient-header"
 import { computeGlucoseMetrics } from "@/lib/glucose-metrics"
 import { deurenbergBodyFat, leanBodyMass, bmi } from "@/lib/body-composition"
@@ -40,13 +43,6 @@ const SEGMENTS: { id: Segment; labelKey: string }[] = [
   { id: "annee",   labelKey: "year" },
 ]
 
-// Static deficiency data (no Math.random)
-const DEFICIENCIES = [
-  { name: "Vitamine D", level: 38,  status: "probable"  as const },
-  { name: "Magnésium",  level: 55,  status: "probable"  as const },
-  { name: "Oméga-3",    level: 62,  status: "toMonitor" as const },
-  { name: "Fer",        level: 74,  status: "toMonitor" as const },
-]
 
 function getBarFill(calories: number, target: number): string {
   const ratio = calories / target
@@ -58,6 +54,16 @@ function getBarFill(calories: number, target: number): string {
 export function StatsScreen() {
   const { t, dailyLog, user, weightHistory, glucoseReadings, isRTL } = useApp()
   const [segment, setSegment] = useState<Segment>("semaine")
+  const [deficiencies, setDeficiencies] = useState<ApiDeficiency[]>([])
+  const [loadingDef, setLoadingDef] = useState(false)
+
+  useEffect(() => {
+    setLoadingDef(true)
+    getDeficiencies()
+      .then(({ deficiencies: defs }) => setDeficiencies(defs))
+      .catch(() => { /* offline: keep empty */ })
+      .finally(() => setLoadingDef(false))
+  }, [])
 
   // Body composition from latest weight entry
   const latest = weightHistory.length > 0 ? weightHistory[weightHistory.length - 1] : null
@@ -337,37 +343,36 @@ export function StatsScreen() {
         {/* ─── 5. Deficiencies (REG-04 disclaimer mandatory) ───────────────── */}
         <div className="rounded-2xl border border-border bg-card p-4">
           <h3 className="text-[14px] font-semibold text-foreground mb-3">{t("deficiencies")}</h3>
-          <div className="space-y-2.5 mb-3">
-            {DEFICIENCIES.map((d) => (
-              <div key={d.name} className="flex items-center gap-3">
-                <span className="text-[13px] text-foreground flex-1">{d.name}</span>
-                <div className="w-24 h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${d.level}%`,
-                      backgroundColor: d.level < 50 ? "var(--risk)" : d.level < 70 ? "var(--amber)" : "var(--primary)",
-                    }}
-                  />
-                </div>
-                <span
-                  className="px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0"
-                  style={
-                    d.status === "probable"
-                      ? { backgroundColor: "var(--risk-bg)", color: "var(--risk)" }
-                      : { backgroundColor: "var(--amber-bg)", color: "var(--amber)" }
-                  }
-                >
-                  {d.status === "probable" ? t("probable") : t("toMonitor")}
-                </span>
-              </div>
-            ))}
-          </div>
           {/* REG-04 — disclaimer obligatoire, non ignorable */}
-          <div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-muted/40">
+          <div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-muted/40 mb-3">
             <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "var(--amber)" }} />
             <p className="text-[11px] text-muted-foreground leading-snug">{t("deficiencyDisclaimer")}</p>
           </div>
+          {loadingDef ? (
+            <div className="space-y-2">
+              {[1, 2].map((i) => <Skeleton key={i} className="h-8 w-full rounded-lg" />)}
+            </div>
+          ) : deficiencies.length > 0 ? (
+            <div className="space-y-2">
+              {deficiencies.map((d) => (
+                <div key={d.nutrient} className="flex items-center justify-between py-1.5">
+                  <span className="text-[13px] text-foreground">{d.nutrient}</span>
+                  <span
+                    className="px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                    style={
+                      d.status === "probable"
+                        ? { backgroundColor: "var(--risk-bg)", color: "var(--risk)" }
+                        : { backgroundColor: "var(--amber-bg)", color: "var(--amber)" }
+                    }
+                  >
+                    {d.status === "probable" ? t("probable") : t("toMonitor")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[13px] text-muted-foreground">{t("loadingData")}</p>
+          )}
         </div>
 
         {/* Export button */}

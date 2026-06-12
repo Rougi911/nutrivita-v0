@@ -1,9 +1,14 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { AlertTriangle, ScanLine } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { useApp } from "@/lib/app-context"
 import { getMonthlyScannedStats } from "@/lib/mock-data"
+import { scanBarcode, getGroceriesSummary } from "@/lib/api"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
+import { OfflineBanner } from "@/components/nutrivita/offline-banner"
 import { cn } from "@/lib/utils"
 import type { ScannedProduct } from "@/lib/types"
 
@@ -93,7 +98,12 @@ function ProgressBar({
 }
 
 export function GroceriesScreen() {
-  const { t, scannedProducts, isRTL } = useApp()
+  const { t, scannedProducts, addScannedProduct, isRTL } = useApp()
+
+  const [scanInput, setScanInput] = useState("")
+  const [scanning, setScanning] = useState(false)
+  const [scanError, setScanError] = useState<string | null>(null)
+  const [loadingStats, setLoadingStats] = useState(false)
 
   const stats = getMonthlyScannedStats(scannedProducts)
 
@@ -106,44 +116,93 @@ export function GroceriesScreen() {
   // Sort: worst first
   const sorted = [...scannedProducts].sort((a, b) => a.score - b.score)
 
+  useEffect(() => {
+    setLoadingStats(true)
+    getGroceriesSummary()
+      .then(({ products }) => {
+        products.forEach((p) => addScannedProduct(p))
+      })
+      .catch(() => { /* offline: keep existing products */ })
+      .finally(() => setLoadingStats(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleScan = async () => {
+    if (!scanInput.trim()) return
+    setScanning(true)
+    setScanError(null)
+    try {
+      const product = await scanBarcode(scanInput.trim())
+      addScannedProduct(product)
+      setScanInput("")
+    } catch {
+      setScanError(t("errorLoading"))
+    } finally {
+      setScanning(false)
+    }
+  }
+
   return (
     <div className={cn("flex flex-col min-h-screen bg-background pb-8", isRTL && "rtl")}>
+      <OfflineBanner />
+
+      {scanError && (
+        <p className="text-[12px] px-4 py-1" style={{ color: "var(--risk)" }}>{scanError}</p>
+      )}
+
       {/* Header */}
       <div className="px-4 pt-5 pb-3 flex items-center justify-between">
         <div>
           <h1 className="text-[18px] font-semibold text-foreground">{t("myGroceries")}</h1>
           <p className="text-[13px] text-muted-foreground mt-0.5">{scannedProducts.length} {t("products")}</p>
         </div>
-        <Button size="sm" className="gap-1.5 rounded-xl">
-          <ScanLine className="h-4 w-4" />
-          {t("scanner")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            placeholder={t("scanProduct")}
+            value={scanInput}
+            onChange={(e) => setScanInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleScan() }}
+            className="h-9 rounded-xl border border-border bg-muted px-3 text-[13px] w-36 focus:outline-none"
+          />
+          <Button size="sm" className="gap-1.5 rounded-xl" onClick={handleScan} disabled={scanning}>
+            {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanLine className="h-4 w-4" />}
+            {t("scanner")}
+          </Button>
+        </div>
       </div>
 
       <div className="px-4 space-y-4">
 
         {/* Bilan du mois */}
-        <div className="rounded-2xl border border-border bg-card p-4">
-          <h3 className="text-[14px] font-semibold text-foreground mb-3">{t("monthlyOverview")}</h3>
-          <div className="space-y-3">
-            <ProgressBar
-              label={t("addedSugars")}
-              value={stats.sucres}
-              percent={stats.sucresPercent}
-            />
-            <ProgressBar
-              label={t("salt")}
-              value={stats.sel}
-              percent={stats.selPercent}
-            />
-            <ProgressBar
-              label={t("saturatedFat")}
-              value={stats.ags}
-              percent={stats.agsPercent}
-            />
+        {loadingStats ? (
+          <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+            <Skeleton className="h-4 w-32 rounded" />
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-8 w-full rounded-lg" />)}
           </div>
-          <p className="text-[11px] text-muted-foreground mt-2">{t("vsOmsReference")}</p>
-        </div>
+        ) : (
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <h3 className="text-[14px] font-semibold text-foreground mb-3">{t("monthlyOverview")}</h3>
+            <div className="space-y-3">
+              <ProgressBar
+                label={t("addedSugars")}
+                value={stats.sucres}
+                percent={stats.sucresPercent}
+              />
+              <ProgressBar
+                label={t("salt")}
+                value={stats.sel}
+                percent={stats.selPercent}
+              />
+              <ProgressBar
+                label={t("saturatedFat")}
+                value={stats.ags}
+                percent={stats.agsPercent}
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-2">{t("vsOmsReference")}</p>
+          </div>
+        )}
 
         {/* Additives alert card */}
         {stats.riskAdditives.length > 0 && (
