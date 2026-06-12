@@ -1,10 +1,13 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState, useRef } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { Camera, Mic, ScanLine, Search, X } from "lucide-react"
+import { Camera, Loader2, Mic, ScanLine, Search, X } from "lucide-react"
 import { useApp } from "@/lib/app-context"
+import { interpretMedia } from "@/lib/api"
 import { SAMPLE_FOODS } from "@/lib/types"
+import type { ApiInterpretResponse } from "@/lib/api-types"
+import { InterpretConfirm } from "@/components/nutrivita/interpret-confirm"
 import { cn } from "@/lib/utils"
 
 const recentFoodIds = ["1", "3", "9", "5", "7"]
@@ -45,11 +48,88 @@ const quickActions = [
 ] as const
 
 export function AddSheet() {
-  const { setShowAddSheet, t, setShowFoodSearch } = useApp()
+  const { setShowAddSheet, t, setShowFoodSearch, language } = useApp()
+
+  const [interpResult, setInterpResult] = useState<ApiInterpretResponse | null>(null)
+  const [interpreting, setInterpreting] = useState(false)
+  const [interpError, setInterpError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const recentFoods = recentFoodIds
     .map((id) => SAMPLE_FOODS.find((f) => f.id === id))
     .filter(Boolean)
+
+  const callInterpretText = async (text: string) => {
+    setInterpreting(true)
+    setInterpError(null)
+    try {
+      const result = await interpretMedia("voice", text)
+      setInterpResult(result)
+    } catch {
+      setInterpError(t("errorLoading"))
+    } finally {
+      setInterpreting(false)
+    }
+  }
+
+  const handlePhotoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setInterpreting(true)
+    setInterpError(null)
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve((reader.result as string).split(",")[1] ?? "")
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+      const result = await interpretMedia("photo", base64)
+      setInterpResult(result)
+    } catch {
+      setInterpError(t("errorLoading"))
+    } finally {
+      setInterpreting(false)
+      if (e.target) e.target.value = ""
+    }
+  }
+
+  const handleVoiceInput = () => {
+    type AnySpeechRecognition = {
+      lang: string
+      interimResults: boolean
+      maxAlternatives: number
+      onresult: ((event: { results: { [index: number]: { [index: number]: { transcript: string } } } }) => void) | null
+      onerror: (() => void) | null
+      start: () => void
+    }
+    type SpeechRecognitionCtor = new () => AnySpeechRecognition
+
+    const SpeechRecognitionClass =
+      typeof window !== "undefined"
+        ? ((window as unknown as Record<string, unknown>)["SpeechRecognition"] ??
+           (window as unknown as Record<string, unknown>)["webkitSpeechRecognition"]) as
+             | SpeechRecognitionCtor
+             | undefined
+        : undefined
+
+    if (!SpeechRecognitionClass) {
+      const text = window.prompt(t("speakNow"))
+      if (text) callInterpretText(text)
+      return
+    }
+
+    const recognition = new SpeechRecognitionClass()
+    recognition.lang = language === "ar" ? "ar-DZ" : language === "en" ? "en-US" : "fr-FR"
+    recognition.interimResults = false
+    recognition.maxAlternatives = 1
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript
+      callInterpretText(transcript)
+    }
+    recognition.onerror = () => setInterpError(t("errorLoading"))
+    recognition.start()
+  }
 
   // Dismiss on Escape
   useEffect(() => {
@@ -59,6 +139,19 @@ export function AddSheet() {
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
   }, [setShowAddSheet])
+
+  // If interpret result available, show the confirmation screen
+  if (interpResult) {
+    return (
+      <div className="fixed inset-0 z-50 bg-background">
+        <InterpretConfirm
+          result={interpResult}
+          onBack={() => setInterpResult(null)}
+          onDone={() => { setInterpResult(null); setShowAddSheet(false) }}
+        />
+      </div>
+    )
+  }
 
   return (
     <AnimatePresence>
@@ -108,11 +201,19 @@ export function AddSheet() {
                   <button
                     key={action.id}
                     onClick={() => {
+                      if (action.id === "photo") {
+                        fileInputRef.current?.click()
+                        return
+                      }
+                      if (action.id === "voice") {
+                        handleVoiceInput()
+                        return
+                      }
                       if (action.id === "search") {
                         setShowFoodSearch(true)
                         setShowAddSheet(false)
                       }
-                      // photo / voice / scanner: coming soon stubs
+                      // scanner: stub (redirect to food search as fallback)
                     }}
                     className="flex items-center gap-3 rounded-2xl border border-border p-3.5 active:scale-[0.97] transition-transform text-left"
                   >
@@ -175,7 +276,30 @@ export function AddSheet() {
                 </div>
               </div>
             )}
+
+            {/* Error message */}
+            {interpError && (
+              <p className="text-[12px] text-center mt-2" style={{ color: "var(--risk)" }}>{interpError}</p>
+            )}
           </div>
+
+          {/* Hidden file input for photo capture */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handlePhotoFile}
+          />
+
+          {/* Loading overlay while API processes */}
+          {interpreting && (
+            <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center gap-3 rounded-t-3xl">
+              <Loader2 className="h-8 w-8 animate-spin text-[var(--primary)]" />
+              <p className="text-[14px] text-muted-foreground">{t("analyzing")}</p>
+            </div>
+          )}
         </motion.div>
       </motion.div>
     </AnimatePresence>
