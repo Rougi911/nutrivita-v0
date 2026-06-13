@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { AppProvider, useApp } from "@/lib/app-context"
 import { JournalScreen } from "./journal-screen"
@@ -15,36 +15,47 @@ import { HomeScreen } from "./home-screen"
 import { GroceriesScreen } from "./groceries-screen"
 import { AddSheet } from "./add-sheet"
 
-type AppView = "landing" | "onboarding" | "main"
+type AppView = "checking" | "landing" | "onboarding" | "main"
 
 function AppContent() {
-  const [appView, setAppView] = useState<AppView>("landing")
-  const { activeTab, setActiveTab, showAddSheet } = useApp()
+  const [appView, setAppView] = useState<AppView>("checking")
+  const { activeTab, setActiveTab, showAddSheet, isAuthenticated, isAuthLoading } = useApp()
 
-  // Stacked views accessible via back button (not in nav bar)
   const [stackedView, setStackedView] = useState<"glucose" | "settings" | null>(null)
+
+  // Auth-aware routing — runs when auth state or loading changes
+  useEffect(() => {
+    if (isAuthLoading) return
+    if (isAuthenticated && appView !== "main" && appView !== "onboarding") {
+      setAppView("main")
+    } else if (!isAuthenticated && (appView === "checking" || appView === "main")) {
+      setAppView("landing")
+    }
+  }, [isAuthenticated, isAuthLoading, appView])
+
+  if (appView === "checking" || isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div
+          className="h-8 w-8 rounded-full border-4 border-t-transparent animate-spin"
+          style={{ borderColor: "var(--primary)", borderTopColor: "transparent" }}
+        />
+      </div>
+    )
+  }
+
+  if (appView === "onboarding") {
+    return <OnboardingFlow onComplete={() => setAppView("main")} />
+  }
 
   if (appView === "landing") {
     return <LandingPage onGetStarted={() => setAppView("onboarding")} />
   }
 
-  if (appView === "onboarding") {
-    return (
-      <OnboardingFlow
-        onComplete={() => setAppView("main")}
-        onSkip={() => setAppView("main")}
-      />
-    )
-  }
-
+  // ─── Main app ───────────────────────────────────────────────────────────────
   const renderMainScreen = () => {
-    // Stacked views with back button
     if (stackedView === "glucose") {
-      return (
-        <GlucoseScreen
-          onBack={() => setStackedView(null)}
-        />
-      )
+      return <GlucoseScreen onBack={() => setStackedView(null)} />
     }
     if (stackedView === "settings") {
       return (
@@ -98,10 +109,7 @@ function AppContent() {
         </motion.div>
       </AnimatePresence>
 
-      {/* Hide nav bar when a stacked view is open */}
       {!stackedView && <BottomNavigation />}
-
-      {/* Add bottom sheet — triggered by central + button */}
       {showAddSheet && <AddSheet />}
     </div>
   )

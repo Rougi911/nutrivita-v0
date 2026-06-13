@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import {
@@ -6,6 +6,7 @@ import {
   Check,
   ChevronRight,
   Download,
+  LogOut,
   Star,
   Trash2,
   X,
@@ -51,6 +52,7 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
     clearJournal, clearWeight, clearGlucose,
     isDiabetic, setIsDiabetic,
     glucoseTarget, setGlucoseTarget,
+    logout,
   } = useApp()
 
   // (e) useTheme — NOT classList.toggle
@@ -255,7 +257,7 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="fr">FR</SelectItem>
-                <SelectItem value="ar">عربي</SelectItem>
+                <SelectItem value="ar">{"\\u0639\\u0631\\u0628\\u064A"}</SelectItem>
                 <SelectItem value="en">EN</SelectItem>
               </SelectContent>
             </Select>
@@ -315,6 +317,34 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
           <SettingsRow label={t("legalNotice")} arrow />
           <SettingsRow label={t("rateApp")} icon={<Star className="h-4 w-4 text-muted-foreground" />} />
         </SettingsGroup>
+
+        {/* Déconnexion */}
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2 rounded-xl border-destructive/30 text-destructive hover:bg-destructive/10"
+            >
+              <LogOut className="h-4 w-4" />
+              {t("logout")}
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t("logoutTitle")}</AlertDialogTitle>
+              <AlertDialogDescription>{t("logoutDesc")}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground"
+                onClick={logout}
+              >
+                {t("logout")}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       {/* (a) Profile edit bottom sheet */}
@@ -465,7 +495,7 @@ function ConfirmButton({
             className="bg-destructive text-destructive-foreground"
             onClick={onConfirm}
           >
-            Effacer
+            {t("clearAction")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -16,6 +16,7 @@ import type {
   ScannedProduct,
   FoodItem,
 } from "@/lib/types"
+import { getToken } from "@/lib/auth"
 
 // Strip trailing /api if present — every endpoint path already starts with /api/
 export const API_BASE = (() => {
@@ -55,12 +56,14 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   try {
+    const token = getToken()
     const res = await fetch(`${API_BASE}${path}`, {
       credentials: "include",
       ...init,
       signal: controller.signal,
       headers: {
         "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(init?.headers ?? {}),
       },
     })
@@ -162,6 +165,32 @@ function mapScannedProduct(
     sel: raw.sel,
     ags: raw.ags,
   }
+}
+
+// ─── Auth ────────────────────────────────────────────────────────────────────
+
+export interface AuthResponse {
+  token: string
+  user: { id: string; email: string; name: string }
+}
+
+export async function register(
+  email: string,
+  password: string,
+  name: string,
+  consentGlucose: boolean
+): Promise<AuthResponse> {
+  return apiFetch<AuthResponse>("/api/auth/register", {
+    method: "POST",
+    body: JSON.stringify({ email, password, name, consent_glucose: consentGlucose }),
+  })
+}
+
+export async function loginApi(email: string, password: string): Promise<AuthResponse> {
+  return apiFetch<AuthResponse>("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  })
 }
 
 // ─── Endpoints ───────────────────────────────────────────────────────────────

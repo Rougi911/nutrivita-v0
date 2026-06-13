@@ -20,9 +20,17 @@ import {
   getWeightHistory,
   getActivities,
   setSlowStartCallback,
+  ApiError,
 } from "@/lib/api"
+import { getToken, setToken, removeToken } from "@/lib/auth"
 
 interface AppContextType {
+  // Auth
+  isAuthenticated: boolean
+  isAuthLoading: boolean
+  login: (token: string, serverUser: { id: string; email: string; name: string }) => void
+  logout: () => void
+
   // User
   user: User
   setUser: (user: User) => void
@@ -87,12 +95,12 @@ interface AppContextType {
 
 const defaultUser: User = {
   id: "1",
-  name: "Ahmed",
+  name: "Utilisateur",
   age: 28,
   height: 178,
-  weight: 81.7,
+  weight: 75,
   sex: "male",
-  goals: ["lose"],
+  goals: ["maintain"],
   activityLevel: 3,
   targetCalories: 2100,
   macros: {
@@ -107,21 +115,23 @@ const defaultUser: User = {
     energy: "kcal",
   },
   glucoseTarget: { low: 70, high: 180 },
-  isDiabetic: true,
+  isDiabetic: false,
   language: "fr",
   darkMode: false,
-  streak: 12,
+  streak: 0,
 }
-
-const today = new Date().toISOString().split("T")[0]
 
 const AppContext = createContext<AppContextType | null>(null)
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isAuthLoading, setIsAuthLoading] = useState(true)
+
   const [user, setUser] = useState<User>(defaultUser)
-  const [isOnboarded, setIsOnboarded] = useState(true)
+  const [isOnboarded, setIsOnboarded] = useState(false)
   const [language, setLanguageState] = useState<Language>("fr")
-  const [currentDate, setCurrentDate] = useState(today)
+  // "" initially — useEffect sets real date client-side (avoids SSR/client hydration #418)
+  const [currentDate, setCurrentDate] = useState("")
   const [mealEntries, setMealEntries] = useState<MealEntry[]>([])
   const [glucoseReadings, setGlucoseReadings] = useState<GlucoseReading[]>([])
   const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([])
@@ -134,12 +144,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [showFoodSearch, setShowFoodSearch] = useState(false)
   const [selectedMealType, setSelectedMealType] = useState<MealEntry["mealType"] | null>(null)
   const [waterIntake, setWaterIntake] = useState(defaultWaterIntake)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [isOffline, setIsOffline] = useState(false)
   const [serverWaking, setServerWaking] = useState(false)
   const loadCountRef = useRef(0)
 
+  // Check localStorage for existing token (client-side only)
+  useEffect(() => {
+    const token = getToken()
+    setIsAuthenticated(!!token)
+    setIsAuthLoading(false)
+  }, [])
+
+  // Set current date client-side only — fixes React #418 hydration mismatch
+  useEffect(() => {
+    setCurrentDate(new Date().toISOString().split("T")[0])
+  }, [])
+
+  const login = useCallback((token: string, serverUser: { id: string; email: string; name: string }) => {
+    setToken(token)
+    setIsAuthenticated(true)
+    setUser((prev) => ({ ...prev, id: serverUser.id, name: serverUser.name }))
+  }, [])
+
+  const logout = useCallback(() => {
+    removeToken()
+    setIsAuthenticated(false)
+    setMealEntries([])
+    setGlucoseReadings([])
+    setWeightHistory([])
+    setActivities([])
+    setScannedProducts([])
+    setIsOnboarded(false)
+  }, [])
+
   const loadData = useCallback(async (date: string) => {
+    if (!getToken()) return  // no token → skip API calls
     const loadId = ++loadCountRef.current
     setIsLoading(true)
     setIsOffline(false)
@@ -161,9 +201,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setWeightHistory(weight)
       setActivities(acts)
       setIsOffline(false)
-    } catch {
+    } catch (err) {
       if (loadCountRef.current !== loadId) return
-      // Offline — état vide navigable (pas de données mockées qui confondent un vrai compte)
+      if (err instanceof ApiError && err.status === 401) {
+        // Stale or invalid token — force re-auth
+        removeToken()
+        setIsAuthenticated(false)
+        setIsLoading(false)
+        setServerWaking(false)
+        setSlowStartCallback(null)
+        return
+      }
+      // Network error or server down → show offline state
       setMealEntries([])
       setGlucoseReadings([])
       setWeightHistory([])
@@ -178,9 +227,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // Reload when date changes or auth state changes
   useEffect(() => {
-    loadData(currentDate)
-  }, [currentDate, loadData])
+    if (currentDate && isAuthenticated) {
+      loadData(currentDate)
+    }
+  }, [currentDate, loadData, isAuthenticated])
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang)
@@ -271,9 +323,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const removeScannedProduct = (barcode: string) =>
     setScannedProducts((prev) => prev.filter((p) => p.barcode !== barcode))
 
+  const reloadData = useCallback(() => loadData(currentDate), [loadData, currentDate])
+
   return (
     <AppContext.Provider
       value={{
+        isAuthenticated,
+        isAuthLoading,
+        login,
+        logout,
         user,
         setUser,
         isOnboarded,
@@ -318,7 +376,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isLoading,
         isOffline,
         serverWaking,
-        reloadData: () => loadData(currentDate),
+        reloadData,
       }}
     >
       {children}

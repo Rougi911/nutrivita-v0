@@ -2,8 +2,10 @@
 
 import { useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { ArrowDown, ArrowUp, CheckSquare, ChevronRight, Droplets, Scale, Square } from "lucide-react"
+import { ArrowDown, ArrowUp, CheckSquare, ChevronRight, Droplets, Eye, EyeOff, Scale, Square } from "lucide-react"
 import { useApp } from "@/lib/app-context"
+import { register, ApiError } from "@/lib/api"
+import { toggleGoal, POIDS_GOALS } from "@/lib/goals"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -13,19 +15,28 @@ interface OnboardingProps {
   onSkip?: () => void
 }
 
-type Step = 1 | 2 | 3 | 4 | 5
+type Step = 1 | 2 | 3 | 4 | 5 | 6
 
-const GOAL_OPTIONS = [
-  { value: "lose",     icon: ArrowDown,  label: "Perdre du poids" },
-  { value: "maintain", icon: Scale,      label: "Maintenir le poids" },
-  { value: "gain",     icon: ArrowUp,    label: "Prendre du muscle" },
-  { value: "diabetes", icon: Droplets,   label: "Gérer le diabète" },
+// POIDS group — mutually exclusive (radio)
+const POIDS_OPTIONS = [
+  { value: "lose",     icon: ArrowDown, label: "Perdre du poids" },
+  { value: "maintain", icon: Scale,     label: "Maintenir le poids" },
+  { value: "gain",     icon: ArrowUp,   label: "Prendre du muscle" },
+]
+// CONDITION group — cumulative
+const CONDITION_OPTIONS = [
+  { value: "diabetes", icon: Droplets, label: "Gérer le diabète" },
 ]
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
-  const { setUser, user, setIsDiabetic } = useApp()
+  const { setUser, user, setIsDiabetic, login: contextLogin } = useApp()
   const [step, setStep] = useState<Step>(1)
   const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    confirmPassword: "",
     name: "",
     age: "",
     sex: "" as "male" | "female" | "other" | "",
@@ -35,19 +46,20 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
     activityLevel: 3 as 1 | 2 | 3 | 4 | 5,
   })
 
-  const [isDiabeticStep4, setIsDiabeticStep4] = useState<boolean | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
+  const [isDiabeticStep5, setIsDiabeticStep5] = useState<boolean | null>(null)
   const [consentChecked, setConsentChecked] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [registerError, setRegisterError] = useState<string | null>(null)
 
   const hasDiabetes = formData.goals.includes("diabetes")
-  // Step 4 (diabetic question) is skipped when "diabetes" already selected in step 3
-  const totalSteps = hasDiabetes ? 4 : 5
+  // Step 5 (diabetic question) is skipped when "diabetes" already selected in goals
+  const totalSteps = hasDiabetes ? 5 : 6
 
-  const toggleGoal = (value: string) => {
+  const handleToggleGoal = (value: string) => {
     setFormData((prev) => ({
       ...prev,
-      goals: prev.goals.includes(value)
-        ? prev.goals.filter((g) => g !== value)
-        : [...prev.goals, value],
+      goals: toggleGoal(prev.goals, value),
     }))
   }
 
@@ -58,9 +70,9 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
   }
 
   const calculateCalories = () => {
-    const weight = parseFloat(formData.weight) || 70
-    const height = parseFloat(formData.height) || 170
-    const age    = parseInt(formData.age)       || 30
+    const weight  = parseFloat(formData.weight)  || 70
+    const height  = parseFloat(formData.height)  || 170
+    const age     = parseInt(formData.age)        || 30
     const isFemale = formData.sex === "female"
     const bmr = isFemale
       ? 10 * weight + 6.25 * height - 5 * age - 161
@@ -68,59 +80,91 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
     const multipliers = [1.2, 1.375, 1.55, 1.725, 1.9]
     let tdee = bmr * multipliers[formData.activityLevel - 1]
     const primary = derivePrimaryGoal()
-    if (primary === "lose") tdee -= 500
+    if (primary === "lose") tdee -= 400
     if (primary === "gain") tdee += 300
     return Math.round(tdee)
   }
 
-  const handleComplete = () => {
-    const targetCalories = calculateCalories()
-    const isD = hasDiabetes || isDiabeticStep4 === true
-    setIsDiabetic(isD)
-    setUser({
-      ...user,
-      name:          formData.name || "Utilisateur",
-      age:           parseInt(formData.age)     || 30,
-      sex:           (formData.sex as "male" | "female" | "other") || "male",
-      height:        parseFloat(formData.height) || 170,
-      weight:        parseFloat(formData.weight) || 70,
-      goals:         formData.goals.length > 0 ? formData.goals : ["maintain"],
-      activityLevel: formData.activityLevel,
-      targetCalories,
-      isDiabetic: isD,
-    })
-    onComplete()
+  const handleComplete = async () => {
+    setIsSubmitting(true)
+    setRegisterError(null)
+    try {
+      const targetCalories = calculateCalories()
+      const isD = hasDiabetes || isDiabeticStep5 === true
+
+      const result = await register(
+        formData.email,
+        formData.password,
+        formData.name || "Utilisateur",
+        consentChecked
+      )
+
+      contextLogin(result.token, result.user)
+
+      setIsDiabetic(isD)
+      setUser({
+        ...user,
+        name:          result.user.name || formData.name || "Utilisateur",
+        age:           parseInt(formData.age)     || 30,
+        sex:           (formData.sex as "male" | "female" | "other") || "male",
+        height:        parseFloat(formData.height) || 170,
+        weight:        parseFloat(formData.weight) || 70,
+        goals:         formData.goals.length > 0 ? formData.goals : ["maintain"],
+        activityLevel: formData.activityLevel,
+        targetCalories,
+        isDiabetic:    isD,
+      })
+
+      onComplete()
+    } catch (err) {
+      const status = err instanceof ApiError ? err.status : 0
+      if (status === 409) {
+        setRegisterError("Un compte avec cet email existe déjà. Connectez-vous depuis la page d’accueil.")
+      } else if (status === 400) {
+        setRegisterError("Données invalides. Vérifiez vos informations.")
+      } else {
+        setRegisterError("Erreur d’inscription. Vérifiez votre connexion et réessayez.")
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
   }
+
+  const isEmailValid = EMAIL_REGEX.test(formData.email)
 
   const canProceed = () => {
     switch (step) {
-      case 1: return true
-      case 2: return !!(formData.name && formData.age && formData.sex && formData.height && formData.weight)
-      case 3: return formData.goals.length > 0
-      // Step 4 only shown when no diabetes selected — can always proceed (activity level has a default)
-      case 4: return true
-      case 5: return true
+      case 1: return consentChecked
+      case 2:
+        return (
+          isEmailValid &&
+          formData.password.length >= 6 &&
+          formData.password === formData.confirmPassword
+        )
+      case 3: return !!(formData.name && formData.age && formData.sex && formData.height && formData.weight)
+      case 4: return formData.goals.length > 0
+      case 5: return true // diabetic question — can always proceed
+      case 6: return true // ready screen
       default: return false
     }
   }
 
   const nextStep = () => {
-    if (step === 3 && hasDiabetes) {
-      // Skip activity step if diabetes selected — go straight to summary
-      setStep(5)
-    } else if (step < 5) {
+    if (step === 4 && hasDiabetes) {
+      setStep(6)
+    } else if (step < 6) {
       setStep((step + 1) as Step)
     } else {
       handleComplete()
     }
   }
 
-  const displayStep = step === 5 ? totalSteps : Math.min(step, totalSteps)
+  const displayStep = step === 6 ? totalSteps : Math.min(step, totalSteps)
 
   const slideVariants = {
-    enter: { opacity: 0, x: 40 },
+    enter:  { opacity: 0, x: 40 },
     center: { opacity: 1, x: 0 },
-    exit: { opacity: 0, x: -40 },
+    exit:   { opacity: 0, x: -40 },
   }
 
   return (
@@ -136,7 +180,7 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
         </div>
         <div className="flex items-center justify-between mt-2">
           <span className="text-[12px] text-muted-foreground">{displayStep}/{totalSteps}</span>
-          {onSkip && step < 5 && (
+          {onSkip && step < 6 && (
             <button onClick={onSkip} className="text-[13px] text-muted-foreground">
               Passer
             </button>
@@ -157,7 +201,7 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
               className="w-20 h-20 rounded-3xl flex items-center justify-center mb-8"
               style={{ backgroundColor: "var(--badge-positive-bg)" }}
             >
-              <span className="text-[36px] font-bold" style={{ color: "var(--primary)" }}>N</span>
+              <span className="text-[36px] font-semibold" style={{ color: "var(--primary)" }}>N</span>
             </div>
             <h1 className="text-[28px] font-semibold text-foreground mb-3">Bienvenue</h1>
             <p className="text-[16px] text-primary mb-2 font-medium">Votre app nutrition</p>
@@ -180,10 +224,97 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
           </motion.div>
         )}
 
-        {/* Step 2 — Body info */}
+        {/* Step 2 — Identifiants (email + mot de passe) */}
         {step === 2 && (
           <motion.div
             key="step2"
+            variants={slideVariants}
+            initial="enter" animate="center" exit="exit"
+            className="flex-1 flex flex-col px-6 py-6"
+          >
+            <h1 className="text-[22px] font-semibold text-foreground mb-2">Créez votre compte</h1>
+            <p className="text-[13px] text-muted-foreground mb-6">Vos identifiants de connexion</p>
+
+            <div className="flex-1 space-y-4">
+              <div>
+                <label className="text-[13px] font-medium text-foreground mb-1.5 block">Adresse email</label>
+                <Input
+                  type="email"
+                  placeholder="vous@exemple.fr"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="h-12 rounded-xl"
+                  autoComplete="email"
+                  inputMode="email"
+                />
+                {formData.email && !isEmailValid && (
+                  <p className="text-[12px] mt-1" style={{ color: "var(--risk)" }}>
+                    Adresse email invalide
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="text-[13px] font-medium text-foreground mb-1.5 block">Mot de passe</label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="6 caractères minimum"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="h-12 rounded-xl pr-11"
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    tabIndex={-1}
+                  >
+                    {showPassword
+                      ? <EyeOff className="h-4 w-4" />
+                      : <Eye className="h-4 w-4" />
+                    }
+                  </button>
+                </div>
+                {formData.password && formData.password.length < 6 && (
+                  <p className="text-[12px] mt-1" style={{ color: "var(--risk)" }}>
+                    6 caractères minimum
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="text-[13px] font-medium text-foreground mb-1.5 block">Confirmer le mot de passe</label>
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Répétez le mot de passe"
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                  className="h-12 rounded-xl"
+                  autoComplete="new-password"
+                />
+                {formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                  <p className="text-[12px] mt-1" style={{ color: "var(--risk)" }}>
+                    Les mots de passe ne correspondent pas
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <Button
+              size="lg"
+              className="w-full h-13 rounded-2xl gap-2 mt-6"
+              onClick={nextStep}
+              disabled={!canProceed()}
+            >
+              Continuer <ChevronRight className="h-5 w-5" />
+            </Button>
+          </motion.div>
+        )}
+
+        {/* Step 3 — Body info */}
+        {step === 3 && (
+          <motion.div
+            key="step3"
             variants={slideVariants}
             initial="enter" animate="center" exit="exit"
             className="flex-1 flex flex-col px-6 py-6"
@@ -266,42 +397,51 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
                 </div>
               </div>
             </div>
-            <Button size="lg" className="w-full h-13 rounded-2xl gap-2 mt-6" onClick={nextStep} disabled={!canProceed()}>
+            <Button
+              size="lg"
+              className="w-full h-13 rounded-2xl gap-2 mt-6"
+              onClick={nextStep}
+              disabled={!canProceed()}
+            >
               Continuer <ChevronRight className="h-5 w-5" />
             </Button>
           </motion.div>
         )}
 
-        {/* Step 3 — Goals (multi-select) + Activity */}
-        {step === 3 && (
+        {/* Step 4 — Goals (POIDS radio + CONDITION cumulative) + Activity */}
+        {step === 4 && (
           <motion.div
-            key="step3"
+            key="step4"
             variants={slideVariants}
             initial="enter" animate="center" exit="exit"
             className="flex-1 flex flex-col px-6 py-6"
           >
             <h1 className="text-[22px] font-semibold text-foreground mb-2">Vos objectifs</h1>
-            <p className="text-[13px] text-muted-foreground mb-5">Sélectionnez un ou plusieurs objectifs</p>
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              {GOAL_OPTIONS.map((goal) => {
+
+            {/* POIDS — radio exclusif */}
+            <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wide mb-2 mt-4">
+              Objectif de poids
+            </p>
+            <div className="grid grid-cols-3 gap-3 mb-5">
+              {POIDS_OPTIONS.map((goal) => {
                 const Icon = goal.icon
                 const selected = formData.goals.includes(goal.value)
                 return (
                   <button
                     key={goal.value}
-                    onClick={() => toggleGoal(goal.value)}
+                    onClick={() => handleToggleGoal(goal.value)}
                     className={cn(
-                      "p-5 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all active:scale-95",
+                      "p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all active:scale-95",
                       selected
                         ? "border-primary bg-[var(--badge-positive-bg)]"
                         : "border-border bg-card"
                     )}
                   >
                     <Icon
-                      className="h-6 w-6"
+                      className="h-5 w-5"
                       style={{ color: selected ? "var(--primary)" : "var(--muted-foreground)" }}
                     />
-                    <span className="text-[13px] font-medium text-center text-foreground leading-tight">
+                    <span className="text-[12px] font-medium text-center text-foreground leading-tight">
                       {goal.label}
                     </span>
                     {selected && (
@@ -319,9 +459,50 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
               })}
             </div>
 
+            {/* CONDITION — cumulative */}
+            <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+              Condition de santé (optionnel)
+            </p>
+            <div className="space-y-2 mb-5">
+              {CONDITION_OPTIONS.map((goal) => {
+                const Icon = goal.icon
+                const selected = formData.goals.includes(goal.value)
+                return (
+                  <button
+                    key={goal.value}
+                    onClick={() => handleToggleGoal(goal.value)}
+                    className={cn(
+                      "w-full p-4 rounded-2xl border-2 flex items-center gap-3 transition-all active:scale-[0.99]",
+                      selected
+                        ? "border-primary bg-[var(--badge-positive-bg)]"
+                        : "border-border bg-card"
+                    )}
+                  >
+                    <Icon
+                      className="h-5 w-5 shrink-0"
+                      style={{ color: selected ? "var(--primary)" : "var(--muted-foreground)" }}
+                    />
+                    <span className="text-[14px] font-medium text-foreground">{goal.label}</span>
+                    {selected && (
+                      <div
+                        className="ml-auto w-4 h-4 rounded-full flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: "var(--primary)" }}
+                      >
+                        <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
+                          <path d="M1 3L3 5L7 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+
             {/* Activity level */}
-            <div className="mb-6">
-              <label className="text-[13px] font-medium text-foreground mb-3 block">Niveau d&apos;activité physique</label>
+            <div className="mb-4">
+              <label className="text-[13px] font-medium text-foreground mb-3 block">
+                Niveau d&apos;activité physique
+              </label>
               <div className="flex gap-2">
                 {([1, 2, 3, 4, 5] as const).map((level) => (
                   <button
@@ -344,16 +525,21 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
               </div>
             </div>
 
-            <Button size="lg" className="w-full h-13 rounded-2xl gap-2 mt-auto" onClick={nextStep} disabled={!canProceed()}>
+            <Button
+              size="lg"
+              className="w-full h-13 rounded-2xl gap-2 mt-auto"
+              onClick={nextStep}
+              disabled={!canProceed()}
+            >
               Continuer <ChevronRight className="h-5 w-5" />
             </Button>
           </motion.div>
         )}
 
-        {/* Step 4 — Diabetic question (only shown when diabetes NOT in goals) */}
-        {step === 4 && !hasDiabetes && (
+        {/* Step 5 — Diabetic question (only when diabetes NOT in goals) */}
+        {step === 5 && !hasDiabetes && (
           <motion.div
-            key="step4"
+            key="step5"
             variants={slideVariants}
             initial="enter" animate="center" exit="exit"
             className="flex-1 flex flex-col px-6 py-6"
@@ -367,11 +553,11 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
                 { value: true  as boolean, icon: <Droplets className="h-5 w-5" />, label: "Oui, je suis diabétique" },
                 { value: false as boolean, icon: <ChevronRight className="h-5 w-5" />, label: "Non, continuer sans" },
               ] as const).map((opt) => {
-                const selected = isDiabeticStep4 === opt.value
+                const selected = isDiabeticStep5 === opt.value
                 return (
                   <button
                     key={String(opt.value)}
-                    onClick={() => setIsDiabeticStep4(opt.value)}
+                    onClick={() => setIsDiabeticStep5(opt.value)}
                     className={cn(
                       "w-full p-4 rounded-2xl border-2 text-left flex items-center gap-4 transition-all active:scale-[0.98]",
                       selected ? "border-primary bg-[var(--badge-positive-bg)]" : "border-border bg-card"
@@ -397,10 +583,10 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
           </motion.div>
         )}
 
-        {/* Step 5 — Ready */}
-        {step === 5 && (
+        {/* Step 6 — Ready */}
+        {step === 6 && (
           <motion.div
-            key="step5"
+            key="step6"
             variants={slideVariants}
             initial="enter" animate="center" exit="exit"
             className="flex-1 flex flex-col items-center justify-center px-6 text-center pb-8"
@@ -412,7 +598,7 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
               animate={{ scale: 1 }}
               transition={{ type: "spring", delay: 0.2 }}
             >
-              <span className="text-[36px] font-bold" style={{ color: "var(--primary)" }}>N</span>
+              <span className="text-[36px] font-semibold" style={{ color: "var(--primary)" }}>N</span>
             </motion.div>
 
             <h1 className="text-[28px] font-semibold text-foreground mb-6">Tout est prêt</h1>
@@ -434,9 +620,20 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
               </div>
             </div>
 
-            <Button size="lg" className="w-full max-w-xs h-13 rounded-2xl gap-2" onClick={handleComplete}>
-              Commencer
-              <ChevronRight className="h-5 w-5" />
+            {registerError && (
+              <div className="w-full max-w-sm mb-4 px-4 py-3 rounded-xl border border-destructive/30 bg-destructive/10">
+                <p className="text-[13px]" style={{ color: "var(--risk)" }}>{registerError}</p>
+              </div>
+            )}
+
+            <Button
+              size="lg"
+              className="w-full max-w-xs h-13 rounded-2xl gap-2"
+              onClick={handleComplete}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Création du compte..." : "Commencer"}
+              {!isSubmitting && <ChevronRight className="h-5 w-5" />}
             </Button>
           </motion.div>
         )}
@@ -466,13 +663,21 @@ function ConsentCheckbox({
           : <Square className="h-5 w-5 text-muted-foreground" />
         }
       </div>
-      <p className="text-[12px] text-muted-foreground leading-snug">
-        J&apos;accepte que mes données de santé soient traitées conformément à la{" "}
-        <span className="underline" style={{ color: "var(--primary)" }}>
-          politique de confidentialité
-        </span>
-        {" "}· RGPD Art. 9
-      </p>
+      <div className="text-[12px] text-muted-foreground leading-snug space-y-1">
+        <p>
+          J&apos;accepte que mes données de santé soient traitées conformément à la{" "}
+          <span className="underline" style={{ color: "var(--primary)" }}>politique de confidentialité</span>
+          {" "}&middot; RGPD Art. 9
+        </p>
+        <p>
+          I agree my health data is processed per the{" "}
+          <span className="underline" style={{ color: "var(--primary)" }}>privacy policy</span>
+          {" "}&middot; GDPR Art. 9
+        </p>
+        <p dir="rtl">
+          {"\\u0623\\u0648\\u0627\\u0641\\u0642 \\u0639\\u0644\\u0649 \\u0645\\u0639\\u0627\\u0644\\u062C\\u0629 \\u0628\\u064A\\u0627\\u0646\\u0627\\u062A\\u064A \\u0627\\u0644\\u0635\\u062D\\u064A\\u0629 \\u00B7 RGPD \\u0627\\u0644\\u0645\\u0627\\u062F\\u0629 9"}
+        </p>
+      </div>
     </button>
   )
 }

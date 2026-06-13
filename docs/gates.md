@@ -7,6 +7,7 @@
 | 12/06/2026 | P4 connexion backend | GO | tsc 0 erreur, 81/81 tests verts, REG-03 corrigé (GET→POST), SL-UI emojis/gradient nettoyés, SL-03 \uXXXX | M-02..M-08 différés P5 |
 | 13/06/2026 | P4.5 alignement backend POST /query | GO | 4 POST /query ajoutés (journal, glucose, weight, activities), alias /api/activities, 93/93 TU verts, REG-03 précisé (dates ≠ données santé) | — |
 | 13/06/2026 | P4.6 corrections UX (double /api, onboarding, design) | GO | build 0 erreur, 81/81 tests, B1-B4 revue-code résolus, KO-1/KO-2 réglementaire résolus | M-R1, M-T1, M-U1 différés P5 |
+| 13/06/2026 | P4.7 chaîne auth complète + objectifs + divers | GO | tsc 0 erreur, 102/102 tests, B1-B4+M-01..M-05+KO REG-04 résolus | M-03 (i18n onboarding/landing all-FR) différé P5 — dette pré-existante ; SL-03 Arabic chars in types.ts différé P5 |
 
 ---
 

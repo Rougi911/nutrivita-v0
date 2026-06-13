@@ -1,22 +1,25 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { BarChart3, BookOpen, Camera, ChevronRight, Droplets, Globe, Home, Lock, Mic, Settings, ShoppingCart, Star } from "lucide-react"
+import { BarChart3, BookOpen, Camera, ChevronRight, Droplets, Globe, Home, Lock, Mic, Settings, ShoppingCart, Star, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { CalorieRing } from "./calorie-ring"
+import { useApp } from "@/lib/app-context"
+import { loginApi, ApiError } from "@/lib/api"
 
 interface LandingPageProps {
   onGetStarted: () => void
 }
 
 const features = [
-  { icon: Camera,       title: "Détection par photo",       desc: "L'IA identifie le plat et calcule les calories automatiquement" },
-  { icon: Droplets,     title: "Suivi glycémique",          desc: "Import CGM, analyse GMI/TIR, alertes personnalisées" },
-  { icon: ShoppingCart, title: "Scan des courses",          desc: "Nutri-Score, additifs à risque, alternatives plus saines" },
-  { icon: Mic,          title: "Saisie vocale",             desc: "Parlez en français, arabe ou anglais" },
-  { icon: Globe,        title: "FR / عربي / EN",            desc: "Interface complète en 3 langues avec support RTL" },
-  { icon: Lock,         title: "Données protégées · RGPD",  desc: "Vos données restent sur votre appareil, chiffrées" },
+  { icon: Camera,       title: "Détection par photo",      desc: "L'IA identifie le plat et calcule les calories automatiquement" },
+  { icon: Droplets,     title: "Suivi glycémique",         desc: "Import CGM, analyse GMI/TIR, alertes personnalisées" },
+  { icon: ShoppingCart, title: "Scan des courses",         desc: "Nutri-Score, additifs à risque, alternatives plus saines" },
+  { icon: Mic,          title: "Saisie vocale",            desc: "Parlez en français, arabe ou anglais" },
+  { icon: Globe,        title: "Multilingue",              desc: "Interface complète en 3 langues avec support RTL" },
+  { icon: Lock,         title: "Données protégées · RGPD", desc: "Vos données restent sur votre appareil, chiffrées" },
 ]
 
 const testimonials = [
@@ -28,18 +31,45 @@ const testimonials = [
 type Tab = "user" | "pro"
 
 export function LandingPage({ onGetStarted }: LandingPageProps) {
+  const { login } = useApp()
   const [tab, setTab] = useState<Tab>("user")
   const [proEmail, setProEmail] = useState("")
+
+  // Login form state
+  const [showLogin, setShowLogin] = useState(false)
+  const [loginEmail, setLoginEmail] = useState("")
+  const [loginPassword, setLoginPassword] = useState("")
+  const [loginError, setLoginError] = useState<string | null>(null)
+  const [isLoggingIn, setIsLoggingIn] = useState(false)
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoggingIn(true)
+    setLoginError(null)
+    try {
+      const result = await loginApi(loginEmail, loginPassword)
+      login(result.token, result.user)
+      // isAuthenticated becomes true → nutrivita-app.tsx effect routes to "main"
+    } catch (err) {
+      const status = err instanceof ApiError ? err.status : 0
+      if (status === 401 || status === 400) {
+        setLoginError("Email ou mot de passe incorrect.")
+      } else {
+        setLoginError("Erreur de connexion. Vérifiez votre réseau.")
+      }
+    } finally {
+      setIsLoggingIn(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">
       {/* ─── Nav ────────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="max-w-4xl mx-auto px-5 h-14 flex items-center justify-between">
-          {/* Logo — "N" + NutriVita, no emoji */}
           <div className="flex items-center gap-2">
             <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-primary-foreground text-[15px] font-bold"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-primary-foreground text-[15px] font-semibold"
               style={{ backgroundColor: "var(--primary)" }}
             >
               N
@@ -48,7 +78,6 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Tab toggle: Utilisateur / Praticien */}
             <div className="hidden sm:flex rounded-full border border-border overflow-hidden">
               {(["user", "pro"] as Tab[]).map((t) => (
                 <button
@@ -62,6 +91,12 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                 </button>
               ))}
             </div>
+            <button
+              onClick={() => setShowLogin((v) => !v)}
+              className="text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Se connecter
+            </button>
             <Button size="sm" className="rounded-xl h-9 gap-1.5 text-[13px]" onClick={onGetStarted}>
               Commencer <ChevronRight className="h-3.5 w-3.5" />
             </Button>
@@ -69,10 +104,75 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
         </div>
       </header>
 
+      {/* ─── Login panel (slide-down) ──────────────────────── */}
+      {showLogin && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="border-b border-border bg-card"
+        >
+          <div className="max-w-sm mx-auto px-5 py-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-[17px] font-semibold text-foreground">Se connecter</h2>
+              <button onClick={() => setShowLogin(false)}>
+                <X className="h-5 w-5 text-muted-foreground" />
+              </button>
+            </div>
+            <form onSubmit={handleLogin} className="space-y-3">
+              <div>
+                <label className="text-[13px] font-medium text-foreground mb-1.5 block">Email</label>
+                <Input
+                  type="email"
+                  placeholder="vous@exemple.fr"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  className="h-11 rounded-xl"
+                  autoComplete="email"
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-[13px] font-medium text-foreground mb-1.5 block">Mot de passe</label>
+                <Input
+                  type="password"
+                  placeholder="Votre mot de passe"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  className="h-11 rounded-xl"
+                  autoComplete="current-password"
+                  required
+                />
+              </div>
+              {loginError && (
+                <p className="text-[12px]" style={{ color: "var(--risk)" }}>{loginError}</p>
+              )}
+              <Button
+                type="submit"
+                className="w-full h-11 rounded-xl"
+                disabled={isLoggingIn || !loginEmail || !loginPassword}
+              >
+                {isLoggingIn ? "Connexion..." : "Se connecter"}
+              </Button>
+              <p className="text-center text-[12px] text-muted-foreground">
+                Pas encore de compte ?{" "}
+                <button
+                  type="button"
+                  onClick={() => { setShowLogin(false); onGetStarted() }}
+                  className="underline"
+                  style={{ color: "var(--primary)" }}
+                >
+                  Créer un compte
+                </button>
+              </p>
+            </form>
+          </div>
+        </motion.div>
+      )}
+
       {/* ─── User tab content ──────────────────────────────── */}
       {tab === "user" && (
         <>
-          {/* Hero — flat, 2-column on desktop */}
+          {/* Hero */}
           <section className="max-w-4xl mx-auto px-5 pt-16 pb-12">
             <div className="flex flex-col md:flex-row items-center gap-10">
               <motion.div
@@ -85,7 +185,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                   Comprenez ce que vous mangez,<br className="hidden md:block" /> en une photo
                 </h1>
                 <p className="text-[16px] text-muted-foreground mb-6">
-                  Photo, voix, calories, poids, glycémie et courses — en FR, عربي et EN
+                  Photo, voix, calories, poids, glycémie et courses — en 3 langues
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
                   <Button size="lg" className="h-12 rounded-2xl gap-2 px-6 text-[15px]" onClick={onGetStarted}>
@@ -93,11 +193,11 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                   </Button>
                 </div>
                 <p className="mt-4 text-[12px] text-muted-foreground">
-                  Données protégées · RGPD &nbsp;|&nbsp; Protected data · GDPR &nbsp;|&nbsp; {"بيانات محمية · RGPD"}
+                  Données protégées · RGPD &nbsp;|&nbsp; Protected data · GDPR &nbsp;|&nbsp; {"\\u0628\\u064A\\u0627\\u0646\\u0627\\u062A \\u0645\\u062D\\u0645\\u064A\\u0629 \\u00B7 RGPD"}
                 </p>
               </motion.div>
 
-              {/* Phone mock — decorative only, aria-hidden */}
+              {/* Phone mock — decorative only */}
               <motion.div
                 className="shrink-0 w-52 h-[420px] rounded-[36px] bg-card border-2 border-border overflow-hidden flex flex-col"
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -105,7 +205,6 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                 transition={{ delay: 0.3 }}
                 aria-hidden="true"
               >
-                {/* Status bar */}
                 <div className="flex items-center justify-between px-5 pt-3 pb-0.5">
                   <span className="text-[8px] font-semibold text-foreground">9:41</span>
                   <div className="flex items-center gap-0.5">
@@ -114,15 +213,12 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                     </div>
                   </div>
                 </div>
-                {/* Header */}
                 <div className="px-4 pt-0.5 pb-1">
                   <p className="text-[11px] font-semibold text-foreground">Bonjour Ahmed</p>
                 </div>
-                {/* Calorie ring */}
                 <div className="flex justify-center py-1">
                   <CalorieRing consumed={1420} target={2100} burned={350} size={120} />
                 </div>
-                {/* Macro bars */}
                 <div className="grid grid-cols-3 gap-1.5 px-3 mt-1">
                   {[
                     { label: "Glucides",  value: 180, target: 236, color: "var(--amber)" },
@@ -130,7 +226,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                     { label: "Lipides",   value: 38,  target: 58,  color: "var(--lipids)" },
                   ].map((m) => (
                     <div key={m.label} className="rounded-xl border border-border bg-background p-1.5 flex flex-col items-center gap-0.5">
-                      <span className="text-[11px] font-bold text-foreground">{m.value}g</span>
+                      <span className="text-[11px] font-semibold text-foreground">{m.value}g</span>
                       <span className="text-[7px] text-muted-foreground">{m.label}</span>
                       <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
                         <div
@@ -144,7 +240,6 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                     </div>
                   ))}
                 </div>
-                {/* Glucose card */}
                 <div className="mx-3 mt-2 rounded-xl border border-border bg-background p-2 flex items-center justify-between">
                   <div className="flex items-center gap-1">
                     <div
@@ -157,7 +252,6 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                   </div>
                   <span className="text-[13px] font-semibold" style={{ color: "var(--glucose)" }}>1.2 g/L</span>
                 </div>
-                {/* Mini bottom nav */}
                 <div className="mt-auto border-t border-border flex justify-around px-2 py-2.5">
                   {[
                     { Icon: Home,         active: true  },
@@ -181,7 +275,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
             </div>
           </section>
 
-          {/* Features — 4-icon row */}
+          {/* Features */}
           <section className="border-t border-border bg-muted/30 py-12 px-5">
             <div className="max-w-4xl mx-auto">
               <h2 className="text-[22px] font-semibold text-foreground text-center mb-8">Fonctionnalités</h2>
@@ -245,7 +339,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
             </div>
           </section>
 
-          {/* CTA — flat teal, no gradient */}
+          {/* CTA — flat teal */}
           <section className="py-12 px-5" style={{ backgroundColor: "var(--primary)" }}>
             <div className="max-w-xl mx-auto text-center text-primary-foreground">
               <h2 className="text-[24px] font-semibold mb-3">
@@ -266,14 +360,14 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
         </>
       )}
 
-      {/* ─── Pro tab content ───────────────────────────────── */}
+      {/* ─── Pro tab ──────────────────────────────────────── */}
       {tab === "pro" && (
         <section className="max-w-xl mx-auto px-5 pt-16 pb-12 text-center">
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
             style={{ backgroundColor: "var(--badge-positive-bg)" }}
           >
-            <span className="text-[28px] font-bold" style={{ color: "var(--primary)" }}>N</span>
+            <span className="text-[28px] font-semibold" style={{ color: "var(--primary)" }}>N</span>
           </div>
           <h2 className="text-[24px] font-semibold text-foreground mb-3">Espace professionnel</h2>
           <p className="text-[14px] text-muted-foreground mb-6">
@@ -292,17 +386,17 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
             </Button>
           </div>
           <p className="mt-4 text-[11px] text-muted-foreground">
-            Données protégées · RGPD &nbsp;|&nbsp; Protected data · GDPR &nbsp;|&nbsp; {"بيانات محمية · RGPD"}
+            Données protégées · RGPD &nbsp;|&nbsp; Protected data · GDPR &nbsp;|&nbsp; {"\\u0628\\u064A\\u0627\\u0646\\u0627\\u062A \\u0645\\u062D\\u0645\\u064A\\u0629 \\u00B7 RGPD"}
           </p>
         </section>
       )}
 
-      {/* ─── Footer ──────────────────────────────────────────── */}
+      {/* ─── Footer ──────────────────────────────────────── */}
       <footer className="border-t border-border py-8 px-5">
         <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-[13px] text-muted-foreground">
           <div className="flex items-center gap-2">
             <div
-              className="w-6 h-6 rounded-md flex items-center justify-center text-primary-foreground text-[11px] font-bold"
+              className="w-6 h-6 rounded-md flex items-center justify-center text-primary-foreground text-[11px] font-semibold"
               style={{ backgroundColor: "var(--primary)" }}
             >
               N
