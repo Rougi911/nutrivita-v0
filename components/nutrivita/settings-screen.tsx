@@ -257,7 +257,7 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="fr">FR</SelectItem>
-                <SelectItem value="ar">{"\\u0639\\u0631\\u0628\\u064A"}</SelectItem>
+                <SelectItem value="ar">{"\u0639\u0631\u0628\u064A"}</SelectItem>
                 <SelectItem value="en">EN</SelectItem>
               </SelectContent>
             </Select>
@@ -305,7 +305,7 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
 
         {/* Integrations */}
         <SettingsGroup title={t("integrations")}>
-          <IntegrationRow name="Strava"       status="connected"    email="ahmed@example.com" />
+          <IntegrationRow name="Strava"       status="connected"    email={user.email} />
           <IntegrationRow name="LibreView"    status="disconnected" actionLabel={t("importCsv")} />
           <IntegrationRow name="Apple Health" status="unavailable" />
         </SettingsGroup>

@@ -72,8 +72,12 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
     if (!res.ok) {
       const text = await res.text().catch(() => "")
+      console.error(`[API] ${init?.method ?? "GET"} ${path} → ${res.status}`, text)
       throw new ApiError(res.status, text)
     }
+
+    // 204 No Content — legitimate empty response (e.g. /api/stats/deficiencies)
+    if (res.status === 204) return null as unknown as T
 
     return res.json() as Promise<T>
   } catch (err) {
@@ -196,12 +200,13 @@ export async function loginApi(email: string, password: string): Promise<AuthRes
 // ─── Endpoints ───────────────────────────────────────────────────────────────
 
 export async function interpretMedia(
-  mode: "photo" | "voice",
-  content: string
+  mode: "photo" | "voice" | "text",
+  payload: string,
+  lang?: string
 ): Promise<ApiInterpretResponse> {
   return apiFetch<ApiInterpretResponse>("/api/interpret", {
     method: "POST",
-    body: JSON.stringify({ mode, content }),
+    body: JSON.stringify({ mode, payload, ...(lang ? { lang } : {}) }),
   })
 }
 
@@ -228,8 +233,8 @@ export async function getGroceriesSummary(): Promise<{
   }
 }
 
-export async function getDeficiencies(): Promise<ApiDeficienciesResponse> {
-  return apiFetch<ApiDeficienciesResponse>("/api/stats/deficiencies")
+export async function getDeficiencies(): Promise<ApiDeficienciesResponse | null> {
+  return apiFetch<ApiDeficienciesResponse | null>("/api/stats/deficiencies")
 }
 
 export async function getJournal(date: string): Promise<MealEntry[]> {

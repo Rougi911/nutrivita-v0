@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
@@ -31,7 +31,7 @@ const CONDITION_OPTIONS = [
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
-  const { setUser, user, setIsDiabetic, login: contextLogin } = useApp()
+  const { setUser, user, setIsDiabetic, login: contextLogin, language } = useApp()
   const [step, setStep] = useState<Step>(1)
   const [formData, setFormData] = useState({
     email: "",
@@ -210,7 +210,7 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
             </p>
 
             {/* Consentement RGPD Art. 9 — obligatoire avant collecte données de santé */}
-            <ConsentCheckbox checked={consentChecked} onChange={setConsentChecked} />
+            <ConsentCheckbox checked={consentChecked} onChange={setConsentChecked} language={language} />
 
             <Button
               size="lg"
@@ -647,10 +647,35 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
 function ConsentCheckbox({
   checked,
   onChange,
+  language,
 }: {
   checked: boolean
   onChange: (v: boolean) => void
+  language: "fr" | "ar" | "en"
 }) {
+  const consentByLang = {
+    fr: (
+      <p>
+        J&apos;accepte que mes données de santé soient traitées conformément à la{" "}
+        <span className="underline" style={{ color: "var(--primary)" }}>politique de confidentialité</span>
+        {" "}&middot; RGPD Art. 9
+      </p>
+    ),
+    en: (
+      <p>
+        I agree my health data is processed per the{" "}
+        <span className="underline" style={{ color: "var(--primary)" }}>privacy policy</span>
+        {" "}&middot; GDPR Art. 9
+      </p>
+    ),
+    ar: (
+      <p dir="rtl">
+        {"\u0623\u0648\u0627\u0641\u0642 \u0639\u0644\u0649 \u0645\u0639\u0627\u0644\u062C\u0629 \u0628\u064A\u0627\u0646\u0627\u062A\u064A \u0627\u0644\u0635\u062D\u064A\u0629"}
+        {" · RGPD \u0627\u0644\u0645\u0627\u062F\u0629 9"}
+      </p>
+    ),
+  }
+
   return (
     <button
       type="button"
@@ -663,20 +688,8 @@ function ConsentCheckbox({
           : <Square className="h-5 w-5 text-muted-foreground" />
         }
       </div>
-      <div className="text-[12px] text-muted-foreground leading-snug space-y-1">
-        <p>
-          J&apos;accepte que mes données de santé soient traitées conformément à la{" "}
-          <span className="underline" style={{ color: "var(--primary)" }}>politique de confidentialité</span>
-          {" "}&middot; RGPD Art. 9
-        </p>
-        <p>
-          I agree my health data is processed per the{" "}
-          <span className="underline" style={{ color: "var(--primary)" }}>privacy policy</span>
-          {" "}&middot; GDPR Art. 9
-        </p>
-        <p dir="rtl">
-          {"\\u0623\\u0648\\u0627\\u0641\\u0642 \\u0639\\u0644\\u0649 \\u0645\\u0639\\u0627\\u0644\\u062C\\u0629 \\u0628\\u064A\\u0627\\u0646\\u0627\\u062A\\u064A \\u0627\\u0644\\u0635\\u062D\\u064A\\u0629 \\u00B7 RGPD \\u0627\\u0644\\u0645\\u0627\\u062F\\u0629 9"}
-        </p>
+      <div className="text-[12px] text-muted-foreground leading-snug">
+        {consentByLang[language]}
       </div>
     </button>
   )

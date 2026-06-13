@@ -9,6 +9,7 @@ export type Language = "fr" | "ar" | "en"
 export interface User {
   id: string
   name: string
+  email?: string
   age: number
   height: number // cm
   weight: number // kg
@@ -220,7 +221,9 @@ export const translations = {
     searchFood: "Rechercher un aliment...",
     search: "Recherche",
     recentlyAdded: "Récemment ajoutés",
+    all: "Tous",
     yourFavorites: "Vos favoris",
+    searchResults: "Résultats",
     addToMeal: "Ajouter au",
     portion: "Portion",
     customize: "Personnaliser",
@@ -415,6 +418,16 @@ export const translations = {
     featureBarcode: "Scan des courses",
     featurePro: "Suivi par un diététicien",
     users: "utilisateurs",
+    noDeficiencyData: "Pas assez de données sur 14 jours pour estimer les carences",
+    scannerOpenCamera: "Ouvrir la caméra",
+    scannerManualBarcode: "Saisir le code-barres manuellement",
+    scannerScanBarcode: "Scanner le code-barres",
+    cameraPermissionDenied: "Accès à la caméra refusé — utilisez la saisie manuelle",
+    addedToJournal: "Ajouté au journal",
+    scannerError: "Erreur de lecture du code-barres",
+    serverUnavailable: "Serveur indisponible",
+    connectingToServer: "Connexion au serveur en cours...",
+    voiceSpeechNotSupported: "Reconnaissance vocale non disponible sur ce navigateur",
   },
   ar: {
     journal: "اليومية",
@@ -463,7 +476,9 @@ export const translations = {
     searchFood: "ابحث عن طعام...",
     search: "بحث",
     recentlyAdded: "أضيف مؤخراً",
+    all: "الكل",
     yourFavorites: "مفضلاتك",
+    searchResults: "نتائج البحث",
     addToMeal: "أضف إلى",
     portion: "الحصة",
     customize: "تخصيص",
@@ -640,6 +655,16 @@ export const translations = {
     featureBarcode: "مسح المشتريات",
     featurePro: "متابعة بواسطة اختصاصي",
     users: "مستخدم",
+    noDeficiencyData: "لا توجد بيانات كافية لتقدير النقص",
+    scannerOpenCamera: "فتح الكاميرا",
+    scannerManualBarcode: "إدخال الباركود يدوياً",
+    scannerScanBarcode: "مسح الباركود",
+    cameraPermissionDenied: "تم رفض الوصول إلى الكاميرا",
+    addedToJournal: "تم الإضافة إلى اليومية",
+    scannerError: "خطأ في قراءة الباركود",
+    serverUnavailable: "الخادم غير متاح",
+    connectingToServer: "جاري الاتصال بالخادم...",
+    voiceSpeechNotSupported: "التعرف على الصوت غير مدعوم في هذا المتصفح",
   },
   en: {
     journal: "Journal",
@@ -688,7 +713,9 @@ export const translations = {
     searchFood: "Search for food...",
     search: "Search",
     recentlyAdded: "Recently added",
+    all: "All",
     yourFavorites: "Your favorites",
+    searchResults: "Results",
     addToMeal: "Add to",
     portion: "Portion",
     customize: "Customize",
@@ -865,6 +892,16 @@ export const translations = {
     featureBarcode: "Grocery scanning",
     featurePro: "Dietician monitoring",
     users: "users",
+    noDeficiencyData: "Not enough data over 14 days to estimate deficiencies",
+    scannerOpenCamera: "Open camera",
+    scannerManualBarcode: "Enter barcode manually",
+    scannerScanBarcode: "Scan barcode",
+    cameraPermissionDenied: "Camera access denied — use manual entry",
+    addedToJournal: "Added to journal",
+    scannerError: "Barcode read error",
+    serverUnavailable: "Server unavailable",
+    connectingToServer: "Connecting to server...",
+    voiceSpeechNotSupported: "Speech recognition not available in this browser",
   },
 }
 

@@ -8,6 +8,8 @@
 | 13/06/2026 | P4.5 alignement backend POST /query | GO | 4 POST /query ajoutés (journal, glucose, weight, activities), alias /api/activities, 93/93 TU verts, REG-03 précisé (dates ≠ données santé) | — |
 | 13/06/2026 | P4.6 corrections UX (double /api, onboarding, design) | GO | build 0 erreur, 81/81 tests, B1-B4 revue-code résolus, KO-1/KO-2 réglementaire résolus | M-R1, M-T1, M-U1 différés P5 |
 | 13/06/2026 | P4.7 chaîne auth complète + objectifs + divers | GO | tsc 0 erreur, 102/102 tests, B1-B4+M-01..M-05+KO REG-04 résolus | M-03 (i18n onboarding/landing all-FR) différé P5 — dette pré-existante ; SL-03 Arabic chars in types.ts différé P5 |
+| 13/06/2026 | P4.8 boutons inertes + offline + erreurs silencieuses | GO | tsc 0 erreur, 107/107 tests, B-1..B-6 revue-code résolus, REG GO (SL-03 \uXXXX onboarding+settings corrigé) | — |
+| 14/06/2026 | P4.10 PayloadTooLargeError /api/interpret + CORS erreurs (backend nutridz) | GO | 102/102 tests, limit 15MB ciblée sur /api/interpret, rate-limiter avant body-parsers, error-handler CORS, err.message masqué sur routes santé, userId pseudonymisé dans logs Strava | Suivi frontend : redimensionner image côté client à max 1280px avant envoi (P5) |
 
 ---
 

@@ -1,13 +1,15 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { Camera, Loader2, Mic, ScanLine, Search, X } from "lucide-react"
+import { Camera, Loader2, Mic, ScanLine, Search, X, KeyboardIcon } from "lucide-react"
 import { useApp } from "@/lib/app-context"
-import { interpretMedia } from "@/lib/api"
+import { interpretMedia, scanBarcode } from "@/lib/api"
 import { SAMPLE_FOODS } from "@/lib/types"
 import type { ApiInterpretResponse } from "@/lib/api-types"
 import { InterpretConfirm } from "@/components/nutrivita/interpret-confirm"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 const recentFoodIds = ["1", "3", "9", "5", "7"]
@@ -48,11 +50,12 @@ const quickActions = [
 ] as const
 
 export function AddSheet() {
-  const { setShowAddSheet, t, setShowFoodSearch, language } = useApp()
+  const { setShowAddSheet, t, setShowFoodSearch, language, addMealEntry, currentDate, addScannedProduct } = useApp()
 
   const [interpResult, setInterpResult] = useState<ApiInterpretResponse | null>(null)
   const [interpreting, setInterpreting] = useState(false)
   const [interpError, setInterpError] = useState<string | null>(null)
+  const [showScanner, setShowScanner] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const recentFoods = recentFoodIds
@@ -63,13 +66,26 @@ export function AddSheet() {
     setInterpreting(true)
     setInterpError(null)
     try {
-      const result = await interpretMedia("voice", text)
+      // mode:"text" for transcribed text (backend contract: photo|voice|text)
+      const result = await interpretMedia("text", text, language)
       setInterpResult(result)
-    } catch {
+    } catch (err) {
+      console.error("[AddSheet] interpret text failed:", err)
       setInterpError(t("errorLoading"))
     } finally {
       setInterpreting(false)
     }
+  }
+
+  const handleRelogFood = (food: (typeof SAMPLE_FOODS)[number]) => {
+    addMealEntry({
+      foodId: food.id,
+      food,
+      amount: 100,
+      mealType: "lunch",
+      date: currentDate,
+    })
+    setShowAddSheet(false)
   }
 
   const handlePhotoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -84,9 +100,11 @@ export function AddSheet() {
         reader.onerror = reject
         reader.readAsDataURL(file)
       })
+      // mode:"photo", payload = base64 string
       const result = await interpretMedia("photo", base64)
       setInterpResult(result)
-    } catch {
+    } catch (err) {
+      console.error("[AddSheet] interpret photo failed:", err)
       setInterpError(t("errorLoading"))
     } finally {
       setInterpreting(false)
@@ -114,8 +132,7 @@ export function AddSheet() {
         : undefined
 
     if (!SpeechRecognitionClass) {
-      const text = window.prompt(t("speakNow"))
-      if (text) callInterpretText(text)
+      setInterpError(t("voiceSpeechNotSupported"))
       return
     }
 
@@ -154,6 +171,7 @@ export function AddSheet() {
   }
 
   return (
+    <>
     <AnimatePresence>
       <motion.div
         className="fixed inset-0 z-50 flex items-end"
@@ -213,7 +231,9 @@ export function AddSheet() {
                         setShowFoodSearch(true)
                         setShowAddSheet(false)
                       }
-                      // scanner: stub (redirect to food search as fallback)
+                      if (action.id === "scanner") {
+                        setShowScanner(true)
+                      }
                     }}
                     className="flex items-center gap-3 rounded-2xl border border-border p-3.5 active:scale-[0.97] transition-transform text-left"
                   >
@@ -264,6 +284,7 @@ export function AddSheet() {
                     food ? (
                       <button
                         key={food.id}
+                        onClick={() => handleRelogFood(food)}
                         className="px-3 py-1.5 rounded-full border border-border bg-card text-[13px] text-foreground font-medium active:scale-95 transition-transform"
                       >
                         {food.name}
@@ -303,5 +324,205 @@ export function AddSheet() {
         </motion.div>
       </motion.div>
     </AnimatePresence>
+
+    <AnimatePresence>
+      {showScanner && (
+        <ScannerModal
+          onClose={() => setShowScanner(false)}
+          onScanned={(product) => {
+            addScannedProduct(product)
+            setShowScanner(false)
+            setShowAddSheet(false)
+          }}
+        />
+      )}
+    </AnimatePresence>
+    </>
+  )
+}
+
+// ─── ScannerModal ─────────────────────────────────────────────────────────────
+
+function ScannerModal({
+  onClose,
+  onScanned,
+}: {
+  onClose: () => void
+  onScanned: (product: import("@/lib/types").ScannedProduct) => void
+}) {
+  const { t } = useApp()
+  const [manualBarcode, setManualBarcode] = useState("")
+  const [scanning, setScanning] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [cameraError, setCameraError] = useState<string | null>(null)
+  const [showManual, setShowManual] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const activeRef = useRef(true)
+
+  const handleBarcode = useCallback(async (barcode: string) => {
+    if (!activeRef.current) return
+    setScanning(true)
+    setError(null)
+    try {
+      const product = await scanBarcode(barcode)
+      onScanned(product)
+      onClose()
+    } catch (err) {
+      console.error("[ScannerModal] scanBarcode failed:", err)
+      setError(t("scannerError"))
+    } finally {
+      setScanning(false)
+    }
+  }, [onClose, onScanned, t])
+
+  useEffect(() => {
+    activeRef.current = true
+    if (showManual) return
+
+    ;(async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+        })
+        if (!activeRef.current) { stream.getTracks().forEach((tr) => tr.stop()); return }
+        streamRef.current = stream
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          videoRef.current.play().catch(() => {})
+        }
+
+        // Use native BarcodeDetector if available (Chrome/Android)
+        const win = window as unknown as Record<string, unknown>
+        if (typeof win["BarcodeDetector"] === "function") {
+          type BD = { detect: (src: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> }
+          const BarcodeDetector = win["BarcodeDetector"] as new (opts: object) => BD
+          const detector = new BarcodeDetector({ formats: ["ean_13", "ean_8", "code_128", "qr_code"] })
+          const loop = async () => {
+            if (!activeRef.current || !videoRef.current) return
+            try {
+              const codes = await detector.detect(videoRef.current)
+              if (codes.length > 0) {
+                activeRef.current = false
+                stream.getTracks().forEach((tr) => tr.stop())
+                handleBarcode(codes[0].rawValue)
+              } else {
+                requestAnimationFrame(loop)
+              }
+            } catch {
+              requestAnimationFrame(loop)
+            }
+          }
+          if (videoRef.current) {
+            videoRef.current.onloadedmetadata = () => { if (activeRef.current) requestAnimationFrame(loop) }
+          }
+        } else {
+          // No BarcodeDetector → switch to manual entry
+          setCameraError(null)
+          setShowManual(true)
+        }
+      } catch {
+        if (activeRef.current) setCameraError(t("cameraPermissionDenied"))
+        setShowManual(true)
+      }
+    })()
+
+    return () => {
+      activeRef.current = false
+      streamRef.current?.getTracks().forEach((tr) => tr.stop())
+    }
+  }, [showManual, handleBarcode, t])
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-[60] bg-background"
+      initial={{ y: "100%" }}
+      animate={{ y: 0 }}
+      exit={{ y: "100%" }}
+      transition={{ type: "spring", damping: 28, stiffness: 280 }}
+    >
+      <div className="flex flex-col h-full">
+        {/* Header */}
+        <div className="flex items-center gap-3 px-4 py-4 border-b border-border">
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-muted flex items-center justify-center"
+            aria-label={t("cancel")}
+          >
+            <X className="h-4 w-4 text-muted-foreground" />
+          </button>
+          <h2 className="text-[16px] font-semibold text-foreground">{t("scanProduct")}</h2>
+        </div>
+
+        <div className="flex-1 flex flex-col items-center justify-center gap-6 px-6">
+          {!showManual && !cameraError ? (
+            <>
+              {/* Camera viewfinder */}
+              <div className="relative w-full max-w-sm aspect-square rounded-2xl overflow-hidden bg-black">
+                <video
+                  ref={videoRef}
+                  className="w-full h-full object-cover"
+                  muted
+                  playsInline
+                />
+                {/* Scanning frame overlay */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-48 h-48 border-2 border-primary rounded-xl opacity-80" />
+                </div>
+              </div>
+              <p className="text-[13px] text-muted-foreground text-center">{t("scannerScanBarcode")}</p>
+              <button
+                onClick={() => setShowManual(true)}
+                className="flex items-center gap-2 text-[13px] text-primary"
+              >
+                <KeyboardIcon className="h-4 w-4" />
+                {t("scannerManualBarcode")}
+              </button>
+            </>
+          ) : (
+            <>
+              {cameraError && (
+                <p className="text-[13px] text-center" style={{ color: "var(--amber)" }}>{cameraError}</p>
+              )}
+              <div className="w-full max-w-sm space-y-3">
+                <p className="text-[14px] font-medium text-foreground">{t("scannerManualBarcode")}</p>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Ex. 5449000000996"
+                  value={manualBarcode}
+                  onChange={(e) => setManualBarcode(e.target.value)}
+                  className="h-12 rounded-xl"
+                  autoFocus
+                />
+                {error && (
+                  <p className="text-[12px]" style={{ color: "var(--risk)" }}>{error}</p>
+                )}
+                <Button
+                  className="w-full rounded-xl"
+                  disabled={manualBarcode.length < 8 || scanning}
+                  onClick={() => handleBarcode(manualBarcode.trim())}
+                >
+                  {scanning ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Search className="h-4 w-4 mr-2" />
+                  )}
+                  {t("scannerScanBarcode")}
+                </Button>
+                {!cameraError && (
+                  <button
+                    onClick={() => setShowManual(false)}
+                    className="w-full text-[13px] text-primary text-center"
+                  >
+                    {t("scannerOpenCamera")}
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </motion.div>
   )
 }

@@ -22,7 +22,6 @@ import { useApp } from "@/lib/app-context"
 import { getDeficiencies } from "@/lib/api"
 import type { ApiDeficiency } from "@/lib/api-types"
 import { Skeleton } from "@/components/ui/skeleton"
-import { GradientHeader } from "./gradient-header"
 import { computeGlucoseMetrics } from "@/lib/glucose-metrics"
 import { deurenbergBodyFat, leanBodyMass, bmi } from "@/lib/body-composition"
 import { formatGlucose } from "@/lib/glucose-units"
@@ -60,8 +59,11 @@ export function StatsScreen() {
   useEffect(() => {
     setLoadingDef(true)
     getDeficiencies()
-      .then(({ deficiencies: defs }) => setDeficiencies(defs))
-      .catch(() => { /* offline: keep empty */ })
+      .then((res) => setDeficiencies(res?.deficiencies ?? []))
+      .catch((err) => {
+        console.error("[StatsScreen] getDeficiencies failed:", err)
+        setDeficiencies([])
+      })
       .finally(() => setLoadingDef(false))
   }, [])
 
@@ -371,7 +373,7 @@ export function StatsScreen() {
               ))}
             </div>
           ) : (
-            <p className="text-[13px] text-muted-foreground">{t("loadingData")}</p>
+            <p className="text-[13px] text-muted-foreground">{t("noDeficiencyData")}</p>
           )}
         </div>
 

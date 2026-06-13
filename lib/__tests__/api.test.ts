@@ -13,21 +13,40 @@ afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
 
 describe("interpretMedia", () => {
-  it("renvoie les intents depuis POST /api/interpret", async () => {
+  it("envoie mode:text + champ payload pour transcription vocale", async () => {
     const { interpretMedia } = await import("../api")
+    let capturedBody: Record<string, unknown> = {}
     server.use(
-      http.post(`${API_BASE}/api/interpret`, () =>
-        HttpResponse.json({
+      http.post(`${API_BASE}/api/interpret`, async ({ request }) => {
+        capturedBody = await request.json() as Record<string, unknown>
+        return HttpResponse.json({
           intents: [
             { type: "meal", items: [{ name: "Chorba", quantity_g: 300 }], confidence: 0.92 },
           ],
         })
-      )
+      })
     )
-    const result = await interpretMedia("voice", "j'ai mangé une chorba")
+    const result = await interpretMedia("text", "j'ai mangé une chorba", "fr")
+    expect(capturedBody["mode"]).toBe("text")     // TU-15 : mode correct
+    expect(capturedBody["payload"]).toBe("j'ai mangé une chorba")  // champ payload
+    expect(capturedBody["content"]).toBeUndefined()                 // ancien champ absent
     expect(result.intents).toHaveLength(1)
     expect(result.intents[0].type).toBe("meal")
     expect(result.intents[0].items![0].name).toBe("Chorba")
+  })
+
+  it("envoie mode:photo + champ payload pour image", async () => {
+    const { interpretMedia } = await import("../api")
+    let capturedBody: Record<string, unknown> = {}
+    server.use(
+      http.post(`${API_BASE}/api/interpret`, async ({ request }) => {
+        capturedBody = await request.json() as Record<string, unknown>
+        return HttpResponse.json({ intents: [] })
+      })
+    )
+    await interpretMedia("photo", "base64data")
+    expect(capturedBody["mode"]).toBe("photo")
+    expect(capturedBody["payload"]).toBe("base64data")
   })
 
   it("lève ApiError sur 422", async () => {
@@ -37,7 +56,7 @@ describe("interpretMedia", () => {
         HttpResponse.json({ error: "invalid input" }, { status: 422 })
       )
     )
-    await expect(interpretMedia("voice", "test")).rejects.toThrow("ApiError")
+    await expect(interpretMedia("text", "test")).rejects.toThrow("ApiError")
   })
 })
 

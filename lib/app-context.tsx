@@ -164,7 +164,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const login = useCallback((token: string, serverUser: { id: string; email: string; name: string }) => {
     setToken(token)
     setIsAuthenticated(true)
-    setUser((prev) => ({ ...prev, id: serverUser.id, name: serverUser.name }))
+    setUser((prev) => ({ ...prev, id: serverUser.id, name: serverUser.name, email: serverUser.email }))
   }, [])
 
   const logout = useCallback(() => {
@@ -179,7 +179,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const loadData = useCallback(async (date: string) => {
-    if (!getToken()) return  // no token → skip API calls
+    if (!getToken()) return
     const loadId = ++loadCountRef.current
     setIsLoading(true)
     setIsOffline(false)
@@ -188,42 +188,57 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (loadCountRef.current === loadId) setServerWaking(true)
     })
 
-    try {
-      const [meals, glucose, weight, acts] = await Promise.all([
-        getJournal(date),
-        fetchGlucoseReadings(14),
-        getWeightHistory(30),
-        getActivities(date),
-      ])
-      if (loadCountRef.current !== loadId) return
-      setMealEntries(meals)
-      setGlucoseReadings(glucose)
-      setWeightHistory(weight)
-      setActivities(acts)
-      setIsOffline(false)
-    } catch (err) {
-      if (loadCountRef.current !== loadId) return
-      if (err instanceof ApiError && err.status === 401) {
-        // Stale or invalid token — force re-auth
-        removeToken()
-        setIsAuthenticated(false)
-        setIsLoading(false)
-        setServerWaking(false)
-        setSlowStartCallback(null)
-        return
+    const MAX_ATTEMPTS = 3
+    let success = false
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      try {
+        const [meals, glucose, weight, acts] = await Promise.all([
+          getJournal(date),
+          fetchGlucoseReadings(14),
+          getWeightHistory(30),
+          getActivities(date),
+        ])
+        if (loadCountRef.current !== loadId) return
+        setMealEntries(meals)
+        setGlucoseReadings(glucose)
+        setWeightHistory(weight)
+        setActivities(acts)
+        setIsOffline(false)
+        success = true
+        break
+      } catch (err) {
+        if (loadCountRef.current !== loadId) return
+        if (err instanceof ApiError && err.status === 401) {
+          removeToken()
+          setIsAuthenticated(false)
+          setIsLoading(false)
+          setServerWaking(false)
+          setSlowStartCallback(null)
+          return
+        }
+        // Retry only on 503 (cold start) or timeout (status 0)
+        const isRetryable = err instanceof ApiError && (err.status === 503 || err.status === 0)
+        if (!isRetryable || attempt === MAX_ATTEMPTS - 1) {
+          console.error("[loadData] giving up after", attempt + 1, "attempt(s):", err)
+          if (loadCountRef.current === loadId) {
+            setMealEntries([])
+            setGlucoseReadings([])
+            setWeightHistory([])
+            setActivities([])
+            setIsOffline(true)
+          }
+          break
+        }
+        // Exponential backoff: 4s, 8s
+        await new Promise((r) => setTimeout(r, (attempt + 1) * 4000))
       }
-      // Network error or server down → show offline state
-      setMealEntries([])
-      setGlucoseReadings([])
-      setWeightHistory([])
-      setActivities([])
-      setIsOffline(true)
-    } finally {
-      if (loadCountRef.current === loadId) {
-        setIsLoading(false)
-        setServerWaking(false)
-        setSlowStartCallback(null)
-      }
+    }
+
+    if (loadCountRef.current === loadId) {
+      setIsLoading(false)
+      setServerWaking(false)
+      setSlowStartCallback(null)
     }
   }, [])
 

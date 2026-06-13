@@ -14,6 +14,7 @@ import {
   Minus,
 } from "lucide-react"
 import { useApp } from "@/lib/app-context"
+import { addJournalEntry } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Slider } from "@/components/ui/slider"
@@ -29,6 +30,7 @@ export function FoodSearchSheet() {
     addMealEntry,
     currentDate,
     isRTL,
+    language,
   } = useApp()
 
   const [searchQuery, setSearchQuery] = useState("")
@@ -37,12 +39,12 @@ export function FoodSearchSheet() {
   const [activeFilter, setActiveFilter] = useState("all")
 
   const cuisineFilters = [
-    { id: "all", label: "Tous" },
-    { id: "favorites", label: "Favoris", icon: Star },
-    { id: "Française", label: "Française", flag: "🇫🇷" },
-    { id: "Maghreb", label: "Maghreb", flag: "🫙" },
-    { id: "Italienne", label: "Italienne", flag: "🍝" },
-    { id: "International", label: "International", flag: "🌍" },
+    { id: "all", label: t("all") },
+    { id: "favorites", label: t("yourFavorites"), icon: Star },
+    { id: "Française", label: "Française" },
+    { id: "Maghreb", label: "Maghreb" },
+    { id: "Italienne", label: "Italienne" },
+    { id: "International", label: "International" },
   ]
 
   const filteredFoods = useMemo(() => {
@@ -67,23 +69,32 @@ export function FoodSearchSheet() {
     return foods
   }, [searchQuery, activeFilter])
 
-  const mealLabel =
-    MEALS.find((m) => m.type === selectedMealType)?.nameFr || "Repas"
+  const mealEntry = MEALS.find((m) => m.type === selectedMealType)
+  const mealLabel = mealEntry
+    ? (language === "ar" ? mealEntry.nameAr : language === "en" ? mealEntry.nameEn : mealEntry.nameFr)
+    : t("addMeal")
 
   const handleAddFood = () => {
     if (!selectedFood || !selectedMealType) return
 
-    addMealEntry({
+    const entry = {
       foodId: selectedFood.id,
       food: selectedFood,
       amount: portion,
       mealType: selectedMealType,
       date: currentDate,
-    })
+    }
 
+    // Optimistic local update — UI reflects immediately
+    addMealEntry(entry)
     setSelectedFood(null)
     setPortion(100)
     setShowFoodSearch(false)
+
+    // Background sync to backend — errors are non-blocking
+    addJournalEntry(entry).catch((err) => {
+      console.error("[FoodSearch] addJournalEntry sync failed:", err)
+    })
   }
 
   const calories = selectedFood
@@ -172,7 +183,6 @@ export function FoodSearchSheet() {
                     : "bg-muted text-muted-foreground"
                 )}
               >
-                {filter.flag && <span>{filter.flag}</span>}
                 {filter.icon && <filter.icon className="h-3.5 w-3.5" />}
                 {filter.label}
               </button>
@@ -215,7 +225,7 @@ export function FoodSearchSheet() {
             <div className="space-y-2 pb-32">
               {searchQuery && (
                 <h3 className="text-sm font-semibold text-muted-foreground mb-3">
-                  Résultats
+                  {t("searchResults")}
                 </h3>
               )}
               {filteredFoods.map((food) => (
@@ -270,7 +280,7 @@ export function FoodSearchSheet() {
                     {selectedFood.name.charAt(0)}
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold">{selectedFood.name}</h2>
+                    <h2 className="text-xl font-semibold">{selectedFood.name}</h2>
                     <p className="text-sm text-muted-foreground">
                       {selectedFood.cuisine}
                     </p>
@@ -288,26 +298,26 @@ export function FoodSearchSheet() {
                 {/* Nutrition ring preview */}
                 <div className="flex items-center justify-center gap-8 mb-6">
                   <div className="text-center">
-                    <p className="text-3xl font-bold text-primary">{calories}</p>
+                    <p className="text-3xl font-semibold text-primary">{calories}</p>
                     <p className="text-xs text-muted-foreground">kcal</p>
                   </div>
                   <div className="flex gap-4">
                     <div className="text-center">
                       <p className="text-lg font-semibold">{protein}g</p>
                       <p className="text-[10px] text-muted-foreground">
-                        Protéines
+                        {t("protein")}
                       </p>
                     </div>
                     <div className="text-center">
                       <p className="text-lg font-semibold">{carbs}g</p>
                       <p className="text-[10px] text-muted-foreground">
-                        Glucides
+                        {t("carbs")}
                       </p>
                     </div>
                     <div className="text-center">
                       <p className="text-lg font-semibold">{fat}g</p>
                       <p className="text-[10px] text-muted-foreground">
-                        Lipides
+                        {t("fat")}
                       </p>
                     </div>
                   </div>
@@ -317,7 +327,7 @@ export function FoodSearchSheet() {
                 <div className="mb-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium">{t("portion")}</span>
-                    <span className="text-lg font-bold">{portion}g</span>
+                    <span className="text-lg font-semibold">{portion}g</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <Button
