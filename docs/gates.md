@@ -10,6 +10,7 @@
 | 13/06/2026 | P4.7 chaîne auth complète + objectifs + divers | GO | tsc 0 erreur, 102/102 tests, B1-B4+M-01..M-05+KO REG-04 résolus | M-03 (i18n onboarding/landing all-FR) différé P5 — dette pré-existante ; SL-03 Arabic chars in types.ts différé P5 |
 | 13/06/2026 | P4.8 boutons inertes + offline + erreurs silencieuses | GO | tsc 0 erreur, 107/107 tests, B-1..B-6 revue-code résolus, REG GO (SL-03 \uXXXX onboarding+settings corrigé) | — |
 | 14/06/2026 | P4.10 PayloadTooLargeError /api/interpret + CORS erreurs (backend nutridz) | GO | 102/102 tests, limit 15MB ciblée sur /api/interpret, rate-limiter avant body-parsers, error-handler CORS, err.message masqué sur routes santé, userId pseudonymisé dans logs Strava | Suivi frontend : redimensionner image côté client à max 1280px avant envoi (P5) |
+| 14/06/2026 | P4.11 bugs nutritionnels : USDA Branded, noms anglais CIQUAL, quantity_g non appliqué (backend nutridz) | GO | 118/118 tests, rankByDataType Foundation>SR Legacy>Survey>Branded, callGemini lang param (ar→fr clamp), resolveNutrition portion scaling + sel + estimated_portion, err.message masqué 422, sl-api.md contrat type:"food" officialisé | Vision path (`conceptsToAliments`) ne bénéficie pas du ranking USDA — différé P5 |
 
 ---
 

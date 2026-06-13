@@ -7,19 +7,55 @@ Base URL : `process.env.NEXT_PUBLIC_API_URL` (défaut `https://nutridz.onrender.
 Auth : cookie de session httpOnly (`credentials: 'include'`).
 
 ## POST /api/interpret
-Input: `{ mode: "photo" | "voice", content: string }` (content = base64 pour photo, texte pour voix)
-Output (AL-10):
+Input: `{ mode: "photo" | "voice" | "text", payload: string, lang?: "fr"|"ar"|"en", mimeType?: string }`
+(`payload` = base64 pour photo, texte brut pour voice/text)
+
+Output (SL-API-01 — contrat `type:"food"` officiel depuis P4.11) :
 ```json
 {
   "intents": [
-    { "type": "meal", "items": [{ "name": "Chorba", "quantity_g": 300 }], "confidence": 0.92 },
-    { "type": "activity", "sport": "course", "duration_min": 30, "confidence": 0.88 },
-    { "type": "glucose", "valeur": 1.15, "unite": "g/L", "contexte": "pontuelle", "confidence": 0.95 }
-  ],
-  "needs_confirmation": false
+    {
+      "type": "food",
+      "name": "Chorba",
+      "quantity_g": 300,
+      "meal_type": "dejeuner",
+      "confidence": 0.92,
+      "needs_confirmation": false,
+      "nutrition": {
+        "kcal": 255,
+        "glucides": 24,
+        "proteines": 18,
+        "lipides": 9,
+        "fibres": 6,
+        "source": "ciqual",
+        "quantity_g": 300,
+        "estimated_portion": false
+      },
+      "nutrition_found": true
+    },
+    {
+      "type": "activity",
+      "sport": "course",
+      "duration_min": 30,
+      "confidence": 0.88,
+      "needs_confirmation": false
+    },
+    {
+      "type": "glucose",
+      "glucose_mg_dl": 115,
+      "confidence": 0.95,
+      "needs_confirmation": false
+    }
+  ]
 }
 ```
-`needs_confirmation: true` si confidence < 0.6 sur au moins un intent → confirmation obligatoire.
+
+**Notes contrat :**
+- `needs_confirmation: true` si `confidence < 0.6` (par intent).
+- `nutrition.quantity_g` = portion utilisée (issue de `quantity_g` de l'intent, ou 100 g par défaut).
+- `estimated_portion: true` quand `quantity_g` absent de l'intent — la portion de 100 g est estimée.
+- `nutrition.source` : `"ciqual"` (préféré) ou `"usda"` (fallback, préférence Foundation/SR Legacy sur Branded).
+- `nutrition_found: false` si ni CIQUAL ni USDA ne trouvent l'aliment (jamais de fallback LLM).
 
 ## POST /api/scan
 Input: `{ barcode: string }`
