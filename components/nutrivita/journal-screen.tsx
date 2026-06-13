@@ -192,32 +192,37 @@ export function JournalScreen() {
             value={dailyLog.totalCarbs}
             target={carbsTarget}
             label={t("carbs")}
+            color="var(--amber)"
           />
           <MacroPillCard
             icon={Dumbbell}
             value={dailyLog.totalProtein}
             target={proteinTarget}
             label={t("protein")}
+            color="var(--glucose)"
           />
           <MacroPillCard
             icon={Droplets}
             value={dailyLog.totalFat}
             target={fatTarget}
             label={t("fat")}
+            color="var(--lipids)"
           />
         </div>
 
-        {/* Quick Actions */}
-        <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+        {/* Quick Actions — round icon buttons */}
+        <div className="flex justify-between gap-2">
           {quickActions.map((action) => (
             <motion.button
               key={action.label}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-border shadow-sm whitespace-nowrap touch-target"
+              className="flex flex-col items-center gap-1.5 flex-1"
               onClick={action.onClick}
-              whileTap={{ scale: 0.95 }}
+              whileTap={{ scale: 0.9 }}
             >
-              <action.icon className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-foreground">
+              <div className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center">
+                <action.icon className="h-5 w-5 text-primary" />
+              </div>
+              <span className="text-[11px] font-medium text-muted-foreground text-center leading-tight">
                 {action.label}
               </span>
             </motion.button>
@@ -384,6 +389,9 @@ export function JournalScreen() {
     </div>
   )
 }
+
+// Pre-computed waveform heights — no Math.random() in render
+const FOOD_WAVE_HEIGHTS = [36, 48, 28, 56, 32, 48, 24, 52, 40, 32, 44, 56, 28, 48, 36, 56, 32, 48, 24, 52]
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -711,7 +719,7 @@ function VoiceInputModal({ onClose }: { onClose: () => void }) {
                   key={i}
                   className="w-1 bg-destructive rounded-full"
                   animate={{
-                    height: [8, 32 + Math.random() * 32, 8],
+                    height: [8, FOOD_WAVE_HEIGHTS[i % FOOD_WAVE_HEIGHTS.length], 8],
                   }}
                   transition={{
                     duration: 0.5,

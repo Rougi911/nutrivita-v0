@@ -13,7 +13,8 @@ export interface User {
   height: number // cm
   weight: number // kg
   sex: "male" | "female" | "other"
-  goal: "lose" | "maintain" | "gain" | "diabetes"
+  /** Multi-select goals. Primary calorie goal derived: "lose" | "gain" → adjust TDEE; "diabetes" → isDiabetic=true */
+  goals: string[]
   activityLevel: 1 | 2 | 3 | 4 | 5
   targetCalories: number
   macros: {

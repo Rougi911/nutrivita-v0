@@ -10,6 +10,7 @@ interface MacroPillCardProps {
   target: number
   label: string
   unit?: string
+  color?: string
   className?: string
 }
 
@@ -19,33 +20,33 @@ export function MacroPillCard({
   target,
   label,
   unit = "g",
+  color,
   className,
 }: MacroPillCardProps) {
   const percentage = Math.min((value / target) * 100, 100)
+  const iconColor = color ?? "var(--primary)"
+  const barColor = color ?? "var(--primary)"
 
   return (
     <motion.div
       className={cn(
-        "flex flex-col items-center gap-1 rounded-2xl bg-card p-3 shadow-sm border border-border",
+        "flex flex-col items-center gap-1 rounded-2xl bg-card p-3 border border-border",
         className
       )}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <Icon className="h-5 w-5 text-primary" />
-      <span className="text-lg font-bold text-foreground">
+      <Icon className="h-5 w-5" style={{ color: iconColor }} />
+      <span className="text-lg font-semibold text-foreground">
         {value}
         <span className="text-sm font-normal text-muted-foreground">{unit}</span>
       </span>
       <span className="label-text text-muted-foreground">{label}</span>
-      {/* Progress bar */}
       <div className="h-1.5 w-full rounded-full bg-muted/50 overflow-hidden">
         <motion.div
-          className={cn(
-            "h-full rounded-full",
-            percentage >= 100 ? "bg-emerald" : "bg-primary"
-          )}
+          className="h-full rounded-full"
+          style={{ backgroundColor: barColor }}
           initial={{ width: 0 }}
           animate={{ width: `${percentage}%` }}
           transition={{ duration: 0.5, delay: 0.2 }}

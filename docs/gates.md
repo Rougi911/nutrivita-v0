@@ -6,6 +6,7 @@
 | 12/06/2026 | SL-UI | GO | tsc --noEmit 0 erreur, 56 TU verts, commit efb0b3f | D1 RGPD onboarding, D2 loi 18-07, D4 perf IA/voix — différés phase 2/3 |
 | 12/06/2026 | P4 connexion backend | GO | tsc 0 erreur, 81/81 tests verts, REG-03 corrigé (GET→POST), SL-UI emojis/gradient nettoyés, SL-03 \uXXXX | M-02..M-08 différés P5 |
 | 13/06/2026 | P4.5 alignement backend POST /query | GO | 4 POST /query ajoutés (journal, glucose, weight, activities), alias /api/activities, 93/93 TU verts, REG-03 précisé (dates ≠ données santé) | — |
+| 13/06/2026 | P4.6 corrections UX (double /api, onboarding, design) | GO | build 0 erreur, 81/81 tests, B1-B4 revue-code résolus, KO-1/KO-2 réglementaire résolus | M-R1, M-T1, M-U1 différés P5 |
 
 ---
 
@@ -187,3 +188,73 @@ Précision REG-03 : paramètres temporels (date, days) ≠ données de santé �
 
 ### Verdict
 **GO** — Session P4.5 terminée. Commit "backend : POST /query routes + alias /api/activities + tests p4 (cycle V)".
+
+---
+
+## Gate P4.6 — 2026-06-13 — Correction écran blanc (double /api) + retours de test
+
+### Contexte
+Phase de correction UX suite aux premiers tests manuels sur l'app déployée (Vercel + Render).
+
+### Agents invoqués
+- **revue-code** sur le diff P4.6 (10 fichiers modifiés)
+- **réglementaire** sur landing-page.tsx, onboarding-flow.tsx, settings-screen.tsx
+
+### Changements appliqués
+
+**C1 — lib/api.ts — Double préfixe /api (CRITIQUE)**
+`API_BASE` normalisé avec `.replace(/\/api\/?$/, "")` — correction du double préfixe causant un écran blanc lorsque `NEXT_PUBLIC_API_URL=https://nutridz.onrender.com/api`.
+
+**C2 — app/globals.css — Design system complet (SL-UI)**
+`--primary` → teal `#1D9E75`, ajout `--glucose: #534AB7`, `--lipids: #D4537E`, `--amber: #BA7517`, `--risk: #A32D2D`, `--badge-positive-bg: #E1F5EE`. Déclinaison dark mode.
+
+**C3 — lib/types.ts — goal → goals[]**
+`goal: string` remplacé par `goals: string[]` (multi-select d'objectifs).
+
+**C4 — lib/app-context.tsx — Mode offline vide**
+Fallback offline = tableaux vides (pas de mock data confondant). Suppression imports mock inutilisés.
+
+**C5 — onboarding-flow.tsx — Multi-select + consentement RGPD**
+Step 3 : sélection multiple des objectifs (chips avec checkmark). "Gérer le diabète" coché → `isDiabetic=true` automatiquement, step 4 skippée. Step 4 : OUI/NON avec état visuel sélectionné, `isDiabeticStep4` state dédié. `handleComplete` utilise `hasDiabetes || isDiabeticStep4 === true`. Ajout `ConsentCheckbox` (RGPD Art. 9) en step 1 — bouton Commencer désactivé sans consentement.
+
+**C6 — settings-screen.tsx — goals[]**
+`goalLabels[user.goal]` → `user.goals.map(g => goalLabels[g] ?? g).join(" · ")`.
+
+**C7 — calorie-ring.tsx — Fix débordement SVG**
+Suppression div `absolute -bottom-1` (overflow hors conteneur). Texte ratio intégré dans div central, tailles de police proportionnelles à `size`, ratio masqué si `size < 160`.
+
+**C8 — macro-pill-card.tsx — Prop couleur + font-semibold**
+Ajout `color?: string` pour icône et barre. `font-bold` → `font-semibold` (règle 2 font-weights max). Suppression `shadow-sm`.
+
+**C9 — journal-screen.tsx — Couleurs macros + actions rondes + Math.random**
+MacroPillCard : Glucides=`var(--amber)`, Protéines=`var(--glucose)`, Lipides=`var(--lipids)`. Quick actions → 5 boutons ronds (icon + label). `Math.random()` remplacé par constante `FOOD_WAVE_HEIGHTS` (hydration-safe).
+
+**C10 — landing-page.tsx — Phone mockup + disclaimer trilingue**
+Placeholder `"Aperçu de l'app"` remplacé par mockup JSX (CalorieRing 120px, barres macro colorées, carte glycémie, mini nav 5 icônes). `aria-hidden="true"` sur le frame téléphone (contenu décoratif). Disclaimer RGPD trilingue FR + EN + AR sur hero et tab Praticien (REG-04).
+
+**C11 — meals-screen.tsx + food-search-sheet.tsx — Gradient supprimé (SL-UI)**
+`gradient-hero` retiré des boutons "Créer plat" et "Ajouter au repas" → classe native `Button` (primary/teal).
+
+### Vérifications gate
+- `npm run build` ✅ (Turbopack, 0 erreur TypeScript, EXIT 0)
+- `npm run test` ✅ 81/81 tests verts (10 suites, aucune régression)
+- REG-03 ✅ aucune valeur de santé en query string
+- REG-04 ✅ disclaimer trilingue FR/EN/AR sur landing (texte inline + icône Lock dans features)
+- REG-05 ✅ aucune formulation diagnostique
+- REG-06 ✅ ConsentCheckbox RGPD Art. 9 ajouté step 1 onboarding (bloque Commencer sans consentement)
+- SL-UI ✅ 0 gradient, 0 emoji, lucide-react, teal primary, couleurs sémantiques
+- AL-03 ✅ cappedBurned Math.min(burned, 1000) préservé
+
+### Écarts MAJEURS documentés (dette technique P5)
+| # | Écart | Décision |
+|---|-------|---------|
+| M-R1 | REG-01 : pas de disclaimer santé sur écran Journal | Accepté — pré-existant gate SL-UI D1, non aggravé par P4.6 |
+| M-T1 | Chaînes onboarding non i18n (FR dur codé) | Accepté P5 — clés FR/AR/EN à ajouter |
+| M-U1 | `text-emerald` utilisé pour positif dans modales activité | Accepté P5 — harmoniser avec `var(--primary)` |
+
+### Verdict
+**GO** — Session P4.6 terminée. Build 0 erreur · 81/81 tests · BLOQUANTS revue-code et réglementaire résolus.
+
+| Date | Gate | Verdict | Écarts résiduels |
+|------|------|---------|------------------|
+| 2026-06-13 | P4.6 | GO | M-R1 (Journal disclaimer), M-T1 (i18n onboarding), M-U1 (emerald→primary) — différés P5 |

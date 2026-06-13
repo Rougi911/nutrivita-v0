@@ -376,7 +376,7 @@ export function FoodSearchSheet() {
                     {t("cancel")}
                   </Button>
                   <Button
-                    className="flex-1 gradient-hero text-white"
+                    className="flex-1"
                     onClick={handleAddFood}
                   >
                     {t("addToMeal")} {mealLabel} • {calories} kcal

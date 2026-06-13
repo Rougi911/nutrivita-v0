@@ -13,14 +13,7 @@ import {
   translations,
   type TranslationKey,
 } from "@/lib/types"
-import {
-  sampleMealEntries,
-  sampleGlucoseReadings,
-  sampleWeightHistory,
-  sampleActivities,
-  sampleScannedProducts,
-  defaultWaterIntake,
-} from "@/lib/mock-data"
+import { defaultWaterIntake } from "@/lib/mock-data"
 import {
   getJournal,
   getGlucoseReadings as fetchGlucoseReadings,
@@ -99,7 +92,7 @@ const defaultUser: User = {
   height: 178,
   weight: 81.7,
   sex: "male",
-  goal: "lose",
+  goals: ["lose"],
   activityLevel: 3,
   targetCalories: 2100,
   macros: {
@@ -170,11 +163,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setIsOffline(false)
     } catch {
       if (loadCountRef.current !== loadId) return
-      // Offline fallback — données mock pour navigation dégradée
-      setMealEntries(sampleMealEntries)
-      setGlucoseReadings(sampleGlucoseReadings)
-      setWeightHistory(sampleWeightHistory)
-      setActivities(sampleActivities)
+      // Offline — état vide navigable (pas de données mockées qui confondent un vrai compte)
+      setMealEntries([])
+      setGlucoseReadings([])
+      setWeightHistory([])
+      setActivities([])
       setIsOffline(true)
     } finally {
       if (loadCountRef.current === loadId) {

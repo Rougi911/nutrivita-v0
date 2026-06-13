@@ -2,8 +2,9 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { Camera, ChevronRight, Droplets, Globe, Lock, Mic, ShoppingCart, Star } from "lucide-react"
+import { BarChart3, BookOpen, Camera, ChevronRight, Droplets, Globe, Home, Lock, Mic, Settings, ShoppingCart, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { CalorieRing } from "./calorie-ring"
 
 interface LandingPageProps {
   onGetStarted: () => void
@@ -92,18 +93,90 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                   </Button>
                 </div>
                 <p className="mt-4 text-[12px] text-muted-foreground">
-                  Données protégées · RGPD
+                  Données protégées · RGPD &nbsp;|&nbsp; Protected data · GDPR &nbsp;|&nbsp; {"بيانات محمية · RGPD"}
                 </p>
               </motion.div>
 
-              {/* Phone mock */}
+              {/* Phone mock — decorative only, aria-hidden */}
               <motion.div
-                className="shrink-0 w-52 h-96 rounded-[36px] bg-card border-2 border-border flex items-center justify-center"
+                className="shrink-0 w-52 h-[420px] rounded-[36px] bg-card border-2 border-border overflow-hidden flex flex-col"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3 }}
+                aria-hidden="true"
               >
-                <p className="text-[13px] text-muted-foreground">Aperçu de l&apos;app</p>
+                {/* Status bar */}
+                <div className="flex items-center justify-between px-5 pt-3 pb-0.5">
+                  <span className="text-[8px] font-semibold text-foreground">9:41</span>
+                  <div className="flex items-center gap-0.5">
+                    <div className="w-4 h-1.5 rounded-sm border border-foreground/40 p-px">
+                      <div className="h-full w-3/4 rounded-sm bg-foreground/40" />
+                    </div>
+                  </div>
+                </div>
+                {/* Header */}
+                <div className="px-4 pt-0.5 pb-1">
+                  <p className="text-[11px] font-semibold text-foreground">Bonjour Ahmed</p>
+                </div>
+                {/* Calorie ring */}
+                <div className="flex justify-center py-1">
+                  <CalorieRing consumed={1420} target={2100} burned={350} size={120} />
+                </div>
+                {/* Macro bars */}
+                <div className="grid grid-cols-3 gap-1.5 px-3 mt-1">
+                  {[
+                    { label: "Glucides",  value: 180, target: 236, color: "var(--amber)" },
+                    { label: "Protéines", value: 65,  target: 158, color: "var(--glucose)" },
+                    { label: "Lipides",   value: 38,  target: 58,  color: "var(--lipids)" },
+                  ].map((m) => (
+                    <div key={m.label} className="rounded-xl border border-border bg-background p-1.5 flex flex-col items-center gap-0.5">
+                      <span className="text-[11px] font-bold text-foreground">{m.value}g</span>
+                      <span className="text-[7px] text-muted-foreground">{m.label}</span>
+                      <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${Math.min(Math.round((m.value / m.target) * 100), 100)}%`,
+                            backgroundColor: m.color,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Glucose card */}
+                <div className="mx-3 mt-2 rounded-xl border border-border bg-background p-2 flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    <div
+                      className="w-5 h-5 rounded-lg flex items-center justify-center"
+                      style={{ backgroundColor: "var(--badge-positive-bg)" }}
+                    >
+                      <Droplets className="h-2.5 w-2.5" style={{ color: "var(--glucose)" }} />
+                    </div>
+                    <span className="text-[9px] text-muted-foreground">Glycémie</span>
+                  </div>
+                  <span className="text-[13px] font-semibold" style={{ color: "var(--glucose)" }}>1.2 g/L</span>
+                </div>
+                {/* Mini bottom nav */}
+                <div className="mt-auto border-t border-border flex justify-around px-2 py-2.5">
+                  {[
+                    { Icon: Home,         active: true  },
+                    { Icon: BookOpen,     active: false },
+                    { Icon: ShoppingCart, active: false },
+                    { Icon: BarChart3,    active: false },
+                    { Icon: Settings,     active: false },
+                  ].map(({ Icon, active }, i) => (
+                    <div key={i} className="flex flex-col items-center gap-0.5">
+                      <Icon
+                        className="h-4 w-4"
+                        style={{ color: active ? "var(--primary)" : "var(--muted-foreground)" }}
+                      />
+                      {active && (
+                        <div className="w-1 h-1 rounded-full" style={{ backgroundColor: "var(--primary)" }} />
+                      )}
+                    </div>
+                  ))}
+                </div>
               </motion.div>
             </div>
           </section>
@@ -219,7 +292,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
             </Button>
           </div>
           <p className="mt-4 text-[11px] text-muted-foreground">
-            Données protégées · RGPD
+            Données protégées · RGPD &nbsp;|&nbsp; Protected data · GDPR &nbsp;|&nbsp; {"بيانات محمية · RGPD"}
           </p>
         </section>
       )}

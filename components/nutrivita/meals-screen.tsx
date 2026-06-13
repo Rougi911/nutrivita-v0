@@ -79,7 +79,7 @@ export function MealsScreen() {
             <ScanBarcode className="h-4 w-4" />
             Scanner CB
           </Button>
-          <Button className="flex-1 gap-2 rounded-xl h-11 gradient-hero text-white">
+          <Button className="flex-1 gap-2 rounded-xl h-11">
             <Plus className="h-4 w-4" />
             Créer plat
           </Button>

@@ -17,9 +17,13 @@ import type {
   FoodItem,
 } from "@/lib/types"
 
-export const API_BASE =
-  (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) ||
-  "https://nutridz.onrender.com"
+// Strip trailing /api if present — every endpoint path already starts with /api/
+export const API_BASE = (() => {
+  const raw =
+    (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) ||
+    "https://nutridz.onrender.com"
+  return raw.replace(/\/api\/?$/, "")
+})()
 
 const REQUEST_TIMEOUT_MS = 60_000
 const SLOW_START_THRESHOLD_MS = 3_000

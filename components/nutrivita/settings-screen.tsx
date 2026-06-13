@@ -128,7 +128,7 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
               {user.age} ans · {user.height} cm · {user.weight} kg
             </p>
             <p className="text-[12px] text-muted-foreground mt-0.5">
-              {goalLabels[user.goal]} · {user.targetCalories} kcal/j
+              {user.goals.map((g) => goalLabels[g] ?? g).join(" · ")} · {user.targetCalories} kcal/j
             </p>
           </div>
           <button

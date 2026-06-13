@@ -12,16 +12,16 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0.02 265);
   
-  /* Primary: Indigo #6366F1 */
-  --primary: oklch(0.585 0.233 264);
+  /* Primary: Teal #1D9E75 (SL-UI design system) */
+  --primary: oklch(0.58 0.17 162);
   --primary-foreground: oklch(0.985 0 0);
-  
-  /* Secondary: Emerald #10B981 */
-  --secondary: oklch(0.696 0.17 162);
-  --secondary-foreground: oklch(0.985 0 0);
-  
-  /* Accent: Amber #F59E0B */
-  --accent: oklch(0.795 0.16 84);
+
+  /* Secondary: Teal light */
+  --secondary: oklch(0.92 0.04 162);
+  --secondary-foreground: oklch(0.3 0.1 162);
+
+  /* Accent: kept neutral */
+  --accent: oklch(0.97 0.002 247);
   --accent-foreground: oklch(0.145 0.02 265);
   
   --muted: oklch(0.97 0.002 247);
@@ -47,12 +47,15 @@
   --chart-4: oklch(0.7 0.2 330);
   --chart-5: oklch(0.577 0.245 27);
   
-  /* Custom NutriVita colors */
-  --indigo: oklch(0.585 0.233 264);
+  /* Custom NutriVita colors (SL-UI design system) */
+  --glucose: #534AB7;         /* violet — glycémie, protéines */
+  --lipids: #D4537E;          /* rose — lipides */
+  --amber: #BA7517;           /* ambre — glucides, avertissements */
+  --risk: #A32D2D;            /* rouge — risques */
+  --badge-positive-bg: #E1F5EE; /* vert teal clair — positif */
   --emerald: oklch(0.696 0.17 162);
-  --amber: oklch(0.795 0.16 84);
-  --glucose-pink: oklch(0.7 0.2 330);
-  --glucose-purple: oklch(0.6 0.25 290);
+  --glucose-pink: #D4537E;
+  --glucose-purple: #534AB7;
   
   --radius: 1rem;
   
@@ -75,14 +78,14 @@
   --popover: oklch(0.25 0.02 265);
   --popover-foreground: oklch(0.97 0.002 247);
   
-  --primary: oklch(0.65 0.233 264);
+  --primary: oklch(0.65 0.16 162);
   --primary-foreground: oklch(0.985 0 0);
-  
-  --secondary: oklch(0.696 0.17 162);
-  --secondary-foreground: oklch(0.985 0 0);
-  
-  --accent: oklch(0.795 0.16 84);
-  --accent-foreground: oklch(0.145 0.02 265);
+
+  --secondary: oklch(0.35 0.06 162);
+  --secondary-foreground: oklch(0.9 0.04 162);
+
+  --accent: oklch(0.3 0.02 265);
+  --accent-foreground: oklch(0.97 0.002 247);
   
   --muted: oklch(0.3 0.02 265);
   --muted-foreground: oklch(0.65 0.02 265);
@@ -106,11 +109,14 @@
   --chart-4: oklch(0.7 0.2 330);
   --chart-5: oklch(0.577 0.245 27);
   
-  --indigo: oklch(0.65 0.233 264);
+  --glucose: #7B72D0;
+  --lipids: #E07399;
+  --amber: #D4920E;
+  --risk: #C44040;
+  --badge-positive-bg: #1A3D30;
   --emerald: oklch(0.696 0.17 162);
-  --amber: oklch(0.795 0.16 84);
-  --glucose-pink: oklch(0.7 0.2 330);
-  --glucose-purple: oklch(0.6 0.25 290);
+  --glucose-pink: #E07399;
+  --glucose-purple: #7B72D0;
   
   --sidebar: oklch(0.25 0.02 265);
   --sidebar-foreground: oklch(0.97 0.002 247);
@@ -155,9 +161,11 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --color-indigo: var(--indigo);
-  --color-emerald: var(--emerald);
+  --color-glucose: var(--glucose);
+  --color-lipids: var(--lipids);
   --color-amber: var(--amber);
+  --color-risk: var(--risk);
+  --color-emerald: var(--emerald);
   --color-glucose-pink: var(--glucose-pink);
   --color-glucose-purple: var(--glucose-purple);
   
