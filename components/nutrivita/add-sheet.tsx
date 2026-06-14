@@ -4,10 +4,11 @@ import { useEffect, useState, useRef, useCallback } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { Camera, Loader2, Mic, ScanLine, Search, X, KeyboardIcon } from "lucide-react"
 import { useApp } from "@/lib/app-context"
-import { interpretMedia, scanBarcode, scanLabelImage, ProductUnknownError } from "@/lib/api"
-import { SAMPLE_FOODS } from "@/lib/types"
+import { interpretMedia, scanBarcode, scanLabelImage, ProductUnknownError, addJournalEntry } from "@/lib/api"
+import { SAMPLE_FOODS, MEALS } from "@/lib/types"
 import type { ApiInterpretResponse, ApiLabelScanResult } from "@/lib/api-types"
 import { inferMealTypeFromTime } from "@/lib/meal-utils"
+import type { MealType } from "@/lib/meal-utils"
 import { InterpretConfirm } from "@/components/nutrivita/interpret-confirm"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -57,6 +58,8 @@ export function AddSheet() {
   const [interpError, setInterpError] = useState<string | null>(null)
   const [showScanner, setShowScanner] = useState(false)
   const [showVoiceModal, setShowVoiceModal] = useState(false)
+  const [pendingRelogFood, setPendingRelogFood] = useState<(typeof SAMPLE_FOODS)[number] | null>(null)
+  const [pendingMealType, setPendingMealType] = useState<MealType>(inferMealTypeFromTime())
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const recentFoods = recentFoodIds
@@ -64,13 +67,24 @@ export function AddSheet() {
     .filter(Boolean)
 
   const handleRelogFood = (food: (typeof SAMPLE_FOODS)[number]) => {
-    addMealEntry({
-      foodId: food.id,
-      food,
+    setPendingMealType(inferMealTypeFromTime())
+    setPendingRelogFood(food)
+  }
+
+  const handleConfirmRelog = () => {
+    if (!pendingRelogFood) return
+    const entry = {
+      foodId: pendingRelogFood.id,
+      food: pendingRelogFood,
       amount: 100,
-      mealType: inferMealTypeFromTime(),
+      mealType: pendingMealType,
       date: currentDate,
+    }
+    addMealEntry(entry)
+    addJournalEntry(entry).catch((err) => {
+      console.error("[AddSheet] addJournalEntry (relog) sync failed:", err)
     })
+    setPendingRelogFood(null)
     setShowAddSheet(false)
   }
 
@@ -244,6 +258,50 @@ export function AddSheet() {
                       </button>
                     ) : null
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Mini-sélecteur repas pour les chips Récents */}
+            {pendingRelogFood && (
+              <div className="mt-3 p-4 rounded-2xl border border-border bg-muted/50">
+                <p className="text-[13px] font-semibold text-foreground mb-2">
+                  {pendingRelogFood.name}
+                  <span className="ml-2 text-muted-foreground font-normal text-[11px]">
+                    {pendingRelogFood.calories} kcal/100g
+                  </span>
+                </p>
+                <div className="flex gap-1.5 mb-3">
+                  {MEALS.map((m) => (
+                    <button
+                      key={m.type}
+                      onClick={() => setPendingMealType(m.type)}
+                      className={cn(
+                        "flex-1 text-[11px] font-medium rounded-xl py-1.5 border transition-colors",
+                        pendingMealType === m.type
+                          ? "border-[var(--primary)] text-white"
+                          : "bg-card text-muted-foreground border-border"
+                      )}
+                      style={pendingMealType === m.type ? { backgroundColor: "var(--primary)" } : {}}
+                    >
+                      {t(m.type)}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setPendingRelogFood(null)}
+                    className="flex-1 py-2 rounded-xl border border-border text-[13px] text-muted-foreground"
+                  >
+                    {t("cancel")}
+                  </button>
+                  <button
+                    onClick={handleConfirmRelog}
+                    className="flex-1 py-2 rounded-xl text-[13px] font-semibold text-white"
+                    style={{ backgroundColor: "var(--primary)" }}
+                  >
+                    {t("add")}
+                  </button>
                 </div>
               </div>
             )}
