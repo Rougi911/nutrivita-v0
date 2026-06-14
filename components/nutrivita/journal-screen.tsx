@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import {
   ChevronLeft,
@@ -22,9 +22,13 @@ import {
   Bike,
   Waves,
   Zap,
+  Loader2,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { useApp } from "@/lib/app-context"
+import { interpretMedia } from "@/lib/api"
+import type { ApiInterpretResponse } from "@/lib/api-types"
+import { InterpretConfirm } from "./interpret-confirm"
 import { CalorieRing } from "./calorie-ring"
 import { MacroPillCard } from "./macro-pill-card"
 import { MealSectionCard } from "./meal-section-card"
@@ -42,6 +46,7 @@ export function JournalScreen() {
     setCurrentDate,
     t,
     isRTL,
+    language,
     setShowFoodSearch,
     setSelectedMealType,
     activities,
@@ -52,6 +57,7 @@ export function JournalScreen() {
   } = useApp()
 
   const [showVoiceInput, setShowVoiceInput] = useState(false)
+  const [voiceInterpResult, setVoiceInterpResult] = useState<ApiInterpretResponse | null>(null)
   const [showActivityVoice, setShowActivityVoice] = useState(false)
   const [showActivityManual, setShowActivityManual] = useState(false)
 
@@ -353,7 +359,7 @@ export function JournalScreen() {
                 transition={{ delay: index * 0.1 }}
               >
                 <MealSectionCard
-                  name={meal.nameFr}
+                  name={t(meal.type)}
                   entries={mealEntries}
                   onAddFood={() => handleAddFood(meal.type)}
                 />
@@ -363,8 +369,23 @@ export function JournalScreen() {
         </div>
       </div>
 
-      {showVoiceInput && (
-        <VoiceInputModal onClose={() => setShowVoiceInput(false)} />
+      {/* InterpretConfirm affiché quand le vocal a produit un résultat (food + activity + glucose) */}
+      {voiceInterpResult && (
+        <div className="fixed inset-0 z-50 bg-background">
+          <InterpretConfirm
+            result={voiceInterpResult}
+            onBack={() => setVoiceInterpResult(null)}
+            onDone={() => { setVoiceInterpResult(null); setShowVoiceInput(false) }}
+          />
+        </div>
+      )}
+
+      {showVoiceInput && !voiceInterpResult && (
+        <VoiceInputModal
+          onClose={() => setShowVoiceInput(false)}
+          onInterpretResult={(r) => setVoiceInterpResult(r)}
+          language={language}
+        />
       )}
       {showActivityVoice && (
         <ActivityVoiceModal
@@ -506,7 +527,7 @@ function ActivityVoiceModal({
             <p className="text-lg text-muted-foreground">{t("speakNow")}</p>
             <p className="text-sm text-foreground">{t("speakActivity")}</p>
             <Button variant="outline" onClick={simulateProcessing} className="mt-4">
-              Simuler
+              {t("simulate")}
             </Button>
           </div>
         )}
@@ -553,7 +574,7 @@ function ActivityVoiceModal({
         )}
 
         <Button variant="ghost" className="absolute top-4 right-4" onClick={onClose}>
-          Fermer
+          {t("cancel")}
         </Button>
       </motion.div>
     </motion.div>
@@ -676,26 +697,81 @@ function ActivityManualModal({
         </div>
 
         <Button variant="ghost" className="absolute top-4 right-4" onClick={onClose}>
-          Fermer
+          {t("cancel")}
         </Button>
       </motion.div>
     </motion.div>
   )
 }
 
-// ─── Food Voice Modal ─────────────────────────────────────────────────────────
+// ─── Food Voice Modal — appel réel au backend (remplace la simulation) ────────
 
-function VoiceInputModal({ onClose }: { onClose: () => void }) {
-  const [state, setState] = useState<"listening" | "processing" | "confirm">(
-    "listening"
-  )
+function VoiceInputModal({
+  onClose,
+  onInterpretResult,
+  language,
+}: {
+  onClose: () => void
+  onInterpretResult: (r: ApiInterpretResponse) => void
+  language: string
+}) {
+  const [state, setState] = useState<"listening" | "processing" | "error">("listening")
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const { t } = useApp()
 
-  // Simulate voice processing
-  const simulateProcessing = () => {
-    setState("processing")
-    setTimeout(() => setState("confirm"), 2000)
-  }
+  useEffect(() => {
+    type AnySpeechRecognition = {
+      lang: string
+      interimResults: boolean
+      maxAlternatives: number
+      onresult: ((event: { results: { [index: number]: { [index: number]: { transcript: string } } } }) => void) | null
+      onerror: (() => void) | null
+      start: () => void
+      stop: () => void
+    }
+    type SpeechRecognitionCtor = new () => AnySpeechRecognition
+
+    const SRC =
+      typeof window !== "undefined"
+        ? ((window as unknown as Record<string, unknown>)["SpeechRecognition"] ??
+            (window as unknown as Record<string, unknown>)["webkitSpeechRecognition"]) as
+          | SpeechRecognitionCtor
+          | undefined
+        : undefined
+
+    if (!SRC) {
+      setErrorMsg(t("voiceSpeechNotSupported"))
+      setState("error")
+      return
+    }
+
+    const recognition = new SRC()
+    recognition.lang = language === "ar" ? "ar-DZ" : language === "en" ? "en-US" : "fr-FR"
+    recognition.interimResults = false
+    recognition.maxAlternatives = 1
+
+    recognition.onresult = async (event) => {
+      const transcript = event.results[0][0].transcript
+      setState("processing")
+      try {
+        const result = await interpretMedia("text", transcript, language)
+        onInterpretResult(result)
+      } catch (err) {
+        console.error("[VoiceInputModal] /api/interpret failed:", err)
+        setErrorMsg(t("errorLoading"))
+        setState("error")
+      }
+    }
+
+    recognition.onerror = () => {
+      setErrorMsg(t("errorLoading"))
+      setState("error")
+    }
+
+    recognition.start()
+    return () => { try { recognition.stop() } catch { /* ignore */ } }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <motion.div
@@ -712,105 +788,46 @@ function VoiceInputModal({ onClose }: { onClose: () => void }) {
       >
         {state === "listening" && (
           <div className="flex flex-col items-center gap-6 py-8">
-            {/* Waveform visualization */}
             <div className="flex items-center gap-1 h-16">
               {Array.from({ length: 20 }).map((_, i) => (
                 <motion.div
                   key={i}
-                  className="w-1 bg-destructive rounded-full"
-                  animate={{
-                    height: [8, FOOD_WAVE_HEIGHTS[i % FOOD_WAVE_HEIGHTS.length], 8],
-                  }}
-                  transition={{
-                    duration: 0.5,
-                    repeat: Infinity,
-                    delay: i * 0.05,
-                  }}
+                  className="w-1 bg-primary rounded-full"
+                  animate={{ height: [8, FOOD_WAVE_HEIGHTS[i % FOOD_WAVE_HEIGHTS.length], 8] }}
+                  transition={{ duration: 0.5, repeat: Infinity, delay: i * 0.05 }}
                 />
               ))}
             </div>
             <motion.div
-              className="p-6 rounded-full bg-destructive/10"
+              className="p-6 rounded-full bg-[var(--badge-positive-bg)]"
               animate={{ scale: [1, 1.1, 1] }}
               transition={{ duration: 1.5, repeat: Infinity }}
             >
-              <Mic className="h-8 w-8 text-destructive" />
+              <Mic className="h-8 w-8" style={{ color: "var(--primary)" }} />
             </motion.div>
             <p className="text-lg text-muted-foreground">{t("speakNow")}</p>
-            <p className="text-sm text-foreground">
-              "Riz blanc 150g et huile d'olive 15ml"
-            </p>
-            <Button
-              variant="outline"
-              onClick={simulateProcessing}
-              className="mt-4"
-            >
-              Simuler
-            </Button>
+            <p className="text-sm text-foreground text-center">{t("speakActivity")}</p>
           </div>
         )}
 
         {state === "processing" && (
           <div className="flex flex-col items-center gap-6 py-8">
-            <div className="h-16 w-16 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+            <Loader2 className="h-10 w-10 animate-spin" style={{ color: "var(--primary)" }} />
             <p className="text-lg text-muted-foreground">{t("analyzing")}</p>
           </div>
         )}
 
-        {state === "confirm" && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Mic className="h-5 w-5 text-primary" />
-              <h3 className="text-lg font-semibold">{t("detectedFoods")}</h3>
-            </div>
-            <div className="space-y-3">
-              {[
-                { name: "Riz blanc", amount: 150, calories: 207, source: "CIQUAL" },
-                { name: "Huile d'olive", amount: 15, calories: 124, source: "NutriVita" },
-              ].map((item, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between p-3 rounded-xl bg-muted/50"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium">{item.name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {item.amount}g
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">
-                      {item.calories} kcal
-                    </span>
-                    <span>{item.source}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="flex items-center justify-between pt-2 border-t border-border">
-              <span className="font-semibold">{t("total")}</span>
-              <span className="font-semibold">331 kcal</span>
-            </div>
-            <div className="flex gap-3 pt-4">
-              <Button variant="outline" className="flex-1" onClick={onClose}>
-                {t("cancel")}
-              </Button>
-              <Button
-                className="flex-1 bg-primary text-primary-foreground"
-                onClick={onClose}
-              >
-                {t("add")}
-              </Button>
-            </div>
+        {state === "error" && (
+          <div className="flex flex-col items-center gap-6 py-8">
+            <p className="text-[14px] text-center" style={{ color: "var(--risk)" }}>
+              {errorMsg ?? t("errorLoading")}
+            </p>
+            <Button variant="outline" onClick={onClose}>{t("cancel")}</Button>
           </div>
         )}
 
-        <Button
-          variant="ghost"
-          className="absolute top-4 right-4"
-          onClick={onClose}
-        >
-          Fermer
+        <Button variant="ghost" className="absolute top-4 right-4" onClick={onClose}>
+          {t("cancel")}
         </Button>
       </motion.div>
     </motion.div>

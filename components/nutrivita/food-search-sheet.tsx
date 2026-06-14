@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   ArrowLeft,
@@ -12,9 +12,10 @@ import {
   Star,
   Heart,
   Minus,
+  Loader2,
 } from "lucide-react"
 import { useApp } from "@/lib/app-context"
-import { addJournalEntry } from "@/lib/api"
+import { addJournalEntry, searchFoods } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Slider } from "@/components/ui/slider"
@@ -37,6 +38,9 @@ export function FoodSearchSheet() {
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null)
   const [portion, setPortion] = useState(100)
   const [activeFilter, setActiveFilter] = useState("all")
+  const [backendResults, setBackendResults] = useState<FoodItem[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [searchError, setSearchError] = useState<string | null>(null)
 
   const cuisineFilters = [
     { id: "all", label: t("all") },
@@ -46,6 +50,30 @@ export function FoodSearchSheet() {
     { id: "Italienne", label: "Italienne" },
     { id: "International", label: "International" },
   ]
+
+  // Debounced backend search — 300ms after last keystroke
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setBackendResults([])
+      setSearchError(null)
+      return
+    }
+    const timer = setTimeout(async () => {
+      setIsSearching(true)
+      setSearchError(null)
+      try {
+        const results = await searchFoods(searchQuery.trim())
+        setBackendResults(results)
+      } catch (err) {
+        console.error("[FoodSearch] /api/foods/search failed:", err)
+        setSearchError(t("errorLoading"))
+        setBackendResults([])
+      } finally {
+        setIsSearching(false)
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery, t])
 
   const filteredFoods = useMemo(() => {
     let foods = SAMPLE_FOODS
@@ -224,11 +252,20 @@ export function FoodSearchSheet() {
             {/* Search Results */}
             <div className="space-y-2 pb-32">
               {searchQuery && (
-                <h3 className="text-sm font-semibold text-muted-foreground mb-3">
+                <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
                   {t("searchResults")}
+                  {isSearching && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 </h3>
               )}
-              {filteredFoods.map((food) => (
+              {searchError && (
+                <p className="text-[12px] text-center py-2" style={{ color: "var(--risk)" }}>
+                  {searchError}
+                </p>
+              )}
+              {searchQuery && !isSearching && !searchError && backendResults.length === 0 && filteredFoods.length === 0 && (
+                <p className="text-[13px] text-muted-foreground text-center py-4">{t("searchNoResults")}</p>
+              )}
+              {(searchQuery ? (backendResults.length > 0 ? backendResults : filteredFoods) : filteredFoods).map((food) => (
                 <motion.button
                   key={food.id}
                   className="w-full flex items-center gap-3 p-3 rounded-2xl bg-card border border-border text-left"

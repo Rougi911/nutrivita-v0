@@ -11,6 +11,7 @@
 | 13/06/2026 | P4.8 boutons inertes + offline + erreurs silencieuses | GO | tsc 0 erreur, 107/107 tests, B-1..B-6 revue-code résolus, REG GO (SL-03 \uXXXX onboarding+settings corrigé) | — |
 | 14/06/2026 | P4.10 PayloadTooLargeError /api/interpret + CORS erreurs (backend nutridz) | GO | 102/102 tests, limit 15MB ciblée sur /api/interpret, rate-limiter avant body-parsers, error-handler CORS, err.message masqué sur routes santé, userId pseudonymisé dans logs Strava | Suivi frontend : redimensionner image côté client à max 1280px avant envoi (P5) |
 | 14/06/2026 | P4.11 bugs nutritionnels : USDA Branded, noms anglais CIQUAL, quantity_g non appliqué (backend nutridz) | GO | 118/118 tests, rankByDataType Foundation>SR Legacy>Survey>Branded, callGemini lang param (ar→fr clamp), resolveNutrition portion scaling + sel + estimated_portion, err.message masqué 422, sl-api.md contrat type:"food" officialisé | Vision path (`conceptsToAliments`) ne bénéficie pas du ranking USDA — différé P5 |
+| 14/06/2026 | P4.13 VOLET B finition fonctionnelle (meal_type, vocal sport, voir plus, recherche, scanner) — frontend v0design | GO | tsc 0 erreur, 108/108 tests verts, 6 bloquants revue-code corrigés (i18n × 4, double Date.now, console.error) ; B1-B6 implémentés, docs/tests-p413.md créé (T1-T7) | M-shadow-sm préexistant, M-emerald ActivityVoiceModal (différé P5), M-MET hardcodé dans InterpretConfirm (différé P5), M-simulateProcessing bouton debug ActivityVoiceModal (différé P5) |
 
 ---
 

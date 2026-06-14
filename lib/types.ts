@@ -51,7 +51,7 @@ export interface FoodItem {
   fiber?: number
   sugar?: number
   sodium?: number
-  source: "nutrivita" | "ciqual" | "estimated"
+  source: "nutrivita" | "ciqual" | "usda" | "estimated"
   isFavorite?: boolean
 }
 
@@ -428,6 +428,20 @@ export const translations = {
     serverUnavailable: "Serveur indisponible",
     connectingToServer: "Connexion au serveur en cours...",
     voiceSpeechNotSupported: "Reconnaissance vocale non disponible sur ce navigateur",
+    scannerUnknownProduct: "Produit non reconnu",
+    scannerChoiceManual: "Saisir le code manuellement",
+    scannerLabelPhoto: "Photographier l'étiquette",
+    scannerLabelPhotoHint: "L'IA lit le tableau nutritionnel",
+    labelExtracted: "Valeurs extraites de l'étiquette",
+    searching: "Recherche...",
+    searchNoResults: "Aucun résultat",
+    addToJournal: "Ajouter au journal",
+    noFoodAdded: "Aucun aliment ajouté",
+    moreItems: "de plus",
+    showLess: "Voir moins",
+    unknownFoodName: "Aliment inconnu",
+    productNamePlaceholder: "Nom du produit",
+    simulate: "Simuler",
   },
   ar: {
     journal: "اليومية",
@@ -665,6 +679,20 @@ export const translations = {
     serverUnavailable: "الخادم غير متاح",
     connectingToServer: "جاري الاتصال بالخادم...",
     voiceSpeechNotSupported: "التعرف على الصوت غير مدعوم في هذا المتصفح",
+    scannerUnknownProduct: "منتج غير معروف",
+    scannerChoiceManual: "أدخل الرمز يدويًا",
+    scannerLabelPhoto: "تصوير الملصق",
+    scannerLabelPhotoHint: "الذكاء الاصطناعي يقرأ جدول القيم الغذائية",
+    labelExtracted: "القيم المستخرجة من الملصق",
+    searching: "جاري البحث...",
+    searchNoResults: "لا توجد نتائج",
+    addToJournal: "إضافة إلى اليومية",
+    noFoodAdded: "لم يُضف أي طعام",
+    moreItems: "آخرون",
+    showLess: "عرض أقل",
+    unknownFoodName: "منتج مجهول",
+    productNamePlaceholder: "اسم المنتج",
+    simulate: "محاكاة",
   },
   en: {
     journal: "Journal",
@@ -902,6 +930,20 @@ export const translations = {
     serverUnavailable: "Server unavailable",
     connectingToServer: "Connecting to server...",
     voiceSpeechNotSupported: "Speech recognition not available in this browser",
+    scannerUnknownProduct: "Product not found",
+    scannerChoiceManual: "Enter barcode manually",
+    scannerLabelPhoto: "Photograph the label",
+    scannerLabelPhotoHint: "AI reads the nutrition table",
+    labelExtracted: "Values extracted from label",
+    searching: "Searching...",
+    searchNoResults: "No results",
+    addToJournal: "Add to journal",
+    noFoodAdded: "No food added yet",
+    moreItems: "more",
+    showLess: "Show less",
+    unknownFoodName: "Unknown food",
+    productNamePlaceholder: "Product name",
+    simulate: "Simulate",
   },
 }
 

@@ -4,9 +4,9 @@ import { useEffect, useState, useRef, useCallback } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { Camera, Loader2, Mic, ScanLine, Search, X, KeyboardIcon } from "lucide-react"
 import { useApp } from "@/lib/app-context"
-import { interpretMedia, scanBarcode } from "@/lib/api"
+import { interpretMedia, scanBarcode, scanLabelImage, ProductUnknownError } from "@/lib/api"
 import { SAMPLE_FOODS } from "@/lib/types"
-import type { ApiInterpretResponse } from "@/lib/api-types"
+import type { ApiInterpretResponse, ApiLabelScanResult } from "@/lib/api-types"
 import { InterpretConfirm } from "@/components/nutrivita/interpret-confirm"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -144,7 +144,10 @@ export function AddSheet() {
       const transcript = event.results[0][0].transcript
       callInterpretText(transcript)
     }
-    recognition.onerror = () => setInterpError(t("errorLoading"))
+    recognition.onerror = () => {
+      console.error("[AddSheet] SpeechRecognition error (voice recognition failed)")
+      setInterpError(t("errorLoading"))
+    }
     recognition.start()
   }
 
@@ -343,6 +346,13 @@ export function AddSheet() {
 
 // ─── ScannerModal ─────────────────────────────────────────────────────────────
 
+type ScanStep =
+  | "camera"         // caméra active (BarcodeDetector)
+  | "manual"         // saisie manuelle
+  | "unknown"        // produit non trouvé — choix à faire
+  | "label-processing" // analyse Gemini en cours
+  | "label-confirm"  // valeurs extraites — confirmation avant ajout
+
 function ScannerModal({
   onClose,
   onScanned,
@@ -350,15 +360,19 @@ function ScannerModal({
   onClose: () => void
   onScanned: (product: import("@/lib/types").ScannedProduct) => void
 }) {
-  const { t } = useApp()
+  const { t, addMealEntry, currentDate } = useApp()
+  const [step, setStep] = useState<ScanStep>("camera")
   const [manualBarcode, setManualBarcode] = useState("")
   const [scanning, setScanning] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cameraError, setCameraError] = useState<string | null>(null)
-  const [showManual, setShowManual] = useState(false)
+  const [unknownBarcode, setUnknownBarcode] = useState("")
+  const [labelResult, setLabelResult] = useState<ApiLabelScanResult | null>(null)
+  const [labelName, setLabelName] = useState("")
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const activeRef = useRef(true)
+  const labelInputRef = useRef<HTMLInputElement>(null)
 
   const handleBarcode = useCallback(async (barcode: string) => {
     if (!activeRef.current) return
@@ -369,16 +383,75 @@ function ScannerModal({
       onScanned(product)
       onClose()
     } catch (err) {
-      console.error("[ScannerModal] scanBarcode failed:", err)
+      if (err instanceof ProductUnknownError) {
+        setUnknownBarcode(barcode)
+        setStep("unknown")
+        return
+      }
+      console.error("[ScannerModal] scanBarcode failed:", "/api/scan", err)
       setError(t("scannerError"))
     } finally {
       setScanning(false)
     }
   }, [onClose, onScanned, t])
 
+  const handleLabelPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setStep("label-processing")
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve((reader.result as string).split(",")[1] ?? "")
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+      const result = await scanLabelImage(base64)
+      setLabelResult(result)
+      setLabelName(t("unknownFoodName"))
+      setStep("label-confirm")
+    } catch (err) {
+      console.error("[ScannerModal] /api/scan/label failed:", err)
+      setError(t("errorLoading"))
+      setStep("unknown")
+    } finally {
+      if (e.target) e.target.value = ""
+    }
+  }
+
+  const handleLabelConfirm = () => {
+    if (!labelResult) return
+    const foodId = `label-${Date.now()}`
+    const h = new Date().getHours()
+    const mealType =
+      h < 11 ? "breakfast" as const :
+      h < 15 ? "lunch" as const :
+      h < 19 ? "snack" as const :
+               "dinner" as const
+    addMealEntry({
+      foodId,
+      food: {
+        id: foodId,
+        name: labelName || t("unknownFoodName"),
+        nameEn: labelName || t("unknownFoodName"),
+        cuisine: "International",
+        calories: labelResult.kcal ?? 0,
+        protein: labelResult.proteines ?? 0,
+        carbs: labelResult.glucides ?? 0,
+        fat: labelResult.lipides ?? 0,
+        fiber: labelResult.fibres ?? undefined,
+        source: "estimated" as const,
+      },
+      amount: 100,
+      mealType,
+      date: currentDate,
+    })
+    onClose()
+  }
+
   useEffect(() => {
     activeRef.current = true
-    if (showManual) return
+    if (step !== "camera") return
 
     ;(async () => {
       try {
@@ -392,7 +465,6 @@ function ScannerModal({
           videoRef.current.play().catch(() => {})
         }
 
-        // Use native BarcodeDetector if available (Chrome/Android)
         const win = window as unknown as Record<string, unknown>
         if (typeof win["BarcodeDetector"] === "function") {
           type BD = { detect: (src: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> }
@@ -417,13 +489,11 @@ function ScannerModal({
             videoRef.current.onloadedmetadata = () => { if (activeRef.current) requestAnimationFrame(loop) }
           }
         } else {
-          // No BarcodeDetector → switch to manual entry
-          setCameraError(null)
-          setShowManual(true)
+          setStep("manual")
         }
       } catch {
         if (activeRef.current) setCameraError(t("cameraPermissionDenied"))
-        setShowManual(true)
+        setStep("manual")
       }
     })()
 
@@ -431,7 +501,7 @@ function ScannerModal({
       activeRef.current = false
       streamRef.current?.getTracks().forEach((tr) => tr.stop())
     }
-  }, [showManual, handleBarcode, t])
+  }, [step, handleBarcode, t])
 
   return (
     <motion.div
@@ -455,31 +525,29 @@ function ScannerModal({
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center gap-6 px-6">
-          {!showManual && !cameraError ? (
+
+          {/* ── Caméra ── */}
+          {step === "camera" && (
             <>
-              {/* Camera viewfinder */}
               <div className="relative w-full max-w-sm aspect-square rounded-2xl overflow-hidden bg-black">
-                <video
-                  ref={videoRef}
-                  className="w-full h-full object-cover"
-                  muted
-                  playsInline
-                />
-                {/* Scanning frame overlay */}
+                <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="w-48 h-48 border-2 border-primary rounded-xl opacity-80" />
                 </div>
               </div>
               <p className="text-[13px] text-muted-foreground text-center">{t("scannerScanBarcode")}</p>
               <button
-                onClick={() => setShowManual(true)}
+                onClick={() => setStep("manual")}
                 className="flex items-center gap-2 text-[13px] text-primary"
               >
                 <KeyboardIcon className="h-4 w-4" />
                 {t("scannerManualBarcode")}
               </button>
             </>
-          ) : (
+          )}
+
+          {/* ── Saisie manuelle ── */}
+          {step === "manual" && (
             <>
               {cameraError && (
                 <p className="text-[13px] text-center" style={{ color: "var(--amber)" }}>{cameraError}</p>
@@ -495,31 +563,112 @@ function ScannerModal({
                   className="h-12 rounded-xl"
                   autoFocus
                 />
-                {error && (
-                  <p className="text-[12px]" style={{ color: "var(--risk)" }}>{error}</p>
-                )}
+                {error && <p className="text-[12px]" style={{ color: "var(--risk)" }}>{error}</p>}
                 <Button
                   className="w-full rounded-xl"
                   disabled={manualBarcode.length < 8 || scanning}
                   onClick={() => handleBarcode(manualBarcode.trim())}
                 >
-                  {scanning ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Search className="h-4 w-4 mr-2" />
-                  )}
+                  {scanning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
                   {t("scannerScanBarcode")}
                 </Button>
                 {!cameraError && (
-                  <button
-                    onClick={() => setShowManual(false)}
-                    className="w-full text-[13px] text-primary text-center"
-                  >
+                  <button onClick={() => setStep("camera")} className="w-full text-[13px] text-primary text-center">
                     {t("scannerOpenCamera")}
                   </button>
                 )}
               </div>
             </>
+          )}
+
+          {/* ── Produit inconnu — choix ── */}
+          {step === "unknown" && (
+            <div className="w-full max-w-sm space-y-4">
+              <div className="text-center space-y-1">
+                <p className="text-[15px] font-semibold text-foreground">{t("scannerUnknownProduct")}</p>
+                {unknownBarcode && (
+                  <p className="text-[12px] text-muted-foreground">{unknownBarcode}</p>
+                )}
+              </div>
+              <button
+                onClick={() => setStep("manual")}
+                className="w-full flex items-center gap-3 p-4 rounded-2xl border border-border bg-card text-left"
+              >
+                <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                  <KeyboardIcon className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <p className="text-[14px] font-medium text-foreground">{t("scannerChoiceManual")}</p>
+              </button>
+              <button
+                onClick={() => labelInputRef.current?.click()}
+                className="w-full flex items-center gap-3 p-4 rounded-2xl border border-border bg-card text-left"
+              >
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: "var(--badge-positive-bg)" }}>
+                  <Camera className="h-5 w-5" style={{ color: "var(--primary)" }} />
+                </div>
+                <div>
+                  <p className="text-[14px] font-medium text-foreground">{t("scannerLabelPhoto")}</p>
+                  <p className="text-[11px] text-muted-foreground">{t("scannerLabelPhotoHint")}</p>
+                </div>
+              </button>
+              <input
+                ref={labelInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleLabelPhoto}
+              />
+            </div>
+          )}
+
+          {/* ── Analyse en cours ── */}
+          {step === "label-processing" && (
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="h-10 w-10 animate-spin" style={{ color: "var(--primary)" }} />
+              <p className="text-[14px] text-muted-foreground">{t("analyzing")}</p>
+            </div>
+          )}
+
+          {/* ── Confirmation valeurs étiquette ── */}
+          {step === "label-confirm" && labelResult && (
+            <div className="w-full max-w-sm space-y-4">
+              <p className="text-[15px] font-semibold text-foreground">{t("labelExtracted")}</p>
+              <p className="text-[11px] text-muted-foreground">{labelResult.source}</p>
+              <Input
+                placeholder={t("productNamePlaceholder")}
+                value={labelName}
+                onChange={(e) => setLabelName(e.target.value)}
+                className="h-11 rounded-xl"
+              />
+              <div className="rounded-2xl border border-border bg-card p-4 space-y-2">
+                {[
+                  { label: "Calories", value: labelResult.kcal, unit: "kcal" },
+                  { label: "Glucides", value: labelResult.glucides, unit: "g" },
+                  { label: "dont Sucres", value: labelResult.sucres, unit: "g" },
+                  { label: "Protéines", value: labelResult.proteines, unit: "g" },
+                  { label: "Lipides", value: labelResult.lipides, unit: "g" },
+                  { label: "dont Saturés", value: labelResult.satures, unit: "g" },
+                  { label: "Sel", value: labelResult.sel, unit: "g" },
+                  { label: "Fibres", value: labelResult.fibres, unit: "g" },
+                ].map(({ label, value, unit }) => (
+                  <div key={label} className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">{label}</span>
+                    <span className="font-medium text-foreground">
+                      {value !== null && value !== undefined ? `${value} ${unit}` : "—"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-3">
+                <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setStep("unknown")}>
+                  {t("cancel")}
+                </Button>
+                <Button className="flex-1 rounded-xl" onClick={handleLabelConfirm}>
+                  {t("addToJournal")}
+                </Button>
+              </div>
+            </div>
           )}
         </div>
       </div>

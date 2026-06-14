@@ -7,6 +7,8 @@ import type {
   ApiWeightEntry,
   ApiGlucoseReading,
   ApiActivityEntry,
+  ApiFoodSearchResult,
+  ApiLabelScanResult,
 } from "@/lib/api-types"
 import type {
   MealEntry,
@@ -36,6 +38,13 @@ export class ApiError extends Error {
   ) {
     super(`ApiError [${status}]: ${message}`)
     this.name = "ApiError"
+  }
+}
+
+export class ProductUnknownError extends Error {
+  constructor(public readonly barcode: string) {
+    super(`product_unknown:${barcode}`)
+    this.name = "ProductUnknownError"
   }
 }
 
@@ -211,11 +220,48 @@ export async function interpretMedia(
 }
 
 export async function scanBarcode(barcode: string): Promise<ScannedProduct> {
-  const raw = await apiFetch<ApiScanResponse>("/api/scan", {
+  try {
+    const raw = await apiFetch<ApiScanResponse & { status?: string }>("/api/scan", {
+      method: "POST",
+      body: JSON.stringify({ barcode }),
+    })
+    if (raw.status === "product_unknown") {
+      throw new ProductUnknownError(barcode)
+    }
+    return mapScannedProduct(raw)
+  } catch (err) {
+    if (err instanceof ProductUnknownError) throw err
+    if (err instanceof ApiError && (err.status === 404 || err.message.includes("product_unknown"))) {
+      throw new ProductUnknownError(barcode)
+    }
+    throw err
+  }
+}
+
+export async function scanLabelImage(base64: string): Promise<ApiLabelScanResult> {
+  return apiFetch<ApiLabelScanResult>("/api/scan/label", {
     method: "POST",
-    body: JSON.stringify({ barcode }),
+    body: JSON.stringify({ image: base64 }),
   })
-  return mapScannedProduct(raw)
+}
+
+export async function searchFoods(q: string): Promise<FoodItem[]> {
+  const raw = await apiFetch<ApiFoodSearchResult[]>(
+    `/api/foods/search?q=${encodeURIComponent(q)}`
+  )
+  return raw.map((r) => ({
+    id: r.id,
+    name: r.name,
+    nameAr: r.name_ar,
+    nameEn: r.name_en,
+    cuisine: r.cuisine ?? "International",
+    calories: r.calories,
+    protein: r.protein,
+    carbs: r.carbs,
+    fat: r.fat,
+    fiber: r.fiber,
+    source: r.source,
+  }))
 }
 
 export async function getGroceriesSummary(): Promise<{

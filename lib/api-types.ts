@@ -83,7 +83,7 @@ export interface ApiMealEntry {
     fiber?: number
     sugar?: number
     sodium?: number
-    source: "nutrivita" | "ciqual" | "estimated"
+    source: "nutrivita" | "ciqual" | "usda" | "estimated"
   }
   amount: number
   meal_type: "breakfast" | "lunch" | "snack" | "dinner"
@@ -114,4 +114,32 @@ export interface ApiActivityEntry {
   date: string
   source: "manual" | "strava" | "voice"
   created_at: string
+}
+
+export interface ApiFoodSearchResult {
+  id: string
+  name: string
+  name_ar?: string
+  name_en?: string
+  cuisine?: string
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+  fiber?: number
+  source: "ciqual" | "usda" | "nutrivita" | "estimated"
+}
+
+/** Résultat d'analyse d'une photo d'étiquette nutritionnelle (POST /api/scan/label). */
+export interface ApiLabelScanResult {
+  /** "label_declared_by_manufacturer" — REG : source obligatoire */
+  source: string
+  kcal: number | null
+  glucides: number | null
+  sucres: number | null
+  proteines: number | null
+  lipides: number | null
+  satures: number | null
+  sel: number | null
+  fibres: number | null
 }

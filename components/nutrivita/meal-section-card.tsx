@@ -1,8 +1,10 @@
 "use client"
 
-import { ChevronDown, Plus, Utensils } from "lucide-react"
+import { useState } from "react"
+import { ChevronDown, ChevronUp, Plus, Utensils } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { useApp } from "@/lib/app-context"
 import type { MealEntry } from "@/lib/types"
 
 interface MealSectionCardProps {
@@ -22,6 +24,12 @@ export function MealSectionCard({
   compact = false,
   className,
 }: MealSectionCardProps) {
+  const { t } = useApp()
+  const [expanded, setExpanded] = useState(false)
+  const limit = compact ? 2 : 3
+  const visible = expanded ? entries : entries.slice(0, limit)
+  const hidden = entries.length - limit
+
   const totalCalories = entries.reduce(
     (sum, entry) => sum + (entry.food.calories * entry.amount) / 100,
     0
@@ -47,11 +55,11 @@ export function MealSectionCard({
       <div className="px-4 py-3 space-y-2">
         {entries.length === 0 ? (
           <p className="text-[13px] text-muted-foreground text-center py-1">
-            Aucun aliment ajouté
+            {t("noFoodAdded")}
           </p>
         ) : (
           <>
-            {entries.slice(0, compact ? 2 : 3).map((entry) => (
+            {visible.map((entry) => (
               <div
                 key={entry.id}
                 className="flex items-center justify-between text-sm"
@@ -65,10 +73,24 @@ export function MealSectionCard({
                 </span>
               </div>
             ))}
-            {entries.length > (compact ? 2 : 3) && (
-              <button className="flex items-center gap-1 text-[13px] text-primary">
+            {!expanded && hidden > 0 && (
+              <button
+                onClick={() => setExpanded(true)}
+                aria-label={`${t("showLess")} — ${hidden} ${t("moreItems")}`}
+                className="flex items-center gap-1 text-[13px] text-primary"
+              >
                 <ChevronDown className="h-3.5 w-3.5" />
-                {entries.length - (compact ? 2 : 3)} de plus
+                {hidden} {t("moreItems")}
+              </button>
+            )}
+            {expanded && entries.length > limit && (
+              <button
+                onClick={() => setExpanded(false)}
+                aria-label={t("showLess")}
+                className="flex items-center gap-1 text-[13px] text-muted-foreground"
+              >
+                <ChevronUp className="h-3.5 w-3.5" />
+                {t("showLess")}
               </button>
             )}
           </>

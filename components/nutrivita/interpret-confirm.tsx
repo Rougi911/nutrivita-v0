@@ -3,9 +3,9 @@
 import { useState } from "react"
 import { ArrowLeft, Check, X } from "lucide-react"
 import { useApp } from "@/lib/app-context"
-import { SAMPLE_FOODS } from "@/lib/types"
+import { SAMPLE_FOODS, MEALS } from "@/lib/types"
 import type { ApiInterpretResponse, ApiIntent } from "@/lib/api-types"
-import type { GlucoseReading, FoodItem } from "@/lib/types"
+import type { GlucoseReading, FoodItem, MealEntry } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -13,6 +13,31 @@ interface InterpretConfirmProps {
   result: ApiInterpretResponse
   onBack: () => void
   onDone: () => void
+}
+
+type MealType = MealEntry["mealType"]
+
+function inferMealTypeFromTime(): MealType {
+  const h = new Date().getHours()
+  if (h < 11) return "breakfast"
+  if (h < 15) return "lunch"
+  if (h < 19) return "snack"
+  return "dinner"
+}
+
+function normalizeMealType(mt: string | null | undefined): MealType | null {
+  if (!mt || mt === "null") return null
+  const map: Record<string, MealType> = {
+    breakfast: "breakfast",
+    lunch: "lunch",
+    dinner: "dinner",
+    snack: "snack",
+    "petit-dejeuner": "breakfast",
+    dejeuner: "lunch",
+    diner: "dinner",
+    collation: "snack",
+  }
+  return map[mt.toLowerCase()] ?? null
 }
 
 function intentLabel(intent: ApiIntent): string {
@@ -37,12 +62,23 @@ function intentColor(type: ApiIntent["type"]): string {
 }
 
 export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmProps) {
-  const { t, addMealEntry, addActivity, addGlucoseReading, currentDate, selectedMealType, user } =
-    useApp()
+  const { t, addMealEntry, addActivity, addGlucoseReading, currentDate, user } = useApp()
+
   const [selected, setSelected] = useState<boolean[]>(result.intents.map(() => true))
+  const [mealTypes, setMealTypes] = useState<MealType[]>(
+    result.intents.map((intent) => {
+      if (intent.type === "food") {
+        return normalizeMealType(intent.meal_type) ?? inferMealTypeFromTime()
+      }
+      return "lunch"
+    })
+  )
 
   const toggle = (i: number) =>
     setSelected((prev) => prev.map((v, idx) => (idx === i ? !v : v)))
+
+  const updateMealType = (i: number, mt: MealType) =>
+    setMealTypes((prev) => prev.map((v, idx) => (idx === i ? mt : v)))
 
   const handleConfirm = () => {
     result.intents.forEach((intent, i) => {
@@ -68,7 +104,7 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
           foodId: food.id,
           food,
           amount: intent.quantity_g ?? 100,
-          mealType: selectedMealType ?? "lunch",
+          mealType: mealTypes[i],
           date: currentDate,
         })
       }
@@ -112,34 +148,56 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
 
       <div className="flex-1 px-4 pb-6 space-y-3 overflow-y-auto">
         {result.intents.map((intent, i) => (
-          <button
-            key={i}
-            onClick={() => toggle(i)}
-            className={cn(
-              "w-full flex items-start gap-3 rounded-2xl border p-3.5 text-left transition-colors",
-              selected[i]
-                ? "border-[var(--primary)] bg-[var(--badge-positive-bg)]"
-                : "border-border bg-card"
+          <div key={i} className="space-y-2">
+            <button
+              onClick={() => toggle(i)}
+              className={cn(
+                "w-full flex items-start gap-3 rounded-2xl border p-3.5 text-left transition-colors",
+                selected[i]
+                  ? "border-[var(--primary)] bg-[var(--badge-positive-bg)]"
+                  : "border-border bg-card"
+              )}
+            >
+              <div
+                className="w-2 h-2 rounded-full mt-1.5 shrink-0"
+                style={{ backgroundColor: intentColor(intent.type) }}
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-[14px] font-semibold text-foreground leading-tight">
+                  {intentLabel(intent)}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {t("detectedAt")} {Math.round(intent.confidence * 100)}%
+                </p>
+              </div>
+              {selected[i] ? (
+                <Check className="h-4 w-4 shrink-0 mt-0.5" style={{ color: "var(--primary)" }} />
+              ) : (
+                <X className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+              )}
+            </button>
+
+            {/* Sélecteur de repas — uniquement pour les intents food sélectionnés */}
+            {intent.type === "food" && selected[i] && (
+              <div className="flex gap-1.5">
+                {MEALS.map((m) => (
+                  <button
+                    key={m.type}
+                    onClick={() => updateMealType(i, m.type)}
+                    className={cn(
+                      "flex-1 text-[11px] font-medium rounded-xl py-1.5 border transition-colors",
+                      mealTypes[i] === m.type
+                        ? "border-[var(--primary)] text-white"
+                        : "bg-card text-muted-foreground border-border"
+                    )}
+                    style={mealTypes[i] === m.type ? { backgroundColor: "var(--primary)" } : {}}
+                  >
+                    {t(m.type)}
+                  </button>
+                ))}
+              </div>
             )}
-          >
-            <div
-              className="w-2 h-2 rounded-full mt-1.5 shrink-0"
-              style={{ backgroundColor: intentColor(intent.type) }}
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-[14px] font-semibold text-foreground leading-tight">
-                {intentLabel(intent)}
-              </p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                {t("detectedAt")} {Math.round(intent.confidence * 100)}%
-              </p>
-            </div>
-            {selected[i] ? (
-              <Check className="h-4 w-4 shrink-0 mt-0.5" style={{ color: "var(--primary)" }} />
-            ) : (
-              <X className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-            )}
-          </button>
+          </div>
         ))}
       </div>
 
