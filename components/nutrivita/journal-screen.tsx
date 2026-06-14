@@ -49,6 +49,7 @@ export function JournalScreen() {
     language,
     setShowFoodSearch,
     setSelectedMealType,
+    setShowAddSheet,
     activities,
     addActivity,
     removeActivity,
@@ -117,11 +118,11 @@ export function JournalScreen() {
   }
 
   const quickActions = [
-    { icon: Mic, label: t("voice"), onClick: () => setShowVoiceInput(true) },
-    { icon: Camera, label: t("photo"), onClick: () => {} },
-    { icon: ScanBarcode, label: t("scanner"), onClick: () => {} },
-    { icon: Star, label: t("favorites"), onClick: () => {} },
-    { icon: Copy, label: t("copyYesterday"), onClick: () => {} },
+    { icon: Mic,        label: t("voice"),        onClick: () => setShowVoiceInput(true) },
+    { icon: Camera,     label: t("photo"),         onClick: () => setShowAddSheet(true) },
+    { icon: ScanBarcode,label: t("scanner"),       onClick: () => setShowAddSheet(true) },
+    { icon: Star,       label: t("favorites"),     onClick: () => { setSelectedMealType(null); setShowFoodSearch(true) } },
+    { icon: Copy,       label: t("copyYesterday"), onClick: () => setShowAddSheet(true) },
   ]
 
   return (
@@ -238,7 +239,7 @@ export function JournalScreen() {
         {/* Weight Card */}
         {dailyLog.weight && (
           <motion.div
-            className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border shadow-sm"
+            className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
@@ -247,14 +248,14 @@ export function JournalScreen() {
               <span className="font-medium text-foreground">{t("weight")}</span>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-lg font-bold text-foreground">
+              <span className="text-lg font-semibold text-foreground">
                 {dailyLog.weight.toFixed(1)} kg
               </span>
               {weightChange !== null && (
                 <span
                   className={cn(
                     "text-sm font-medium",
-                    weightChange < 0 ? "text-emerald" : "text-destructive"
+                    weightChange < 0 ? "text-[var(--primary)]" : "text-destructive"
                   )}
                 >
                   {weightChange > 0 ? "+" : ""}
@@ -270,7 +271,7 @@ export function JournalScreen() {
 
         {/* Activity Card */}
         <motion.div
-          className="rounded-2xl bg-card border border-border shadow-sm overflow-hidden"
+          className="rounded-2xl bg-card border border-border overflow-hidden"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
@@ -282,7 +283,7 @@ export function JournalScreen() {
             </div>
             <div className="flex items-center gap-2">
               {todayBurnedCalories > 0 && (
-                <span className="text-sm font-semibold text-emerald">
+                <span className="text-sm font-semibold" style={{ color: "var(--primary)" }}>
                   {todayBurnedCalories} {t("caloriesBurned")}
                 </span>
               )}
@@ -320,7 +321,7 @@ export function JournalScreen() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-emerald">
+                    <span className="text-sm font-semibold" style={{ color: "var(--primary)" }}>
                       {act.caloriesBurned} kcal
                     </span>
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
@@ -395,6 +396,7 @@ export function JournalScreen() {
             setShowActivityVoice(false)
           }}
           userWeight={user.weight}
+          language={language}
         />
       )}
       {showActivityManual && (
@@ -468,30 +470,65 @@ function parseActivityVoice(text: string): { type: string; duration: number } {
 
 // ─── Activity Voice Modal ─────────────────────────────────────────────────────
 
+// Pre-computed heights for ActivityVoiceModal waveform — no Math.random() in render
+const ACTIVITY_WAVE_HEIGHTS = [24, 40, 16, 48, 24, 40, 16, 48, 32, 24, 36, 48, 16, 40, 24, 48, 24, 40, 16, 48]
+
 function ActivityVoiceModal({
   onClose,
   onAdd,
   userWeight,
+  language,
 }: {
   onClose: () => void
   onAdd: (entry: Omit<ActivityEntry, "id" | "createdAt" | "date">) => void
   userWeight: number
+  language: string
 }) {
-  const [state, setState] = useState<"listening" | "processing" | "confirm">("listening")
+  const [state, setState] = useState<"listening" | "processing" | "confirm" | "text-input">("listening")
   const [detected, setDetected] = useState<{ type: string; duration: number; caloriesBurned: number } | null>(null)
+  const [textInput, setTextInput] = useState("")
   const { t } = useApp()
 
-  const simulateProcessing = () => {
+  const processTranscript = (text: string) => {
     setState("processing")
-    setTimeout(() => {
-      const parsed = parseActivityVoice("30 minutes de course")
-      setDetected({
-        ...parsed,
-        caloriesBurned: calcCalories(parsed.type, parsed.duration, userWeight),
-      })
-      setState("confirm")
-    }, 2000)
+    const parsed = parseActivityVoice(text)
+    setDetected({ ...parsed, caloriesBurned: calcCalories(parsed.type, parsed.duration, userWeight) })
+    setState("confirm")
   }
+
+  useEffect(() => {
+    type AnySpeechRecognition = {
+      lang: string
+      interimResults: boolean
+      maxAlternatives: number
+      onresult: ((event: { results: { [index: number]: { [index: number]: { transcript: string } } } }) => void) | null
+      onerror: (() => void) | null
+      start: () => void
+      stop: () => void
+    }
+    type SpeechRecognitionCtor = new () => AnySpeechRecognition
+    const SRC =
+      typeof window !== "undefined"
+        ? ((window as unknown as Record<string, unknown>)["SpeechRecognition"] ??
+            (window as unknown as Record<string, unknown>)["webkitSpeechRecognition"]) as
+          | SpeechRecognitionCtor
+          | undefined
+        : undefined
+
+    if (!SRC) { setState("text-input"); return }
+
+    const recognition = new SRC()
+    recognition.lang = language === "ar" ? "ar-DZ" : language === "en" ? "en-US" : "fr-FR"
+    recognition.interimResults = false
+    recognition.maxAlternatives = 1
+    recognition.onresult = (event) => {
+      processTranscript(event.results[0][0].transcript)
+    }
+    recognition.onerror = () => { setState("text-input") }
+    recognition.start()
+    return () => { try { recognition.stop() } catch { /* ignore on unmount */ } }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <motion.div
@@ -511,30 +548,52 @@ function ActivityVoiceModal({
               {Array.from({ length: 20 }).map((_, i) => (
                 <motion.div
                   key={i}
-                  className="w-1 bg-emerald rounded-full"
-                  animate={{ height: [8, 32 + (i % 5) * 8, 8] }}
+                  className="w-1 rounded-full"
+                  style={{ backgroundColor: "var(--primary)" }}
+                  animate={{ height: [8, ACTIVITY_WAVE_HEIGHTS[i % ACTIVITY_WAVE_HEIGHTS.length], 8] }}
                   transition={{ duration: 0.5, repeat: Infinity, delay: i * 0.05 }}
                 />
               ))}
             </div>
             <motion.div
-              className="p-6 rounded-full bg-emerald/10"
+              className="p-6 rounded-full"
+              style={{ backgroundColor: "var(--badge-positive-bg)" }}
               animate={{ scale: [1, 1.1, 1] }}
               transition={{ duration: 1.5, repeat: Infinity }}
             >
-              <Mic className="h-8 w-8 text-emerald" />
+              <Mic className="h-8 w-8" style={{ color: "var(--primary)" }} />
             </motion.div>
             <p className="text-lg text-muted-foreground">{t("speakNow")}</p>
             <p className="text-sm text-foreground">{t("speakActivity")}</p>
-            <Button variant="outline" onClick={simulateProcessing} className="mt-4">
-              {t("simulate")}
+          </div>
+        )}
+
+        {state === "text-input" && (
+          <div className="space-y-4 py-4">
+            <p className="text-[15px] font-semibold text-foreground">{t("speakActivity")}</p>
+            <p className="text-[12px] text-muted-foreground">{t("voiceSpeechNotSupported")}</p>
+            <input
+              type="text"
+              placeholder="Ex: 30 minutes de course"
+              value={textInput}
+              onChange={(e) => setTextInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && textInput.trim()) processTranscript(textInput.trim()) }}
+              className="w-full h-11 rounded-xl border border-border bg-muted px-3 text-foreground text-[14px] focus:outline-none"
+              autoFocus
+            />
+            <Button
+              className="w-full rounded-xl"
+              disabled={!textInput.trim()}
+              onClick={() => processTranscript(textInput.trim())}
+            >
+              {t("add")}
             </Button>
           </div>
         )}
 
         {state === "processing" && (
           <div className="flex flex-col items-center gap-6 py-8">
-            <div className="h-16 w-16 rounded-full border-4 border-emerald border-t-transparent animate-spin" />
+            <Loader2 className="h-10 w-10 animate-spin" style={{ color: "var(--primary)" }} />
             <p className="text-lg text-muted-foreground">{t("analyzing")}</p>
           </div>
         )}
@@ -542,7 +601,7 @@ function ActivityVoiceModal({
         {state === "confirm" && detected && (
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-emerald" />
+              <Activity className="h-5 w-5 text-primary" />
               <h3 className="text-lg font-semibold">{t("todayActivity")}</h3>
             </div>
             <div className="p-4 rounded-xl bg-muted/50 flex items-center justify-between">
@@ -553,7 +612,7 @@ function ActivityVoiceModal({
                   <p className="text-sm text-muted-foreground">{detected.duration} min</p>
                 </div>
               </div>
-              <span className="text-lg font-bold text-emerald">
+              <span className="text-lg font-semibold" style={{ color: "var(--primary)" }}>
                 {detected.caloriesBurned} kcal
               </span>
             </div>
@@ -562,7 +621,7 @@ function ActivityVoiceModal({
                 {t("cancel")}
               </Button>
               <Button
-                className="flex-1 bg-emerald text-white hover:bg-emerald/90"
+                className="flex-1"
                 onClick={() =>
                   onAdd({ type: detected.type, duration: detected.duration, caloriesBurned: detected.caloriesBurned, source: "voice" })
                 }
@@ -573,9 +632,13 @@ function ActivityVoiceModal({
           </div>
         )}
 
-        <Button variant="ghost" className="absolute top-4 right-4" onClick={onClose}>
-          {t("cancel")}
-        </Button>
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-muted flex items-center justify-center"
+          aria-label={t("cancel")}
+        >
+          <X className="h-4 w-4 text-muted-foreground" />
+        </button>
       </motion.div>
     </motion.div>
   )
@@ -650,7 +713,7 @@ function ActivityManualModal({
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors",
                 selectedType === a.key
-                  ? "bg-emerald text-white border-emerald"
+                  ? "bg-primary text-primary-foreground border-primary"
                   : "bg-muted text-foreground border-border"
               )}
             >
@@ -669,7 +732,7 @@ function ActivityManualModal({
               inputMode="numeric"
               value={durationStr}
               onChange={(e) => handleDurationChange(e.target.value)}
-              className="w-full rounded-xl border border-border bg-muted px-4 py-2.5 text-foreground text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-emerald"
+              className="w-full rounded-xl border border-border bg-muted px-4 py-2.5 text-foreground text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <div className="flex-1">
@@ -679,7 +742,7 @@ function ActivityManualModal({
               inputMode="numeric"
               value={caloriesStr}
               onChange={(e) => setCaloriesStr(e.target.value)}
-              className="w-full rounded-xl border border-border bg-muted px-4 py-2.5 text-emerald text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-emerald"
+              className="w-full rounded-xl border border-border bg-muted px-4 py-2.5 text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary" style={{ color: "var(--primary)" }}
             />
           </div>
         </div>
@@ -689,16 +752,20 @@ function ActivityManualModal({
             {t("cancel")}
           </Button>
           <Button
-            className="flex-1 bg-emerald text-white hover:bg-emerald/90"
+            className="flex-1"
             onClick={handleSubmit}
           >
             {t("add")}
           </Button>
         </div>
 
-        <Button variant="ghost" className="absolute top-4 right-4" onClick={onClose}>
-          {t("cancel")}
-        </Button>
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-muted flex items-center justify-center"
+          aria-label={t("cancel")}
+        >
+          <X className="h-4 w-4 text-muted-foreground" />
+        </button>
       </motion.div>
     </motion.div>
   )

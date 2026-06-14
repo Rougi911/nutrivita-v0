@@ -5,7 +5,8 @@ import { ArrowLeft, Check, X } from "lucide-react"
 import { useApp } from "@/lib/app-context"
 import { SAMPLE_FOODS, MEALS } from "@/lib/types"
 import type { ApiInterpretResponse, ApiIntent } from "@/lib/api-types"
-import type { GlucoseReading, FoodItem, MealEntry } from "@/lib/types"
+import type { GlucoseReading, FoodItem } from "@/lib/types"
+import { inferMealTypeFromTime, normalizeMealType, type MealType } from "@/lib/meal-utils"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -13,31 +14,6 @@ interface InterpretConfirmProps {
   result: ApiInterpretResponse
   onBack: () => void
   onDone: () => void
-}
-
-type MealType = MealEntry["mealType"]
-
-function inferMealTypeFromTime(): MealType {
-  const h = new Date().getHours()
-  if (h < 11) return "breakfast"
-  if (h < 15) return "lunch"
-  if (h < 19) return "snack"
-  return "dinner"
-}
-
-function normalizeMealType(mt: string | null | undefined): MealType | null {
-  if (!mt || mt === "null") return null
-  const map: Record<string, MealType> = {
-    breakfast: "breakfast",
-    lunch: "lunch",
-    dinner: "dinner",
-    snack: "snack",
-    "petit-dejeuner": "breakfast",
-    dejeuner: "lunch",
-    diner: "dinner",
-    collation: "snack",
-  }
-  return map[mt.toLowerCase()] ?? null
 }
 
 function intentLabel(intent: ApiIntent): string {
@@ -65,12 +41,13 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
   const { t, addMealEntry, addActivity, addGlucoseReading, currentDate, user } = useApp()
 
   const [selected, setSelected] = useState<boolean[]>(result.intents.map(() => true))
+  const [confirmError, setConfirmError] = useState<string | null>(null)
   const [mealTypes, setMealTypes] = useState<MealType[]>(
     result.intents.map((intent) => {
       if (intent.type === "food") {
         return normalizeMealType(intent.meal_type) ?? inferMealTypeFromTime()
       }
-      return "lunch"
+      return inferMealTypeFromTime()
     })
   )
 
@@ -81,6 +58,8 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
     setMealTypes((prev) => prev.map((v, idx) => (idx === i ? mt : v)))
 
   const handleConfirm = () => {
+    setConfirmError(null)
+    let processed = 0
     result.intents.forEach((intent, i) => {
       if (!selected[i]) return
 
@@ -107,6 +86,7 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
           mealType: mealTypes[i],
           date: currentDate,
         })
+        processed++
       }
 
       if (intent.type === "activity" && intent.sport && intent.duration_min != null) {
@@ -117,6 +97,7 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
           date: currentDate,
           source: "voice",
         })
+        processed++
       }
 
       if (intent.type === "glucose" && intent.glucose_mg_dl != null) {
@@ -128,8 +109,14 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
           source: "manual",
         }
         addGlucoseReading(reading)
+        processed++
       }
     })
+    // B-1 guard: alert if no intent was recognized (type mismatch or unexpected format)
+    if (processed === 0) {
+      setConfirmError(t("errorLoading"))
+      return
+    }
     onDone()
   }
 
@@ -154,7 +141,9 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
               className={cn(
                 "w-full flex items-start gap-3 rounded-2xl border p-3.5 text-left transition-colors",
                 selected[i]
-                  ? "border-[var(--primary)] bg-[var(--badge-positive-bg)]"
+                  ? intent.needs_confirmation
+                    ? "border-[var(--amber)] bg-[var(--amber-bg)]"
+                    : "border-[var(--primary)] bg-[var(--badge-positive-bg)]"
                   : "border-border bg-card"
               )}
             >
@@ -166,8 +155,12 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
                 <p className="text-[14px] font-semibold text-foreground leading-tight">
                   {intentLabel(intent)}
                 </p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
+                <p
+                  className="text-[11px] mt-0.5"
+                  style={{ color: intent.needs_confirmation ? "var(--amber)" : "var(--muted-foreground)" }}
+                >
                   {t("detectedAt")} {Math.round(intent.confidence * 100)}%
+                  {intent.needs_confirmation && " — à confirmer"}
                 </p>
               </div>
               {selected[i] ? (
@@ -202,6 +195,11 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
       </div>
 
       <div className="px-4 pb-8 pt-3 border-t border-border bg-background">
+        {confirmError && (
+          <p className="text-[12px] text-center mb-2" style={{ color: "var(--risk)" }}>
+            {confirmError}
+          </p>
+        )}
         <Button
           className="w-full gap-2 rounded-2xl h-12 text-[15px] font-semibold"
           onClick={handleConfirm}

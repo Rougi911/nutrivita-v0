@@ -116,6 +116,73 @@ describe("getJournal", () => {
   })
 })
 
+describe("scanLabelImage (TU-P414-03)", () => {
+  it("mappe les champs français standards (kcal, glucides, proteines...)", async () => {
+    const { scanLabelImage } = await import("../api")
+    server.use(
+      http.post(`${API_BASE}/api/scan/label`, () =>
+        HttpResponse.json({
+          source: "label_declared_by_manufacturer",
+          kcal: 250,
+          glucides: 30,
+          sucres: 18,
+          proteines: 8,
+          lipides: 10,
+          satures: 4,
+          sel: 0.5,
+          fibres: 2,
+        })
+      )
+    )
+    const result = await scanLabelImage("base64data")
+    expect(result.kcal).toBe(250)
+    expect(result.glucides).toBe(30)
+    expect(result.proteines).toBe(8)
+    expect(result.source).toBe("label_declared_by_manufacturer")
+  })
+
+  it("mappe les noms de champs anglais (energy_kcal, carbohydrates...)", async () => {
+    const { scanLabelImage } = await import("../api")
+    server.use(
+      http.post(`${API_BASE}/api/scan/label`, () =>
+        HttpResponse.json({
+          source: "gemini_vision",
+          energy_kcal: 320,
+          carbohydrates: 45,
+          sugars: 22,
+          proteins: 12,
+          fat: 9,
+          saturated_fat: 3,
+          salt: 0.8,
+          fiber: 3,
+        })
+      )
+    )
+    const result = await scanLabelImage("base64data")
+    expect(result.kcal).toBe(320)      // energy_kcal → kcal
+    expect(result.glucides).toBe(45)   // carbohydrates → glucides
+    expect(result.sucres).toBe(22)     // sugars → sucres
+    expect(result.proteines).toBe(12)  // proteins → proteines
+    expect(result.lipides).toBe(9)     // fat → lipides
+    expect(result.satures).toBe(3)     // saturated_fat → satures
+    expect(result.sel).toBe(0.8)       // salt → sel
+    expect(result.fibres).toBe(3)      // fiber → fibres
+  })
+
+  it("retourne null pour les champs absents (jamais 0 par défaut — REG)", async () => {
+    const { scanLabelImage } = await import("../api")
+    server.use(
+      http.post(`${API_BASE}/api/scan/label`, () =>
+        HttpResponse.json({ source: "test", kcal: 100 })
+      )
+    )
+    const result = await scanLabelImage("base64data")
+    expect(result.kcal).toBe(100)
+    expect(result.glucides).toBeNull()
+    expect(result.fibres).toBeNull()
+  })
+})
+
 describe("getGlucoseReadings", () => {
   it("retourne les valeurs en mg/dL (AL-04)", async () => {
     const { getGlucoseReadings } = await import("../api")

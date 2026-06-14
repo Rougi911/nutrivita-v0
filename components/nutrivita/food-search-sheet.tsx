@@ -20,12 +20,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Slider } from "@/components/ui/slider"
 import { SAMPLE_FOODS, type FoodItem, MEALS } from "@/lib/types"
+import { inferMealTypeFromTime, type MealType } from "@/lib/meal-utils"
 import { cn } from "@/lib/utils"
 
 export function FoodSearchSheet() {
   const {
     showFoodSearch,
     setShowFoodSearch,
+    setShowAddSheet,
     selectedMealType,
     t,
     addMealEntry,
@@ -38,6 +40,10 @@ export function FoodSearchSheet() {
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null)
   const [portion, setPortion] = useState(100)
   const [activeFilter, setActiveFilter] = useState("all")
+  // Local meal type — initialized from context or time-based fallback (T2: never blocked on null)
+  const [localMealType, setLocalMealType] = useState<MealType>(
+    selectedMealType ?? inferMealTypeFromTime()
+  )
   const [backendResults, setBackendResults] = useState<FoodItem[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [searchError, setSearchError] = useState<string | null>(null)
@@ -97,19 +103,19 @@ export function FoodSearchSheet() {
     return foods
   }, [searchQuery, activeFilter])
 
-  const mealEntry = MEALS.find((m) => m.type === selectedMealType)
+  const mealEntry = MEALS.find((m) => m.type === localMealType)
   const mealLabel = mealEntry
     ? (language === "ar" ? mealEntry.nameAr : language === "en" ? mealEntry.nameEn : mealEntry.nameFr)
     : t("addMeal")
 
   const handleAddFood = () => {
-    if (!selectedFood || !selectedMealType) return
+    if (!selectedFood) return
 
     const entry = {
       foodId: selectedFood.id,
       food: selectedFood,
       amount: portion,
-      mealType: selectedMealType,
+      mealType: localMealType,
       date: currentDate,
     }
 
@@ -180,16 +186,17 @@ export function FoodSearchSheet() {
             {/* Mode buttons */}
             <div className="flex gap-2">
               {[
-                { icon: Search, label: t("search") },
-                { icon: ScanBarcode, label: t("scanner") },
-                { icon: Camera, label: t("photo") },
-                { icon: Mic, label: t("voice") },
+                { icon: Search, label: t("search"), onClick: undefined },
+                { icon: ScanBarcode, label: t("scanner"), onClick: () => { setShowFoodSearch(false); setShowAddSheet(true) } },
+                { icon: Camera, label: t("photo"), onClick: () => { setShowFoodSearch(false); setShowAddSheet(true) } },
+                { icon: Mic, label: t("voice"), onClick: () => { setShowFoodSearch(false); setShowAddSheet(true) } },
               ].map((mode, i) => (
                 <Button
                   key={i}
                   variant={i === 0 ? "default" : "outline"}
                   size="sm"
                   className="flex-1 gap-1.5 rounded-lg"
+                  onClick={mode.onClick}
                 >
                   <mode.icon className="h-4 w-4" />
                   <span className="text-xs">{mode.label}</span>
@@ -240,7 +247,7 @@ export function FoodSearchSheet() {
                       <p className="text-xs font-medium mt-1 truncate">
                         {food.name}
                       </p>
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-[11px] text-muted-foreground">
                         {food.calories} kcal
                       </p>
                     </motion.button>
@@ -341,19 +348,19 @@ export function FoodSearchSheet() {
                   <div className="flex gap-4">
                     <div className="text-center">
                       <p className="text-lg font-semibold">{protein}g</p>
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-[11px] text-muted-foreground">
                         {t("protein")}
                       </p>
                     </div>
                     <div className="text-center">
                       <p className="text-lg font-semibold">{carbs}g</p>
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-[11px] text-muted-foreground">
                         {t("carbs")}
                       </p>
                     </div>
                     <div className="text-center">
                       <p className="text-lg font-semibold">{fat}g</p>
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-[11px] text-muted-foreground">
                         {t("fat")}
                       </p>
                     </div>
@@ -396,20 +403,39 @@ export function FoodSearchSheet() {
 
                 {/* Quick portions */}
                 <div className="flex gap-2 mb-6">
-                  {[
-                    { label: "1/2", value: 50 },
-                    { label: "Normal", value: 100 },
-                    { label: "Double", value: 200 },
-                  ].map((preset) => (
+                  {([
+                    { labelKey: "portionHalf" as const, value: 50 },
+                    { labelKey: "portionNormal" as const, value: 100 },
+                    { labelKey: "portionDouble" as const, value: 200 },
+                  ] as const).map((preset) => (
                     <Button
-                      key={preset.label}
+                      key={preset.labelKey}
                       variant={portion === preset.value ? "default" : "outline"}
                       size="sm"
                       className="flex-1 rounded-lg"
                       onClick={() => setPortion(preset.value)}
                     >
-                      {preset.label}
+                      {t(preset.labelKey)}
                     </Button>
+                  ))}
+                </div>
+
+                {/* Meal type selector (T2: visible et modifiable sur ce chemin) */}
+                <div className="flex gap-1.5 mb-4">
+                  {MEALS.map((m) => (
+                    <button
+                      key={m.type}
+                      onClick={() => setLocalMealType(m.type)}
+                      className={cn(
+                        "flex-1 text-[11px] font-medium rounded-xl py-1.5 border transition-colors",
+                        localMealType === m.type
+                          ? "border-[var(--primary)] text-white"
+                          : "bg-card text-muted-foreground border-border"
+                      )}
+                      style={localMealType === m.type ? { backgroundColor: "var(--primary)" } : {}}
+                    >
+                      {t(m.type)}
+                    </button>
                   ))}
                 </div>
 

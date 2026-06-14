@@ -239,10 +239,30 @@ export async function scanBarcode(barcode: string): Promise<ScannedProduct> {
 }
 
 export async function scanLabelImage(base64: string): Promise<ApiLabelScanResult> {
-  return apiFetch<ApiLabelScanResult>("/api/scan/label", {
+  type RawLabel = Record<string, number | string | null | undefined>
+  const raw = await apiFetch<RawLabel>("/api/scan/label", {
     method: "POST",
     body: JSON.stringify({ image: base64 }),
   })
+  // Defensive mapper: backend may return FR or EN field names
+  const n = (...keys: string[]): number | null => {
+    for (const k of keys) {
+      const v = raw[k]
+      if (v !== null && v !== undefined && typeof v === "number") return v
+    }
+    return null
+  }
+  return {
+    source: (raw["source"] as string) ?? "label_declared_by_manufacturer",
+    kcal:      n("kcal", "energy_kcal", "calories", "energie"),
+    glucides:  n("glucides", "carbohydrates", "carbs", "glucides_total"),
+    sucres:    n("sucres", "sugars", "sugar", "sucres_total"),
+    proteines: n("proteines", "proteins", "protein", "proteines_total"),
+    lipides:   n("lipides", "fat", "lipids", "matieres_grasses"),
+    satures:   n("satures", "saturated_fat", "saturates", "acides_gras_satures"),
+    sel:       n("sel", "salt", "sodium"),
+    fibres:    n("fibres", "fiber", "fibre", "dietary_fiber"),
+  }
 }
 
 export async function searchFoods(q: string): Promise<FoodItem[]> {

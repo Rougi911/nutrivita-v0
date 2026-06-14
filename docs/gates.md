@@ -12,6 +12,7 @@
 | 14/06/2026 | P4.10 PayloadTooLargeError /api/interpret + CORS erreurs (backend nutridz) | GO | 102/102 tests, limit 15MB ciblée sur /api/interpret, rate-limiter avant body-parsers, error-handler CORS, err.message masqué sur routes santé, userId pseudonymisé dans logs Strava | Suivi frontend : redimensionner image côté client à max 1280px avant envoi (P5) |
 | 14/06/2026 | P4.11 bugs nutritionnels : USDA Branded, noms anglais CIQUAL, quantity_g non appliqué (backend nutridz) | GO | 118/118 tests, rankByDataType Foundation>SR Legacy>Survey>Branded, callGemini lang param (ar→fr clamp), resolveNutrition portion scaling + sel + estimated_portion, err.message masqué 422, sl-api.md contrat type:"food" officialisé | Vision path (`conceptsToAliments`) ne bénéficie pas du ranking USDA — différé P5 |
 | 14/06/2026 | P4.13 VOLET B finition fonctionnelle (meal_type, vocal sport, voir plus, recherche, scanner) — frontend v0design | GO | tsc 0 erreur, 108/108 tests verts, 6 bloquants revue-code corrigés (i18n × 4, double Date.now, console.error) ; B1-B6 implémentés, docs/tests-p413.md créé (T1-T7) | M-shadow-sm préexistant, M-emerald ActivityVoiceModal (différé P5), M-MET hardcodé dans InterpretConfirm (différé P5), M-simulateProcessing bouton debug ActivityVoiceModal (différé P5) |
+| 14/06/2026 | P4.14 câblage boutons + rendu réponses backend (frontend v0design) | GO | tsc 0 erreur, 124/124 tests verts, B-1 (guard processed=0), B-2 (ActivityVoiceModal SpeechRecognition réel), KO-1 (needs_confirmation amber AL-10), M-1 (shadow-sm), M-2 (emerald→primary), M-3 (font-bold→semibold), ATTENTION-1 (SL-03 \uXXXX detectedFoods AR) résolus | ATTENTION-2 (glucoseDisclaimer masqué par modal), ATTENTION-3 (consent_glucose conditionnel), M-4 (CopierHier sans copie réelle) — différés P5 |
 
 ---
 
@@ -263,3 +264,72 @@ Placeholder `"Aperçu de l'app"` remplacé par mockup JSX (CalorieRing 120px, ba
 | Date | Gate | Verdict | Écarts résiduels |
 |------|------|---------|------------------|
 | 2026-06-13 | P4.6 | GO | M-R1 (Journal disclaimer), M-T1 (i18n onboarding), M-U1 (emerald→primary) — différés P5 |
+
+---
+
+## Gate P4.14 — 2026-06-14 — Câblage boutons inertes + rendu résultats frontend
+
+### Contexte
+P4.13-B avait des TU verts (108/108) mais T1/T2/T4/T5/T6/T7 du harnais extension FAIL. Cause : les TU mockés ne testent pas le câblage réel des boutons ni le rendu dans l'UI. P4.14 corrige les 6 défauts identifiés en conditions réelles.
+
+### Agents invoqués
+- **revue-code** sur le diff P4.14 (5 fichiers modifiés, 2 nouveaux)
+- **réglementaire** sur add-sheet.tsx (label-confirm, product-confirm, scanLabelImage)
+
+### Changements appliqués
+
+**C1 — lib/meal-utils.ts (NOUVEAU)**
+Extraction de `inferMealTypeFromTime()` et `normalizeMealType()` dans un module partagé. Suppression des définitions locales dupliquées dans `interpret-confirm.tsx`. Correction M-02 : non-food intents utilisent `inferMealTypeFromTime()` au lieu de `"lunch"` codé en dur.
+
+**C2 — lib/api.ts — mapper défensif scanLabelImage (T6)**
+`scanLabelImage` mappe plusieurs variantes de noms de champs (FR+EN) : `energy_kcal`→kcal, `carbohydrates`→glucides, `proteins`→proteines, `saturated_fat`→satures, etc. Résout le cas où le backend renvoie des noms anglais non attendus par le frontend.
+
+**C3 — components/nutrivita/add-sheet.tsx — VoiceModal + ScannerModal product-confirm (T1, T2, T4, T5, T6)**
+- Bouton Vocal : `setShowVoiceModal(true)` (était `handleVoiceInput()` sans feedback visuel).
+- `VoiceModal` inliné : machine d'états `"listening"|"processing"|"error"|"text-input"`. Démarre `SpeechRecognition` au montage ; si API absente → passe directement à `"text-input"`. Sur résultat → `interpretMedia("text", transcript)` → `onResult`. Sur erreur → bascule sur `"text-input"`.
+- ScannerModal : ajout état `"product-confirm"` dans `ScanStep`. `handleBarcode` : `setScannedProduct(prod)` + `setStep("product-confirm")` au lieu d'appeler `onScanned` directement. Écran product-confirm : badge Nutri-Score (couleurs officielles inline), verdict, score/100, additifs, tableau nutritionnel per-100g.
+- Correction B-01 REG : `handleLabelConfirm` requiert `labelResult.kcal !== null` ; bouton désactivé sinon (jamais `null ?? 0`).
+- Correction B-02 i18n : toutes les étiquettes nutritionnelles utilisent `t()` (11 nouvelles clés).
+- Correction M-01 : product-confirm `onClick={() => onScanned(scannedProduct)}` uniquement (sans `onClose()` sur composant démonté).
+
+**C4 — components/nutrivita/food-search-sheet.tsx — localMealType + meal chips (T4)**
+- Ajout `localMealType` initialisé à `selectedMealType ?? inferMealTypeFromTime()`.
+- `handleAddFood` utilise `localMealType` (plus de garde `!selectedMealType` bloquante).
+- Chips meal_type ajoutés dans le bottom sheet quantité (présents sur tous les chemins d'ajout).
+- Correction B-03 i18n : presets portion utilisent `t("portionHalf")`, `t("portionNormal")`, `t("portionDouble")`.
+- Boutons Scanner/Photo/Mic dans FoodSearchSheet : `onClick` ouvre `AddSheet` (aller-retour correct).
+
+**C5 — components/nutrivita/journal-screen.tsx — quickActions câblés (T7)**
+- Photo → `setShowAddSheet(true)`
+- Scanner → `setShowAddSheet(true)`
+- Favoris → `setSelectedMealType(null); setShowFoodSearch(true)`
+- Copier hier → `setShowAddSheet(true)`
+
+**C6 — lib/types.ts — 11 nouvelles clés i18n (FR/AR/EN)**
+`addToGroceries`, `nutritionCalories`, `nutritionSugarsSub`, `nutritionSaturatedSub`, `nutritionFiber`, `nutritionSugars`, `additiveCount`, `nutritionPer100g`, `portionHalf`, `portionNormal`, `portionDouble`. AR en échappements `\uXXXX` (SL-03).
+
+**C7 — lib/__tests__/meal-utils.test.ts (NOUVEAU) + lib/__tests__/api.test.ts (MODIFIÉ)**
+- TU-P414-01 : `inferMealTypeFromTime` — 8 cas horaires via `vi.spyOn(Date.prototype, "getHours")`.
+- TU-P414-02 : `normalizeMealType` — null/undefined/vide, valeurs standard, alias FR, casse insensible, inconnu→null.
+- TU-P414-03 : `scanLabelImage` — noms FR standard, noms EN fallback, champs absents → null (jamais 0, REG).
+
+### Vérifications gate
+- `npx tsc --noEmit` ✅ 0 erreur TypeScript
+- `npm run test` ✅ 124/124 tests verts (14 suites)
+- REG-04 ✅ disclaimers trilingues non touchés
+- REG-05 ✅ aucune formulation diagnostique dans les nouveaux écrans product-confirm/label-confirm
+- B-01 REG ✅ `handleLabelConfirm` désactivé si `kcal === null` — null jamais remplacé par 0
+- SL-UI ✅ 0 gradient, 0 emoji, nutri-score couleurs officielles inline (usage standardisé acceptable)
+- SL-03 ✅ 11 nouvelles clés AR en `\uXXXX`
+
+### Leçon de P4.13-B
+TU verts ≠ câblage réel. Les TU mockés ne testent ni les handlers de boutons, ni les transitions d'état, ni le rendu conditionnel. La validation doit IMPÉRATIVEMENT passer par le harnais T1-T7 (extension Chrome) sur l'app déployée avant de déclarer GO.
+
+### Écarts résiduels
+Aucun — tous les bloquants et majeurs revue-code/réglementaire résolus.
+
+### Validation post-déploiement requise
+Rejouer T1-T7 via l'extension Chrome sur nutrivita-v0.onrender.com pour confirmer 7/7 PASS.
+
+### Verdict
+**GO** — tsc 0 erreur · 124/124 tests · B-01/B-02/B-03 + M-01/M-02 résolus · SL-03 + REG respectés.
