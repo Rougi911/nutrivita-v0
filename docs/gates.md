@@ -333,3 +333,25 @@ Rejouer T1-T7 via l'extension Chrome sur nutrivita-v0.onrender.com pour confirme
 
 ### Verdict
 **GO** — tsc 0 erreur · 124/124 tests · B-01/B-02/B-03 + M-01/M-02 résolus · SL-03 + REG respectés.
+
+---
+
+## Gate P4.15 — 2026-06-15
+
+**Session :** fix(P4.15) — auth query + robustesse + 4 bugs UI
+**Commits :** guardArray (api.ts), tests TU-P415, FoodSearchSheet monté, scan additives guard, chips récents sélecteur repas, suppression aliment double-tap
+**Verdict build :** GO — Turbopack, 0 erreur TypeScript, EXIT 0
+**Verdict tests :** GO — 129/129 tests verts (14 suites)
+**Verdict revue-code :** GO partiel (timer cleanup fixé post-review)
+**Verdict réglementaire :** N/A — pas de nouvelles données de santé ni disclaimers
+
+### Fonctionnalités corrigées (P4.15)
+- **S1** : guardArray lève ApiError(401) sur réponse {error:...} — faux offline résolu
+- **S2** : chips Récents affichent un sélecteur repas + sync addJournalEntry backend
+- **S3** : FoodSearchSheet monté dans nutrivita-app.tsx — bouton Recherche opérationnel
+- **S4** : scan additives?.length — plus de crash si champ absent
+- **S5** : bouton suppression Trash2 avec double-tap confirm + deleteJournalEntry
+
+### AVERTISSEMENT VALIDATION RÉELLE OBLIGATOIRE
+Les TU/TI verts ne suffisent pas — ils ont déjà menti 2 fois (P4.13-B, P4.14).
+Rejouer S1-S5 en conditions réelles (extension Chrome + Ctrl+Shift+R) avant de déclarer la session GO.
