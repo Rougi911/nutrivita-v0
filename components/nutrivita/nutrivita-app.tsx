@@ -14,6 +14,7 @@ import { BottomNavigation } from "./bottom-navigation"
 import { HomeScreen } from "./home-screen"
 import { GroceriesScreen } from "./groceries-screen"
 import { AddSheet } from "./add-sheet"
+import { FoodSearchSheet } from "./food-search-sheet"
 
 type AppView = "checking" | "landing" | "onboarding" | "main"
 
@@ -111,6 +112,7 @@ function AppContent() {
 
       {!stackedView && <BottomNavigation />}
       {showAddSheet && <AddSheet />}
+      <FoodSearchSheet />
     </div>
   )
 }
