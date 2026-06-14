@@ -1,11 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronDown, ChevronUp, Plus, Utensils } from "lucide-react"
+import { ChevronDown, ChevronUp, Plus, Utensils, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useApp } from "@/lib/app-context"
 import type { MealEntry } from "@/lib/types"
+import { deleteJournalEntry } from "@/lib/api"
 
 interface MealSectionCardProps {
   icon?: React.ReactNode
@@ -24,8 +25,22 @@ export function MealSectionCard({
   compact = false,
   className,
 }: MealSectionCardProps) {
-  const { t } = useApp()
+  const { t, removeMealEntry } = useApp()
   const [expanded, setExpanded] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const handleDelete = (entryId: string) => {
+    if (confirmDeleteId !== entryId) {
+      setConfirmDeleteId(entryId)
+      setTimeout(() => setConfirmDeleteId(null), 3000)
+      return
+    }
+    removeMealEntry(entryId)
+    setConfirmDeleteId(null)
+    deleteJournalEntry(entryId).catch((err) => {
+      console.error("[MealSectionCard] deleteJournalEntry failed:", err)
+    })
+  }
+
   const limit = compact ? 2 : 3
   const visible = expanded ? entries : entries.slice(0, limit)
   const hidden = entries.length - limit
@@ -68,9 +83,22 @@ export function MealSectionCard({
                   {entry.food.name}{" "}
                   <span className="text-muted-foreground">{entry.amount}g</span>
                 </span>
-                <span className="text-muted-foreground shrink-0 ml-2">
-                  {Math.round((entry.food.calories * entry.amount) / 100)} kcal
-                </span>
+                <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                  <span className="text-muted-foreground">
+                    {Math.round((entry.food.calories * entry.amount) / 100)} kcal
+                  </span>
+                  <button
+                    onClick={() => handleDelete(entry.id)}
+                    className="w-6 h-6 rounded-full flex items-center justify-center transition-colors"
+                    style={{
+                      color: confirmDeleteId === entry.id ? "var(--risk)" : "var(--muted-foreground)",
+                    }}
+                    aria-label={confirmDeleteId === entry.id ? "Confirmer la suppression" : "Supprimer"}
+                    title={confirmDeleteId === entry.id ? "Appuyer à nouveau pour confirmer" : "Supprimer"}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
               </div>
             ))}
             {!expanded && hidden > 0 && (
