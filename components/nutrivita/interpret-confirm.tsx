@@ -65,6 +65,14 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
 
       if (intent.type === "food" && intent.name) {
         const n = intent.nutrition
+        // qg = portion réelle (grammes). FoodItem.calories = par 100g.
+        // Le backend (P4.12) renvoie n.kcal PAR PORTION (pour qg g) — normaliser vers /100g
+        // pour éviter le double-scaling lors de l'affichage (food.calories * amount / 100).
+        const qg = intent.quantity_g ?? 100
+        const per100g = (val: number | null | undefined, fallback: number): number => {
+          if (val == null || qg === 0) return fallback
+          return Math.round(val * 100 / qg)
+        }
         const food: FoodItem =
           SAMPLE_FOODS.find((f) =>
             f.name.toLowerCase().includes(intent.name!.toLowerCase())
@@ -73,16 +81,16 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
             name: intent.name,
             nameEn: intent.name,
             cuisine: "International",
-            calories: n?.kcal ?? 150,
-            protein: n?.proteines ?? 5,
-            carbs: n?.glucides ?? 20,
-            fat: n?.lipides ?? 5,
+            calories: per100g(n?.kcal, 150),
+            protein: per100g(n?.proteines, 5),
+            carbs: per100g(n?.glucides, 20),
+            fat: per100g(n?.lipides, 5),
             source: "estimated" as const,
           }
         addMealEntry({
           foodId: food.id,
           food,
-          amount: intent.quantity_g ?? 100,
+          amount: qg,
           mealType: mealTypes[i],
           date: currentDate,
         })
