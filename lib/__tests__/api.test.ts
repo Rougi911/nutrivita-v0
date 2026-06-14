@@ -2,7 +2,7 @@
  * TU-api — Client HTTP lib/api.ts
  * Vérifie : appels corrects, mappers snake→camelCase, gestion erreur.
  */
-import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest"
+import { describe, it, expect, beforeAll, afterEach, afterAll, vi } from "vitest"
 import { setupServer } from "msw/node"
 import { http, HttpResponse } from "msw"
 
@@ -195,5 +195,69 @@ describe("getGlucoseReadings", () => {
     )
     const readings = await getGlucoseReadings(14)
     expect(readings[0].value).toBe(92)
+  })
+})
+
+// ─── TU-P415 — Guards réponse non-tableau ────────────────────────────────────
+
+describe("TU-P415-1 guardArray — réponse erreur auth (200 + corps erreur)", () => {
+  it("getJournal lève ApiError(401) quand backend répond {error:'Token manquant'} avec status 200", async () => {
+    const { getJournal, ApiError } = await import("../api")
+    server.use(
+      http.post(`${API_BASE}/api/journal/query`, () =>
+        HttpResponse.json({ error: "Token manquant" }, { status: 200 })
+      )
+    )
+    const err = await getJournal("2026-06-15").catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(ApiError)
+    expect((err as InstanceType<typeof ApiError>).status).toBe(401)
+  })
+
+  it("getGlucoseReadings lève ApiError(401) quand backend répond {error:'Token manquant'} avec status 200", async () => {
+    const { getGlucoseReadings, ApiError } = await import("../api")
+    server.use(
+      http.post(`${API_BASE}/api/glucose/query`, () =>
+        HttpResponse.json({ error: "Token manquant" }, { status: 200 })
+      )
+    )
+    const err = await getGlucoseReadings(14).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(ApiError)
+    expect((err as InstanceType<typeof ApiError>).status).toBe(401)
+  })
+
+  it("getWeightHistory lève ApiError(0) quand backend répond un objet non-tableau non-auth", async () => {
+    const { getWeightHistory, ApiError } = await import("../api")
+    server.use(
+      http.post(`${API_BASE}/api/weight/query`, () =>
+        HttpResponse.json({ unexpected: "shape" }, { status: 200 })
+      )
+    )
+    const err = await getWeightHistory(30).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(ApiError)
+    expect((err as InstanceType<typeof ApiError>).status).toBe(0)
+  })
+
+  it("getActivities lève ApiError(401) sur {error:'unauthorized'}", async () => {
+    const { getActivities, ApiError } = await import("../api")
+    server.use(
+      http.post(`${API_BASE}/api/activities/query`, () =>
+        HttpResponse.json({ error: "unauthorized" }, { status: 200 })
+      )
+    )
+    const err = await getActivities("2026-06-15").catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(ApiError)
+    expect((err as InstanceType<typeof ApiError>).status).toBe(401)
+  })
+
+  it("searchFoods lève ApiError(401) sur réponse non-tableau avec error Token", async () => {
+    const { searchFoods, ApiError } = await import("../api")
+    server.use(
+      http.get(`${API_BASE}/api/foods/search`, () =>
+        HttpResponse.json({ error: "Token manquant" }, { status: 200 })
+      )
+    )
+    const err = await searchFoods("poulet").catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(ApiError)
+    expect((err as InstanceType<typeof ApiError>).status).toBe(401)
   })
 })
