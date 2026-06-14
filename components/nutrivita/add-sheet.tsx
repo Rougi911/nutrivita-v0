@@ -831,15 +831,15 @@ function ScannerModal({
                 <div>
                   <p className="text-[15px] font-semibold text-foreground">{scannedProduct.verdict}</p>
                   <p className="text-[12px] text-muted-foreground">
-                    {scannedProduct.score}/100 · {scannedProduct.additives.length} {t("additiveCount")}
+                    {scannedProduct.score}/100 · {(scannedProduct.additives ?? []).length} {t("additiveCount")}
                   </p>
                 </div>
               </div>
 
               {/* Additives list */}
-              {scannedProduct.additives.length > 0 && (
+              {(scannedProduct.additives ?? []).length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
-                  {scannedProduct.additives.map((a) => (
+                  {(scannedProduct.additives ?? []).map((a) => (
                     <span
                       key={a}
                       className="text-[11px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground"
