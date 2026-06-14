@@ -13,6 +13,7 @@
 | 14/06/2026 | P4.11 bugs nutritionnels : USDA Branded, noms anglais CIQUAL, quantity_g non appliqué (backend nutridz) | GO | 118/118 tests, rankByDataType Foundation>SR Legacy>Survey>Branded, callGemini lang param (ar→fr clamp), resolveNutrition portion scaling + sel + estimated_portion, err.message masqué 422, sl-api.md contrat type:"food" officialisé | Vision path (`conceptsToAliments`) ne bénéficie pas du ranking USDA — différé P5 |
 | 14/06/2026 | P4.13 VOLET B finition fonctionnelle (meal_type, vocal sport, voir plus, recherche, scanner) — frontend v0design | GO | tsc 0 erreur, 108/108 tests verts, 6 bloquants revue-code corrigés (i18n × 4, double Date.now, console.error) ; B1-B6 implémentés, docs/tests-p413.md créé (T1-T7) | M-shadow-sm préexistant, M-emerald ActivityVoiceModal (différé P5), M-MET hardcodé dans InterpretConfirm (différé P5), M-simulateProcessing bouton debug ActivityVoiceModal (différé P5) |
 | 14/06/2026 | P4.14 câblage boutons + rendu réponses backend (frontend v0design) | GO | tsc 0 erreur, 124/124 tests verts, B-1 (guard processed=0), B-2 (ActivityVoiceModal SpeechRecognition réel), KO-1 (needs_confirmation amber AL-10), M-1 (shadow-sm), M-2 (emerald→primary), M-3 (font-bold→semibold), ATTENTION-1 (SL-03 \uXXXX detectedFoods AR) résolus | ATTENTION-2 (glucoseDisclaimer masqué par modal), ATTENTION-3 (consent_glucose conditionnel), M-4 (CopierHier sans copie réelle) — différés P5 |
+| 15/06/2026 | P4.15 auth robustesse + 5 bugs UI + double-scaling (frontend v0design) | GO | tsc 0 erreur, 133/133 tests verts, guardArray ApiError(401) faux-offline résolu, FoodSearchSheet monté, scan additives guard, chips récents sélecteur+sync, suppression double-tap, normalisation /100g calories (COMPLEMENT P4.15) | Validation réelle S1-S6 obligatoire (extension Chrome) |
 
 ---
 
@@ -338,11 +339,11 @@ Rejouer T1-T7 via l'extension Chrome sur nutrivita-v0.onrender.com pour confirme
 
 ## Gate P4.15 — 2026-06-15
 
-**Session :** fix(P4.15) — auth query + robustesse + 4 bugs UI
-**Commits :** guardArray (api.ts), tests TU-P415, FoodSearchSheet monté, scan additives guard, chips récents sélecteur repas, suppression aliment double-tap
+**Session :** fix(P4.15) — auth query + robustesse + 5 bugs UI + double-scaling calories
+**Commits :** guardArray (api.ts), tests TU-P415, FoodSearchSheet monté, scan additives guard, chips récents sélecteur repas, suppression aliment double-tap, **normalisation nutrition /100g dans interpret-confirm.tsx (COMPLEMENT P4.15)**
 **Verdict build :** GO — Turbopack, 0 erreur TypeScript, EXIT 0
-**Verdict tests :** GO — 129/129 tests verts (14 suites)
-**Verdict revue-code :** GO partiel (timer cleanup fixé post-review)
+**Verdict tests :** GO — **133/133 tests verts (15 suites)** dont 4 TU-P415-scaling anti-régression double-scaling
+**Verdict revue-code :** GO — UN SEUL point de mise à l'échelle par portion confirmé : `food.calories * amount / 100` dans app-context.tsx uniquement. interpret-confirm.tsx normalise vers /100g avant stockage.
 **Verdict réglementaire :** N/A — pas de nouvelles données de santé ni disclaimers
 
 ### Fonctionnalités corrigées (P4.15)
@@ -351,7 +352,8 @@ Rejouer T1-T7 via l'extension Chrome sur nutrivita-v0.onrender.com pour confirme
 - **S3** : FoodSearchSheet monté dans nutrivita-app.tsx — bouton Recherche opérationnel
 - **S4** : scan additives?.length — plus de crash si champ absent
 - **S5** : bouton suppression Trash2 avec double-tap confirm + deleteJournalEntry
+- **S6** : double-scaling calories corrigé — `per100g(n.kcal, qg)` dans interpret-confirm.tsx normalise la nutrition backend (par-portion) vers FoodItem.calories (par-100g) · "400g pomme de terre" → 304 kcal affiché, anneau et macros cohérents
 
 ### AVERTISSEMENT VALIDATION RÉELLE OBLIGATOIRE
 Les TU/TI verts ne suffisent pas — ils ont déjà menti 2 fois (P4.13-B, P4.14).
-Rejouer S1-S5 en conditions réelles (extension Chrome + Ctrl+Shift+R) avant de déclarer la session GO.
+Rejouer S1-S6 en conditions réelles (extension Chrome + Ctrl+Shift+R) avant de déclarer la session GO.
