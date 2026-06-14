@@ -48,6 +48,19 @@ export class ProductUnknownError extends Error {
   }
 }
 
+/** Vérifie que la réponse est bien un tableau. Si le corps contient {error:string},
+ *  lève ApiError(401) pour les erreurs d'auth, ApiError(0) sinon.
+ *  Empêche tout .map() sur un objet d'erreur (cause racine du faux offline). */
+function guardArray<T>(raw: unknown, route: string): T[] {
+  if (Array.isArray(raw)) return raw as T[]
+  const errMsg = (raw != null && typeof raw === "object" && "error" in raw)
+    ? String((raw as { error: unknown }).error)
+    : "unexpected non-array response"
+  console.error(`[API] ${route} returned non-array body:`, raw)
+  const isAuth = /token|manquant|unauthorized|auth/i.test(errMsg)
+  throw new ApiError(isAuth ? 401 : 0, errMsg)
+}
+
 type SlowStartCallback = () => void
 let _onSlowStart: SlowStartCallback | null = null
 export function setSlowStartCallback(cb: SlowStartCallback | null) {
@@ -266,10 +279,10 @@ export async function scanLabelImage(base64: string): Promise<ApiLabelScanResult
 }
 
 export async function searchFoods(q: string): Promise<FoodItem[]> {
-  const raw = await apiFetch<ApiFoodSearchResult[]>(
+  const raw = await apiFetch<unknown>(
     `/api/foods/search?q=${encodeURIComponent(q)}`
   )
-  return raw.map((r) => ({
+  return guardArray<ApiFoodSearchResult>(raw, "/api/foods/search").map((r) => ({
     id: r.id,
     name: r.name,
     nameAr: r.name_ar,
@@ -304,11 +317,11 @@ export async function getDeficiencies(): Promise<ApiDeficienciesResponse | null>
 }
 
 export async function getJournal(date: string): Promise<MealEntry[]> {
-  const raw = await apiFetch<ApiMealEntry[]>("/api/journal/query", {
+  const raw = await apiFetch<unknown>("/api/journal/query", {
     method: "POST",
     body: JSON.stringify({ date }),
   })
-  return raw.map(mapMealEntry)
+  return guardArray<ApiMealEntry>(raw, "/api/journal/query").map(mapMealEntry)
 }
 
 export async function addJournalEntry(
@@ -331,11 +344,11 @@ export async function deleteJournalEntry(id: string): Promise<void> {
 }
 
 export async function getWeightHistory(days: number): Promise<WeightEntry[]> {
-  const raw = await apiFetch<ApiWeightEntry[]>("/api/weight/query", {
+  const raw = await apiFetch<unknown>("/api/weight/query", {
     method: "POST",
     body: JSON.stringify({ days }),
   })
-  return raw.map(mapWeightEntry)
+  return guardArray<ApiWeightEntry>(raw, "/api/weight/query").map(mapWeightEntry)
 }
 
 export async function addWeightEntryApi(entry: WeightEntry): Promise<WeightEntry> {
@@ -347,11 +360,11 @@ export async function addWeightEntryApi(entry: WeightEntry): Promise<WeightEntry
 }
 
 export async function getGlucoseReadings(days: number): Promise<GlucoseReading[]> {
-  const raw = await apiFetch<ApiGlucoseReading[]>("/api/glucose/query", {
+  const raw = await apiFetch<unknown>("/api/glucose/query", {
     method: "POST",
     body: JSON.stringify({ days }),
   })
-  return raw.map(mapGlucoseReading)
+  return guardArray<ApiGlucoseReading>(raw, "/api/glucose/query").map(mapGlucoseReading)
 }
 
 export async function addGlucoseReadingApi(
@@ -365,11 +378,11 @@ export async function addGlucoseReadingApi(
 }
 
 export async function getActivities(date: string): Promise<ActivityEntry[]> {
-  const raw = await apiFetch<ApiActivityEntry[]>("/api/activities/query", {
+  const raw = await apiFetch<unknown>("/api/activities/query", {
     method: "POST",
     body: JSON.stringify({ date }),
   })
-  return raw.map(mapActivityEntry)
+  return guardArray<ApiActivityEntry>(raw, "/api/activities/query").map(mapActivityEntry)
 }
 
 export async function addActivityApi(
