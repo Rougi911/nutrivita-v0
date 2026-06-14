@@ -21,7 +21,13 @@ describe("interpretMedia", () => {
         capturedBody = await request.json() as Record<string, unknown>
         return HttpResponse.json({
           intents: [
-            { type: "meal", items: [{ name: "Chorba", quantity_g: 300 }], confidence: 0.92 },
+            {
+              type: "food", name: "Chorba", quantity_g: 300,
+              confidence: 0.92, needs_confirmation: false,
+              nutrition: { kcal: 285, glucides: 27, proteines: 21, lipides: 9, fibres: 6,
+                source: "ciqual", quantity_g: 300, estimated_portion: false },
+              nutrition_found: true,
+            },
           ],
         })
       })
@@ -31,8 +37,8 @@ describe("interpretMedia", () => {
     expect(capturedBody["payload"]).toBe("j'ai mangé une chorba")  // champ payload
     expect(capturedBody["content"]).toBeUndefined()                 // ancien champ absent
     expect(result.intents).toHaveLength(1)
-    expect(result.intents[0].type).toBe("meal")
-    expect(result.intents[0].items![0].name).toBe("Chorba")
+    expect(result.intents[0].type).toBe("food")
+    expect(result.intents[0].name).toBe("Chorba")
   })
 
   it("envoie mode:photo + champ payload pour image", async () => {

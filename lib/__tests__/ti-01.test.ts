@@ -13,50 +13,59 @@ afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
 
 describe("TI-01 pipeline photo", () => {
-  it("POST /api/interpret(photo) retourne les intents et les items sont mappés", async () => {
+  it("POST /api/interpret(photo) retourne les intents type:food (SL-API-01 P4.11)", async () => {
     const { interpretMedia } = await import("../api")
     server.use(
       http.post(`${API_BASE}/api/interpret`, () =>
         HttpResponse.json({
           intents: [
             {
-              type: "meal",
-              items: [
-                { name: "Couscous royal", quantity_g: 300 },
-                { name: "Salade niçoise", quantity_g: 150 },
-              ],
-              confidence: 0.91,
+              type: "food", name: "Couscous royal", quantity_g: 300,
+              confidence: 0.91, needs_confirmation: false,
+              nutrition: { kcal: 534, glucides: 66, proteines: 36, lipides: 15, fibres: 9,
+                source: "ciqual", quantity_g: 300, estimated_portion: false },
+              nutrition_found: true,
+            },
+            {
+              type: "food", name: "Salade niçoise", quantity_g: 150,
+              confidence: 0.85, needs_confirmation: false,
+              nutrition: null, nutrition_found: false,
             },
           ],
-          needs_confirmation: false,
         })
       )
     )
 
     const result = await interpretMedia("photo", "base64_image_data")
 
-    expect(result.intents).toHaveLength(1)
-    expect(result.intents[0].type).toBe("meal")
-    expect(result.intents[0].items).toHaveLength(2)
+    expect(result.intents).toHaveLength(2)
+    expect(result.intents[0].type).toBe("food")
+    expect(result.intents[0].name).toBe("Couscous royal")
+    expect(result.intents[0].quantity_g).toBe(300)
+    expect(result.intents[0].nutrition?.kcal).toBe(534)
     expect(result.intents[0].confidence).toBeGreaterThanOrEqual(0.6)
-    expect(result.needs_confirmation).toBe(false)
+    expect(result.intents[1].nutrition_found).toBe(false)
   })
 
-  it("confidence < 0.6 → needs_confirmation = true", async () => {
+  it("confidence < 0.6 → needs_confirmation = true sur l'intent (P4.11 : par intent)", async () => {
     const { interpretMedia } = await import("../api")
     server.use(
       http.post(`${API_BASE}/api/interpret`, () =>
         HttpResponse.json({
           intents: [
-            { type: "meal", items: [{ name: "Plat inconnu", quantity_g: 200 }], confidence: 0.45 },
+            {
+              type: "food", name: "Plat inconnu", quantity_g: 200,
+              confidence: 0.45, needs_confirmation: true,
+              nutrition: null, nutrition_found: false,
+            },
           ],
-          needs_confirmation: true,
         })
       )
     )
 
     const result = await interpretMedia("photo", "base64_flou")
-    expect(result.needs_confirmation).toBe(true)
+    expect(result.intents[0].needs_confirmation).toBe(true)
+    expect(result.intents[0].confidence).toBeLessThan(0.6)
   })
 
   it("addJournalEntry après confirmation → retourne l'entrée créée avec bons champs camelCase", async () => {

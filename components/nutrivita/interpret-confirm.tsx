@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { ArrowLeft, Check, X } from "lucide-react"
 import { useApp } from "@/lib/app-context"
-import { fromGlucoseUnit } from "@/lib/glucose-units"
 import { SAMPLE_FOODS } from "@/lib/types"
 import type { ApiInterpretResponse, ApiIntent } from "@/lib/api-types"
 import type { GlucoseReading, FoodItem } from "@/lib/types"
@@ -17,20 +16,22 @@ interface InterpretConfirmProps {
 }
 
 function intentLabel(intent: ApiIntent): string {
-  if (intent.type === "meal") {
-    return intent.items?.map((i) => `${i.name} ${i.quantity_g}g`).join(", ") ?? "Repas"
+  if (intent.type === "food") {
+    const qty = intent.quantity_g ? ` · ${intent.quantity_g}g` : ""
+    const kcal = intent.nutrition?.kcal ? ` · ${intent.nutrition.kcal} kcal` : ""
+    return `${intent.name ?? "Aliment"}${qty}${kcal}`
   }
   if (intent.type === "activity") {
     return `${intent.sport ?? "Activité"} · ${intent.duration_min} min`
   }
   if (intent.type === "glucose") {
-    return `Glycémie ${intent.valeur} ${intent.unite ?? "g/L"}`
+    return `Glycémie ${intent.glucose_mg_dl} mg/dL`
   }
   return "Élément détecté"
 }
 
 function intentColor(type: ApiIntent["type"]): string {
-  if (type === "meal") return "var(--primary)"
+  if (type === "food") return "var(--primary)"
   if (type === "activity") return "var(--amber)"
   return "var(--glucose)"
 }
@@ -47,29 +48,28 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
     result.intents.forEach((intent, i) => {
       if (!selected[i]) return
 
-      if (intent.type === "meal" && intent.items) {
-        intent.items.forEach((item) => {
-          const food: FoodItem =
-            SAMPLE_FOODS.find((f) =>
-              f.name.toLowerCase().includes(item.name.toLowerCase())
-            ) ?? {
-              id: `ai-${Date.now()}-${item.name}`,
-              name: item.name,
-              nameEn: item.name,
-              cuisine: "International",
-              calories: 150,
-              protein: 5,
-              carbs: 20,
-              fat: 5,
-              source: "estimated" as const,
-            }
-          addMealEntry({
-            foodId: food.id,
-            food,
-            amount: item.quantity_g,
-            mealType: selectedMealType ?? "lunch",
-            date: currentDate,
-          })
+      if (intent.type === "food" && intent.name) {
+        const n = intent.nutrition
+        const food: FoodItem =
+          SAMPLE_FOODS.find((f) =>
+            f.name.toLowerCase().includes(intent.name!.toLowerCase())
+          ) ?? {
+            id: `ai-${Date.now()}-${intent.name}`,
+            name: intent.name,
+            nameEn: intent.name,
+            cuisine: "International",
+            calories: n?.kcal ?? 150,
+            protein: n?.proteines ?? 5,
+            carbs: n?.glucides ?? 20,
+            fat: n?.lipides ?? 5,
+            source: "estimated" as const,
+          }
+        addMealEntry({
+          foodId: food.id,
+          food,
+          amount: intent.quantity_g ?? 100,
+          mealType: selectedMealType ?? "lunch",
+          date: currentDate,
         })
       }
 
@@ -83,15 +83,12 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
         })
       }
 
-      if (intent.type === "glucose" && intent.valeur != null) {
-        const valueMgDl = fromGlucoseUnit(
-          intent.valeur,
-          (intent.unite ?? "g/L") as Parameters<typeof fromGlucoseUnit>[1]
-        )
+      if (intent.type === "glucose" && intent.glucose_mg_dl != null) {
+        // glucose_mg_dl est déjà en mg/dL depuis le backend (AL-04) — pas de conversion
         const reading: Omit<GlucoseReading, "id"> = {
-          value: valueMgDl,
+          value: intent.glucose_mg_dl,
           timestamp: new Date().toISOString(),
-          type: (intent.contexte as GlucoseReading["type"]) ?? "pontuelle",
+          type: "pontuelle",
           source: "manual",
         }
         addGlucoseReading(reading)

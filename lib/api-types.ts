@@ -1,20 +1,40 @@
 // Backend response shapes (snake_case — SL-03).
 // Mappers vers camelCase dans lib/api.ts.
 
+export interface ApiNutrition {
+  kcal: number
+  glucides: number
+  proteines: number
+  lipides: number
+  fibres: number
+  sel?: number
+  source: "ciqual" | "usda"
+  quantity_g: number
+  estimated_portion: boolean
+}
+
 export interface ApiIntent {
-  type: "meal" | "activity" | "glucose"
-  items?: Array<{ name: string; quantity_g: number }>
+  type: "food" | "activity" | "glucose" | "weight"
+  // food
+  name?: string
+  quantity_g?: number | null
+  meal_type?: string | null
+  nutrition?: ApiNutrition | null
+  nutrition_found?: boolean
+  // activity
   sport?: string
   duration_min?: number
-  valeur?: number
-  unite?: string
-  contexte?: string
+  // glucose — always mg/dL from backend (AL-04)
+  glucose_mg_dl?: number
+  // weight
+  weight_kg?: number
+  // common
   confidence: number
+  needs_confirmation: boolean
 }
 
 export interface ApiInterpretResponse {
   intents: ApiIntent[]
-  needs_confirmation?: boolean
 }
 
 export interface ApiScanResponse {
