@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { ChevronDown, ChevronUp, Plus, Utensils, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -28,10 +28,13 @@ export function MealSectionCard({
   const { t, removeMealEntry } = useApp()
   const [expanded, setExpanded] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
   const handleDelete = (entryId: string) => {
     if (confirmDeleteId !== entryId) {
       setConfirmDeleteId(entryId)
-      setTimeout(() => setConfirmDeleteId(null), 3000)
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(() => setConfirmDeleteId(null), 3000)
       return
     }
     removeMealEntry(entryId)
