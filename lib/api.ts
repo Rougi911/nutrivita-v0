@@ -321,7 +321,13 @@ export async function getJournal(date: string): Promise<MealEntry[]> {
     method: "POST",
     body: JSON.stringify({ date }),
   })
-  return guardArray<ApiMealEntry>(raw, "/api/journal/query").map(mapMealEntry)
+  // Backend P4.16 renvoie { date, entries: [...], meals, totals }
+  // P4.15 guardArray protège contre les corps d'erreur {error:"..."}.
+  // !Array.isArray évite le false-positive sur Array.prototype.entries.
+  const arr = (raw != null && typeof raw === "object" && !Array.isArray(raw) && "entries" in (raw as object))
+    ? (raw as { entries: unknown }).entries
+    : raw
+  return guardArray<ApiMealEntry>(arr, "/api/journal/query").map(mapMealEntry)
 }
 
 export async function addJournalEntry(

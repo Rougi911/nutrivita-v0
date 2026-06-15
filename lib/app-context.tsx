@@ -156,9 +156,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setIsAuthLoading(false)
   }, [])
 
-  // Set current date client-side only — fixes React #418 hydration mismatch
+  // Set current date client-side only (date LOCALE, pas UTC) — fixes React #418 hydration
+  // mismatch et évite le décalage de jour en soirée (UTC+1 Algeria).
   useEffect(() => {
-    setCurrentDate(new Date().toISOString().split("T")[0])
+    const now = new Date()
+    const localDate = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, "0"),
+      String(now.getDate()).padStart(2, "0"),
+    ].join("-")
+    setCurrentDate(localDate)
   }, [])
 
   const login = useCallback((token: string, serverUser: { id: string; email: string; name: string }) => {

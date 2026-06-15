@@ -13,7 +13,7 @@ import { describe, it, expect } from "vitest"
 
 describe("TU-P415-scaling : per100g normalise n.kcal portion → /100g", () => {
   it("400g pomme de terre — n.kcal=304 → food.calories=76 (jamais 304)", () => {
-    const qg = 400
+    const qg: number = 400
     const per100g = (val: number | null | undefined, fallback: number): number => {
       if (val == null || qg === 0) return fallback
       return Math.round(val * 100 / qg)
@@ -25,7 +25,7 @@ describe("TU-P415-scaling : per100g normalise n.kcal portion → /100g", () => {
   })
 
   it("100g portion — n.kcal=150 → food.calories=150 (identité)", () => {
-    const qg = 100
+    const qg: number = 100
     const per100g = (val: number | null | undefined, fallback: number): number => {
       if (val == null || qg === 0) return fallback
       return Math.round(val * 100 / qg)

@@ -99,17 +99,44 @@ Output:
 
 ## POST /api/journal/query
 Input: `{ date: "YYYY-MM-DD" }` — REG-03 : paramètre de santé en body, pas en query string.
-Output: tableau de MealEntry backend (snake_case) :
+Output (P4.16 — contrat figé) : objet enveloppe avec `entries` tableau plat `ApiMealEntry` :
 ```json
-[{
-  "id": "m1", "food_id": "42",
-  "food": { "id": "42", "name": "Chorba", "cuisine": "Maghreb", "calories": 95, "protein": 5.2, "carbs": 12, "fat": 2.1, "source": "nutrivita" },
-  "amount": 300, "meal_type": "lunch", "date": "2026-06-12", "created_at": "2026-06-12T12:15:00Z"
-}]
+{
+  "date": "2026-06-15",
+  "entries": [{
+    "id": "uuid", "food_id": "7",
+    "food": { "id": "7", "name": "Pomme de terre, crue", "calories": 76, "protein": 2, "carbs": 16, "fat": 0.1, "fiber": 1.4, "source": "nutrivita" },
+    "amount": 400, "meal_type": "breakfast", "date": "2026-06-15", "created_at": "2026-06-15T07:00:00Z"
+  }],
+  "meals": { "pdej": [], "dej": [], "coll": [], "diner": [] },
+  "totals": { "kcal": 304, "glucides": 64, "proteines": 8, "lipides": 0.4, "fibres": 5.6 }
+}
 ```
+**Invariants clés :**
+- `food.calories` = `kcal_per100` (par 100g) — jamais par portion. Point unique de scaling : `food.calories * amount / 100`.
+- `meal_type` en anglais (`breakfast/lunch/snack/dinner`) dans `entries[]`. Interne BD = `pdej/dej/coll/diner`.
+- Le frontend lit `response.entries` avant d'appeler `guardArray` (P4.16 — lib/api.ts `getJournal`).
 
 ## POST /api/journal
-Input: `{ food_id, amount, meal_type, date }` — output: objet MealEntry backend.
+Input: `{ food_id, amount, meal_type, date }` — aliases acceptés : `product_id`=`food_id`, `grams`=`amount`.
+`meal_type` : anglais (`breakfast/lunch/snack/dinner`) ou interne (`pdej/dej/coll/diner`).
+`food_id` doit être l'`id` entier (en string) retourné par `/api/foods/search`.
+Output : objet journal_entry DB (non-ApiMealEntry — utiliser response en fire-and-forget).
+
+## GET /api/foods/search?q=
+Route P4.16 — alias de recherche frontend (anciennement `/api/nutrition/search`).
+Input: `?q=<string>` — Output: tableau `ApiFoodSearchResult[]` (15 max) :
+```json
+[{
+  "id": "7",
+  "name": "Pomme de terre, crue",
+  "name_en": "Potato, raw",
+  "calories": 76, "protein": 2, "carbs": 16, "fat": 0.1, "fiber": 1.4,
+  "source": "ciqual", "cuisine": "International"
+}]
+```
+**Sources :** local DB (priorité) → CIQUAL ANSES → USDA FoodData Central.
+Chaque résultat a un `id` entier réel en DB (upsert automatique) → compatible avec `POST /api/journal`.
 
 ## DELETE /api/journal/:id
 

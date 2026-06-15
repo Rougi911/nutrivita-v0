@@ -92,7 +92,37 @@ describe("scanBarcode", () => {
 })
 
 describe("getJournal", () => {
-  it("mappe meal_type et created_at → camelCase", async () => {
+  it("TU-P416-FE-1 : lit entries[] depuis { date, entries, meals, totals } (P4.16)", async () => {
+    const { getJournal } = await import("../api")
+    server.use(
+      http.post(`${API_BASE}/api/journal/query`, () =>
+        HttpResponse.json({
+          date: "2026-06-15",
+          entries: [
+            {
+              id: "m1",
+              food_id: "7",
+              food: { id: "7", name: "Pomme de terre, crue", calories: 76, protein: 2, carbs: 16, fat: 0.1, source: "nutrivita" },
+              amount: 400,
+              meal_type: "breakfast",
+              date: "2026-06-15",
+              created_at: "2026-06-15T07:00:00Z",
+            },
+          ],
+          meals: { pdej: [], dej: [], coll: [], diner: [] },
+          totals: { kcal: 304, glucides: 64, proteines: 8, lipides: 0.4, fibres: 5.6 },
+        })
+      )
+    )
+    const entries = await getJournal("2026-06-15")
+    expect(entries).toHaveLength(1)
+    expect(entries[0].mealType).toBe("breakfast")
+    expect(entries[0].food.calories).toBe(76)   // par 100g, pas 304
+    expect(entries[0].amount).toBe(400)
+    expect(entries[0].createdAt).toBe("2026-06-15T07:00:00Z")
+  })
+
+  it("TU-P416-FE-2 : fonctionne encore si backend renvoie tableau direct (rétrocompat)", async () => {
     const { getJournal } = await import("../api")
     server.use(
       http.post(`${API_BASE}/api/journal/query`, () =>
@@ -100,7 +130,7 @@ describe("getJournal", () => {
           {
             id: "m1",
             food_id: "42",
-            food: { id: "42", name: "Chorba", calories: 95, protein: 5.2, carbs: 12, fat: 2.1, source: "nutrivita", cuisine: "Maghreb" },
+            food: { id: "42", name: "Chorba", calories: 95, protein: 5.2, carbs: 12, fat: 2.1, source: "nutrivita" },
             amount: 300,
             meal_type: "lunch",
             date: "2026-06-12",
