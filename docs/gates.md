@@ -14,6 +14,7 @@
 | 14/06/2026 | P4.13 VOLET B finition fonctionnelle (meal_type, vocal sport, voir plus, recherche, scanner) — frontend v0design | GO | tsc 0 erreur, 108/108 tests verts, 6 bloquants revue-code corrigés (i18n × 4, double Date.now, console.error) ; B1-B6 implémentés, docs/tests-p413.md créé (T1-T7) | M-shadow-sm préexistant, M-emerald ActivityVoiceModal (différé P5), M-MET hardcodé dans InterpretConfirm (différé P5), M-simulateProcessing bouton debug ActivityVoiceModal (différé P5) |
 | 14/06/2026 | P4.14 câblage boutons + rendu réponses backend (frontend v0design) | GO | tsc 0 erreur, 124/124 tests verts, B-1 (guard processed=0), B-2 (ActivityVoiceModal SpeechRecognition réel), KO-1 (needs_confirmation amber AL-10), M-1 (shadow-sm), M-2 (emerald→primary), M-3 (font-bold→semibold), ATTENTION-1 (SL-03 \uXXXX detectedFoods AR) résolus | ATTENTION-2 (glucoseDisclaimer masqué par modal), ATTENTION-3 (consent_glucose conditionnel), M-4 (CopierHier sans copie réelle) — différés P5 |
 | 15/06/2026 | P4.15 auth robustesse + 5 bugs UI + double-scaling (frontend v0design) | GO | tsc 0 erreur, 133/133 tests verts, guardArray ApiError(401) faux-offline résolu, FoodSearchSheet monté, scan additives guard, chips récents sélecteur+sync, suppression double-tap, normalisation /100g calories (COMPLEMENT P4.15) | Validation réelle S1-S6 obligatoire (extension Chrome) |
+| 15/06/2026 | P4.16 désalignement contrat backend/frontend (journal/query + /api/foods/search) | GO | backend 210/210 tests, frontend 134/134 tests, 0 erreur TS · A1: GET /api/foods/search (foods.js) upsert CIQUAL+USDA · A2: journal/query ajoute entries[] plat ApiMealEntry, meal_type pdej↔breakfast · B1: getJournal lit raw.entries · B3: date locale (pas UTC) · sl-api.md contrat figé | Validation réelle S1-S3-S6 obligatoire après redéploiement backend (Render) |
 
 ---
 
@@ -357,3 +358,30 @@ Rejouer T1-T7 via l'extension Chrome sur nutrivita-v0.onrender.com pour confirme
 ### AVERTISSEMENT VALIDATION RÉELLE OBLIGATOIRE
 Les TU/TI verts ne suffisent pas — ils ont déjà menti 2 fois (P4.13-B, P4.14).
 Rejouer S1-S6 en conditions réelles (extension Chrome + Ctrl+Shift+R) avant de déclarer la session GO.
+
+---
+
+## Gate P4.16 — 2026-06-15
+
+**Session :** fix(P4.16) — désalignement contrat backend/frontend journal/query + /api/foods/search
+**Commits backend :** `3cd735e` — routes/foods.js (NEW), routes/journal.js (entries[]), server.js (/api/foods)
+**Commits frontend :** `ceab90f` — getJournal lit entries[], date locale, sl-api.md
+
+**Verdict build :** GO — tsc 0 erreur TypeScript
+**Verdict tests :** GO — backend 210/210 · frontend 134/134 (dont 2 TU-P416-FE + 12 TU-P416 backend)
+**Verdict revue-code :** GO — UN SEUL upsert products par résultat search (foods.js) · meal_type bidirectionnel figé
+**Verdict réglementaire :** N/A — aucune nouvelle donnée de santé exposée, aucune PII
+
+### Corrections P4.16
+- **A1** : `GET /api/foods/search?q=` (routes/foods.js) — CIQUAL→upsert products→id entier ; retourne `ApiFoodSearchResult[]`
+- **A2** : `POST /api/journal/query` renvoie `{ date, entries: [...], meals, totals }` — `entries[]` = tableau plat `ApiMealEntry` avec `meal_type` anglais (`pdej→breakfast` etc.)
+- **A2bis** : `POST /api/journal` accepte `food_id`+`amount` comme aliases de `product_id`+`grams` + map meal_type anglais→interne
+- **B1** : `getJournal` extrait `raw.entries` avant `guardArray` (guard `!Array.isArray` pour ne pas confondre avec `Array.prototype.entries`)
+- **B3** : `currentDate` calculé via `getFullYear/getMonth/getDate` (heure locale) — corrige décalage de jour Algeria UTC+1
+
+### Scénarios à rejouer (après redéploiement backend Render)
+- **S1** : accueil sans "Hors ligne" — journal/query renvoie entries[] exploitable
+- **S2** : ajout aliment CIQUAL via Recherche → persiste au reload (food_id réel en DB)
+- **S3** : bouton Recherche → FoodSearchSheet → résultats (plus de 404)
+- **S6** : "400g pomme de terre" via recherche → 304 kcal (food.calories=76, amount=400)
+- **S4/S5** : vérifier pas de régression (scan + suppression déjà PASS)
