@@ -27,25 +27,31 @@ export function MealSectionCard({
 }: MealSectionCardProps) {
   const { t, removeMealEntry } = useApp()
   const [expanded, setExpanded] = useState(false)
-  // Use createdAt as stable confirmation key — entry.id changes when updateMealEntryId
-  // propagates the backend UUID, which would break a two-tap confirmation tracked by id.
-  const [confirmStableKey, setConfirmStableKey] = useState<string | null>(null)
+  // confirmKey = entry.createdAt of the entry pending deletion (stable across id updates)
+  const [confirmKey, setConfirmKey] = useState<string | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
-  const handleDelete = (entry: MealEntry) => {
-    const stableKey = entry.createdAt
-    if (confirmStableKey !== stableKey) {
-      setConfirmStableKey(stableKey)
-      if (timerRef.current) clearTimeout(timerRef.current)
-      timerRef.current = setTimeout(() => setConfirmStableKey(null), 3000)
-      return
-    }
-    // Use entry.id at tap-2 time — it is the backend UUID if updateMealEntryId already fired
+
+  const handleRequestDelete = (entry: MealEntry) => {
+    console.log("[MealSectionCard] handleRequestDelete — entry.id:", entry.id, "food:", entry.food.name)
+    setConfirmKey(entry.createdAt)
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => setConfirmKey(null), 4000)
+  }
+
+  const handleConfirmDelete = (entry: MealEntry) => {
+    console.log("[MealSectionCard] handleConfirmDelete — entry.id:", entry.id)
+    if (timerRef.current) clearTimeout(timerRef.current)
     removeMealEntry(entry.id)
-    setConfirmStableKey(null)
+    setConfirmKey(null)
     deleteJournalEntry(entry.id).catch((err) => {
       console.error("[MealSectionCard] deleteJournalEntry failed:", err)
     })
+  }
+
+  const handleCancelDelete = () => {
+    if (timerRef.current) clearTimeout(timerRef.current)
+    setConfirmKey(null)
   }
 
   const limit = compact ? 2 : 3
@@ -81,35 +87,62 @@ export function MealSectionCard({
           </p>
         ) : (
           <>
-            {visible.map((entry) => (
-              <div
-                key={entry.id}
-                className="flex items-center justify-between text-sm"
-              >
-                <span className="text-foreground truncate">
-                  {entry.food.name}{" "}
-                  <span className="text-muted-foreground">{entry.amount}g</span>
-                </span>
-                <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                  <span className="text-muted-foreground">
-                    {Math.round((entry.food.calories * entry.amount) / 100)} kcal
+            {visible.map((entry) => {
+              const isPending = confirmKey === entry.createdAt
+              return (
+                <div
+                  key={entry.id}
+                  className="flex items-center justify-between text-sm min-h-[28px]"
+                >
+                  <span className="text-foreground truncate">
+                    {entry.food.name}{" "}
+                    <span className="text-muted-foreground">{entry.amount}g</span>
                   </span>
-                  <button
-                    onClick={() => handleDelete(entry)}
-                    className="w-6 h-6 rounded-full flex items-center justify-center transition-colors"
-                    style={{
-                      color: confirmStableKey === entry.createdAt ? "var(--risk)" : "var(--muted-foreground)",
-                    }}
-                    aria-label={confirmStableKey === entry.createdAt ? "Confirmer la suppression" : "Supprimer"}
-                    title={confirmStableKey === entry.createdAt ? "Appuyer à nouveau pour confirmer" : "Supprimer"}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
+
+                  {isPending ? (
+                    // Single-click confirmation row — shown after first Trash2 click
+                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                      <span className="text-[12px] text-muted-foreground">{t("confirmDelete")}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleConfirmDelete(entry)}
+                        className="px-2 py-0.5 text-[11px] font-semibold rounded-full"
+                        style={{ background: "var(--risk)", color: "#fff" }}
+                        aria-label="Oui, supprimer"
+                      >
+                        Oui
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancelDelete}
+                        className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-muted text-muted-foreground"
+                        aria-label="Annuler la suppression"
+                      >
+                        Non
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                      <span className="text-muted-foreground">
+                        {Math.round((entry.food.calories * entry.amount) / 100)} kcal
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRequestDelete(entry)}
+                        className="w-6 h-6 rounded-full flex items-center justify-center transition-colors text-muted-foreground hover:text-[var(--risk)]"
+                        aria-label="Supprimer"
+                        title="Supprimer"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              )
+            })}
             {!expanded && hidden > 0 && (
               <button
+                type="button"
                 onClick={() => setExpanded(true)}
                 aria-label={`${t("showLess")} — ${hidden} ${t("moreItems")}`}
                 className="flex items-center gap-1 text-[13px] text-primary"
@@ -120,6 +153,7 @@ export function MealSectionCard({
             )}
             {expanded && entries.length > limit && (
               <button
+                type="button"
                 onClick={() => setExpanded(false)}
                 aria-label={t("showLess")}
                 className="flex items-center gap-1 text-[13px] text-muted-foreground"
@@ -135,6 +169,7 @@ export function MealSectionCard({
       {!compact && (
         <div className="px-4 pb-3">
           <Button
+            type="button"
             size="sm"
             variant="outline"
             className="w-full gap-2 rounded-xl"
