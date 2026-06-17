@@ -549,6 +549,9 @@ function AddGlucoseModal({
               {t("add")}
             </Button>
           </div>
+          <p className="text-[10px] text-muted-foreground leading-snug mt-2">
+            {t("glucoseDisclaimer")}
+          </p>
         </div>
       </motion.div>
     </motion.div>
