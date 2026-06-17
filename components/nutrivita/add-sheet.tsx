@@ -13,6 +13,9 @@ import { InterpretConfirm } from "@/components/nutrivita/interpret-confirm"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { BrowserMultiFormatReader } from "@zxing/browser"
+import { NotFoundException } from "@zxing/library"
+import type { IScannerControls } from "@zxing/browser"
 
 // Pre-computed heights for VoiceModal waveform — no Math.random() in render
 const VOICE_WAVE_HEIGHTS = [32, 44, 24, 52, 28, 48, 20, 48, 36, 28, 40, 52, 24, 44, 32, 52, 28, 44, 20, 48]
@@ -529,9 +532,8 @@ function VoiceModal({
 // ─── ScannerModal ─────────────────────────────────────────────────────────────
 
 type ScanStep =
-  | "camera"            // caméra active (BarcodeDetector)
+  | "camera"            // caméra active (@zxing/browser)
   | "scanning"          // code détecté — appel réseau en cours (évite écran noir)
-  | "no-detector"       // BarcodeDetector absent — choix photo ou manuel
   | "manual"            // saisie manuelle
   | "unknown"           // produit non trouvé — choix à faire
   | "label-processing"  // analyse Gemini en cours
@@ -567,7 +569,7 @@ function ScannerModal({
   const [labelName, setLabelName] = useState("")
   const [scannedProduct, setScannedProduct] = useState<import("@/lib/types").ScannedProduct | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
-  const streamRef = useRef<MediaStream | null>(null)
+  const scannerControlsRef = useRef<IScannerControls | undefined>(undefined)
   const activeRef = useRef(true)
   const labelInputRef = useRef<HTMLInputElement>(null)
 
@@ -646,57 +648,42 @@ function ScannerModal({
     activeRef.current = true
     if (step !== "camera") return
 
-    ;(async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-        })
-        if (!activeRef.current) { stream.getTracks().forEach((tr) => tr.stop()); return }
-        streamRef.current = stream
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-          videoRef.current.play().catch(() => {})
-        }
+    const codeReader = new BrowserMultiFormatReader()
 
-        const win = window as unknown as Record<string, unknown>
-        if (typeof win["BarcodeDetector"] === "function") {
-          type BD = { detect: (src: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> }
-          const BarcodeDetector = win["BarcodeDetector"] as new (opts: object) => BD
-          const detector = new BarcodeDetector({ formats: ["ean_13", "ean_8", "code_128", "qr_code"] })
-          const loop = async () => {
-            if (!activeRef.current || !videoRef.current) return
-            try {
-              const codes = await detector.detect(videoRef.current)
-              if (codes.length > 0) {
-                activeRef.current = false
-                stream.getTracks().forEach((tr) => tr.stop())
-                streamRef.current = null
-                setStep("scanning")
-                handleBarcode(codes[0].rawValue)
-              } else {
-                requestAnimationFrame(loop)
-              }
-            } catch {
-              requestAnimationFrame(loop)
-            }
+    codeReader.decodeFromVideoDevice(
+      undefined,
+      videoRef.current ?? undefined,
+      (result, err) => {
+        if (result) {
+          scannerControlsRef.current?.stop()
+          scannerControlsRef.current = undefined
+          if (activeRef.current) {
+            activeRef.current = false
+            setStep("scanning")
+            handleBarcode(result.getText())
           }
-          if (videoRef.current) {
-            videoRef.current.onloadedmetadata = () => { if (activeRef.current) requestAnimationFrame(loop) }
-          }
-        } else {
-          // BarcodeDetector absent — proposer le choix à l'utilisateur
-          setStep("no-detector")
+          return
         }
-      } catch {
-        if (activeRef.current) setCameraError(t("cameraPermissionDenied"))
-        setStep("manual")
+        if (err && !(err instanceof NotFoundException)) {
+          console.warn("[Scanner] zxing error:", err)
+        }
+        // NotFoundException = rien détecté encore, ignorer
       }
-    })()
+    ).then((controls) => {
+      if (!activeRef.current) {
+        controls.stop()
+        return
+      }
+      scannerControlsRef.current = controls
+    }).catch(() => {
+      if (activeRef.current) setCameraError(t("cameraPermissionDenied"))
+      setStep("manual")
+    })
 
     return () => {
       activeRef.current = false
-      streamRef.current?.getTracks().forEach((tr) => tr.stop())
-      streamRef.current = null
+      scannerControlsRef.current?.stop()
+      scannerControlsRef.current = undefined
     }
   }, [step, handleBarcode, t])
 
@@ -748,38 +735,6 @@ function ScannerModal({
             <div className="flex flex-col items-center gap-4">
               <Loader2 className="h-10 w-10 animate-spin" style={{ color: "var(--primary)" }} />
               <p className="text-[14px] text-muted-foreground">{t("analyzingBarcode")}</p>
-            </div>
-          )}
-
-          {/* ── BarcodeDetector absent ── */}
-          {step === "no-detector" && (
-            <div className="w-full max-w-sm space-y-4">
-              <div className="text-center space-y-2">
-                <p className="text-[15px] font-semibold text-foreground">
-                  Détection auto indisponible sur ce navigateur
-                </p>
-                <p className="text-[13px] text-muted-foreground">
-                  Choisissez une alternative pour identifier le produit.
-                </p>
-              </div>
-              <button
-                onClick={() => labelInputRef.current?.click()}
-                className="w-full flex items-center gap-3 p-4 rounded-2xl border border-border bg-card text-left"
-              >
-                <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
-                  <Camera className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <p className="text-[14px] font-medium text-foreground">Scanner une photo</p>
-              </button>
-              <button
-                onClick={() => setStep("manual")}
-                className="w-full flex items-center gap-3 p-4 rounded-2xl border border-border bg-card text-left"
-              >
-                <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
-                  <KeyboardIcon className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <p className="text-[14px] font-medium text-foreground">Saisie manuelle</p>
-              </button>
             </div>
           )}
 
