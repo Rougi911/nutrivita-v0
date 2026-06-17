@@ -27,19 +27,23 @@ export function MealSectionCard({
 }: MealSectionCardProps) {
   const { t, removeMealEntry } = useApp()
   const [expanded, setExpanded] = useState(false)
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  // Use createdAt as stable confirmation key — entry.id changes when updateMealEntryId
+  // propagates the backend UUID, which would break a two-tap confirmation tracked by id.
+  const [confirmStableKey, setConfirmStableKey] = useState<string | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
-  const handleDelete = (entryId: string) => {
-    if (confirmDeleteId !== entryId) {
-      setConfirmDeleteId(entryId)
+  const handleDelete = (entry: MealEntry) => {
+    const stableKey = entry.createdAt
+    if (confirmStableKey !== stableKey) {
+      setConfirmStableKey(stableKey)
       if (timerRef.current) clearTimeout(timerRef.current)
-      timerRef.current = setTimeout(() => setConfirmDeleteId(null), 3000)
+      timerRef.current = setTimeout(() => setConfirmStableKey(null), 3000)
       return
     }
-    removeMealEntry(entryId)
-    setConfirmDeleteId(null)
-    deleteJournalEntry(entryId).catch((err) => {
+    // Use entry.id at tap-2 time — it is the backend UUID if updateMealEntryId already fired
+    removeMealEntry(entry.id)
+    setConfirmStableKey(null)
+    deleteJournalEntry(entry.id).catch((err) => {
       console.error("[MealSectionCard] deleteJournalEntry failed:", err)
     })
   }
@@ -91,13 +95,13 @@ export function MealSectionCard({
                     {Math.round((entry.food.calories * entry.amount) / 100)} kcal
                   </span>
                   <button
-                    onClick={() => handleDelete(entry.id)}
+                    onClick={() => handleDelete(entry)}
                     className="w-6 h-6 rounded-full flex items-center justify-center transition-colors"
                     style={{
-                      color: confirmDeleteId === entry.id ? "var(--risk)" : "var(--muted-foreground)",
+                      color: confirmStableKey === entry.createdAt ? "var(--risk)" : "var(--muted-foreground)",
                     }}
-                    aria-label={confirmDeleteId === entry.id ? "Confirmer la suppression" : "Supprimer"}
-                    title={confirmDeleteId === entry.id ? "Appuyer à nouveau pour confirmer" : "Supprimer"}
+                    aria-label={confirmStableKey === entry.createdAt ? "Confirmer la suppression" : "Supprimer"}
+                    title={confirmStableKey === entry.createdAt ? "Appuyer à nouveau pour confirmer" : "Supprimer"}
                   >
                     <Trash2 className="h-3 w-3" />
                   </button>
