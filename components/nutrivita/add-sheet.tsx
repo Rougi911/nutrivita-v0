@@ -530,6 +530,7 @@ function VoiceModal({
 
 type ScanStep =
   | "camera"            // caméra active (BarcodeDetector)
+  | "no-detector"       // BarcodeDetector absent — choix photo ou manuel
   | "manual"            // saisie manuelle
   | "unknown"           // produit non trouvé — choix à faire
   | "label-processing"  // analyse Gemini en cours
@@ -679,7 +680,8 @@ function ScannerModal({
             videoRef.current.onloadedmetadata = () => { if (activeRef.current) requestAnimationFrame(loop) }
           }
         } else {
-          setStep("manual")
+          // BarcodeDetector absent — proposer le choix à l'utilisateur
+          setStep("no-detector")
         }
       } catch {
         if (activeRef.current) setCameraError(t("cameraPermissionDenied"))
@@ -734,6 +736,38 @@ function ScannerModal({
                 {t("scannerManualBarcode")}
               </button>
             </>
+          )}
+
+          {/* ── BarcodeDetector absent ── */}
+          {step === "no-detector" && (
+            <div className="w-full max-w-sm space-y-4">
+              <div className="text-center space-y-2">
+                <p className="text-[15px] font-semibold text-foreground">
+                  Détection auto indisponible sur ce navigateur
+                </p>
+                <p className="text-[13px] text-muted-foreground">
+                  Choisissez une alternative pour identifier le produit.
+                </p>
+              </div>
+              <button
+                onClick={() => labelInputRef.current?.click()}
+                className="w-full flex items-center gap-3 p-4 rounded-2xl border border-border bg-card text-left"
+              >
+                <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                  <Camera className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <p className="text-[14px] font-medium text-foreground">Scanner une photo</p>
+              </button>
+              <button
+                onClick={() => setStep("manual")}
+                className="w-full flex items-center gap-3 p-4 rounded-2xl border border-border bg-card text-left"
+              >
+                <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                  <KeyboardIcon className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <p className="text-[14px] font-medium text-foreground">Saisie manuelle</p>
+              </button>
+            </div>
           )}
 
           {/* ── Saisie manuelle ── */}
