@@ -8,15 +8,19 @@ import { inferMealTypeFromTime, normalizeMealType } from "../meal-utils"
 afterEach(() => { vi.restoreAllMocks() })
 
 describe("inferMealTypeFromTime (TU-P414-01)", () => {
+  // Règle : 5–10h→breakfast, 11–13h→lunch, 14–19h→dinner, 20–4h→snack
   const cases: [number, string][] = [
+    [5,  "breakfast"],
     [6,  "breakfast"],
     [10, "breakfast"],
     [11, "lunch"],
-    [14, "lunch"],
-    [15, "snack"],
-    [18, "snack"],
+    [13, "lunch"],
+    [14, "dinner"],
     [19, "dinner"],
-    [23, "dinner"],
+    [20, "snack"],
+    [23, "snack"],
+    [0,  "snack"],
+    [4,  "snack"],
   ]
   it.each(cases)("h=%i → %s", (hour, expected) => {
     // Mock Date.prototype.getHours to return a fixed hour
