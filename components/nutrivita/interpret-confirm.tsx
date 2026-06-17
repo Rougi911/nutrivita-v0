@@ -202,7 +202,7 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
         ))}
       </div>
 
-      <div className="px-4 pb-8 pt-3 border-t border-border bg-background">
+      <div className="px-4 pt-3 border-t border-border bg-background" style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom))" }}>
         {confirmError && (
           <p className="text-[12px] text-center mb-2" style={{ color: "var(--risk)" }}>
             {confirmError}
