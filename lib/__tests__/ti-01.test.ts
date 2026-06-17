@@ -70,49 +70,42 @@ describe("TI-01 pipeline photo", () => {
 
   it("addJournalEntry après confirmation → retourne l'entrée créée avec bons champs camelCase", async () => {
     const { addJournalEntry } = await import("../api")
+    // POST /api/journal retourne un raw DB row (pas ApiMealEntry) — seul id est lu depuis le serveur
     server.use(
       http.post(`${API_BASE}/api/journal`, () =>
         HttpResponse.json({
           id: "m-new",
-          food_id: "3",
-          food: {
-            id: "3",
-            name: "Couscous royal",
-            calories: 178,
-            protein: 12,
-            carbs: 22,
-            fat: 5,
-            source: "nutrivita",
-            cuisine: "Maghreb",
-          },
-          amount: 300,
-          meal_type: "lunch",
+          user_id: "u1",
+          product_id: 3,
+          grams: 300,
+          meal_type: "dej",
           date: "2026-06-12",
-          created_at: "2026-06-12T12:30:00Z",
-        })
+          kcal: 534,
+          glucides: 66,
+          proteines: 36,
+          lipides: 15,
+          fibres: 0,
+          modifiers_json: "[]",
+        }, { status: 201 })
       )
     )
 
+    const food = {
+      id: "3", name: "Couscous royal",
+      calories: 178, protein: 12, carbs: 22, fat: 5,
+      source: "nutrivita" as const, cuisine: "Maghreb",
+    }
     const entry = await addJournalEntry({
       foodId: "3",
-      food: {
-        id: "3",
-        name: "Couscous royal",
-        calories: 178,
-        protein: 12,
-        carbs: 22,
-        fat: 5,
-        source: "nutrivita",
-        cuisine: "Maghreb",
-      },
+      food,
       amount: 300,
       mealType: "lunch",
       date: "2026-06-12",
     })
 
-    expect(entry.id).toBe("m-new")
+    expect(entry.id).toBe("m-new")           // UUID propagé depuis backend
     expect(entry.mealType).toBe("lunch")
-    expect(entry.createdAt).toBe("2026-06-12T12:30:00Z")
+    expect(typeof entry.createdAt).toBe("string") // construit localement
     // Anneau calorique : 178 kcal/100g * 300g / 100 = 534 kcal
     const kcal = (entry.food.calories * entry.amount) / 100
     expect(kcal).toBe(534)

@@ -47,7 +47,8 @@ interface AppContextType {
   currentDate: string
   setCurrentDate: (date: string) => void
   dailyLog: DailyLog
-  addMealEntry: (entry: Omit<MealEntry, "id" | "createdAt">) => void
+  addMealEntry: (entry: Omit<MealEntry, "id" | "createdAt">) => string
+  updateMealEntryId: (localId: string, backendId: string) => void
   removeMealEntry: (id: string) => void
   clearJournal: () => void
 
@@ -289,9 +290,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     totalFat:      Math.round(totalFat),
   }
 
-  const addMealEntry = (entry: Omit<MealEntry, "id" | "createdAt">) => {
-    const newEntry: MealEntry = { ...entry, id: `meal-${Date.now()}`, createdAt: new Date().toISOString() }
+  const addMealEntry = (entry: Omit<MealEntry, "id" | "createdAt">): string => {
+    // Use crypto.randomUUID for collision safety (two simultaneous adds on same ms)
+    const id = `meal-${typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`}`
+    const newEntry: MealEntry = { ...entry, id, createdAt: new Date().toISOString() }
     setMealEntries((prev) => [...prev, newEntry])
+    return id
+  }
+
+  const updateMealEntryId = (localId: string, backendId: string) => {
+    setMealEntries((prev) => prev.map((m) => m.id === localId ? { ...m, id: backendId } : m))
   }
 
   const removeMealEntry = (id: string) => setMealEntries((prev) => prev.filter((m) => m.id !== id))
@@ -366,6 +374,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setCurrentDate,
         dailyLog,
         addMealEntry,
+        updateMealEntryId,
         removeMealEntry,
         clearJournal,
         glucoseReadings,

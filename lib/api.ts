@@ -333,7 +333,9 @@ export async function getJournal(date: string): Promise<MealEntry[]> {
 export async function addJournalEntry(
   entry: Omit<MealEntry, "id" | "createdAt">
 ): Promise<MealEntry> {
-  const raw = await apiFetch<ApiMealEntry>("/api/journal", {
+  // POST /api/journal returns a raw DB row (no nested food object) — don't call mapMealEntry.
+  // Build MealEntry from the input data + backend UUID so callers can propagate the real id.
+  const raw = await apiFetch<{ id: string }>("/api/journal", {
     method: "POST",
     body: JSON.stringify({
       food_id: entry.foodId,
@@ -342,7 +344,18 @@ export async function addJournalEntry(
       date: entry.date,
     }),
   })
-  return mapMealEntry(raw)
+  if (!raw.id || typeof raw.id !== "string") {
+    throw new ApiError(0, "POST /api/journal: id manquant dans la réponse")
+  }
+  return {
+    id: raw.id,
+    foodId: entry.foodId,
+    food: entry.food,
+    amount: entry.amount,
+    mealType: entry.mealType,
+    date: entry.date,
+    createdAt: new Date().toISOString(),
+  }
 }
 
 export async function deleteJournalEntry(id: string): Promise<void> {

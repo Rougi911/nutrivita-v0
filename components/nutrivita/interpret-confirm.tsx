@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { ArrowLeft, Check, X } from "lucide-react"
 import { useApp } from "@/lib/app-context"
+import { addJournalEntry } from "@/lib/api"
 import { SAMPLE_FOODS, MEALS } from "@/lib/types"
 import type { ApiInterpretResponse, ApiIntent } from "@/lib/api-types"
 import type { GlucoseReading, FoodItem } from "@/lib/types"
@@ -38,7 +39,7 @@ function intentColor(type: ApiIntent["type"]): string {
 }
 
 export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmProps) {
-  const { t, addMealEntry, addActivity, addGlucoseReading, currentDate, user } = useApp()
+  const { t, addMealEntry, updateMealEntryId, addActivity, addGlucoseReading, currentDate, user } = useApp()
 
   const [selected, setSelected] = useState<boolean[]>(result.intents.map(() => true))
   const [confirmError, setConfirmError] = useState<string | null>(null)
@@ -87,13 +88,12 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
             fat: per100g(n?.lipides, 5),
             source: "estimated" as const,
           }
-        addMealEntry({
-          foodId: food.id,
-          food,
-          amount: qg,
-          mealType: mealTypes[i],
-          date: currentDate,
-        })
+        const entry = { foodId: food.id, food, amount: qg, mealType: mealTypes[i], date: currentDate }
+        const localId = addMealEntry(entry)
+        // Sync to backend — estimated foods may fail; error is non-blocking
+        addJournalEntry(entry)
+          .then((backendEntry) => { updateMealEntryId(localId, backendEntry.id) })
+          .catch((err) => { console.error("[InterpretConfirm] addJournalEntry sync failed:", err) })
         processed++
       }
 

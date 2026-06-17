@@ -51,7 +51,7 @@ const quickActions = [
 ] as const
 
 export function AddSheet() {
-  const { setShowAddSheet, t, setShowFoodSearch, language, addMealEntry, currentDate, addScannedProduct } = useApp()
+  const { setShowAddSheet, t, setShowFoodSearch, language, addMealEntry, updateMealEntryId, currentDate, addScannedProduct } = useApp()
 
   const [interpResult, setInterpResult] = useState<ApiInterpretResponse | null>(null)
   const [interpreting, setInterpreting] = useState(false)
@@ -80,10 +80,10 @@ export function AddSheet() {
       mealType: pendingMealType,
       date: currentDate,
     }
-    addMealEntry(entry)
-    addJournalEntry(entry).catch((err) => {
-      console.error("[AddSheet] addJournalEntry (relog) sync failed:", err)
-    })
+    const localId = addMealEntry(entry)
+    addJournalEntry(entry)
+      .then((backendEntry) => { updateMealEntryId(localId, backendEntry.id) })
+      .catch((err) => { console.error("[AddSheet] addJournalEntry (relog) sync failed:", err) })
     setPendingRelogFood(null)
     setShowAddSheet(false)
   }
@@ -554,7 +554,7 @@ function ScannerModal({
   onClose: () => void
   onScanned: (product: import("@/lib/types").ScannedProduct) => void
 }) {
-  const { t, addMealEntry, currentDate } = useApp()
+  const { t, addMealEntry, updateMealEntryId, currentDate } = useApp()
   const [step, setStep] = useState<ScanStep>("camera")
   const [manualBarcode, setManualBarcode] = useState("")
   const [scanning, setScanning] = useState(false)
@@ -618,24 +618,24 @@ function ScannerModal({
   const handleLabelConfirm = () => {
     if (!labelResult || labelResult.kcal === null) return
     const foodId = `label-${Date.now()}`
-    addMealEntry({
-      foodId,
-      food: {
-        id: foodId,
-        name: labelName || t("unknownFoodName"),
-        nameEn: labelName || t("unknownFoodName"),
-        cuisine: "International",
-        calories: labelResult.kcal,
-        protein: labelResult.proteines ?? 0,
-        carbs: labelResult.glucides ?? 0,
-        fat: labelResult.lipides ?? 0,
-        fiber: labelResult.fibres ?? undefined,
-        source: "estimated" as const,
-      },
-      amount: 100,
-      mealType: inferMealTypeFromTime(),
-      date: currentDate,
-    })
+    const food = {
+      id: foodId,
+      name: labelName || t("unknownFoodName"),
+      nameEn: labelName || t("unknownFoodName"),
+      cuisine: "International",
+      calories: labelResult.kcal,
+      protein: labelResult.proteines ?? 0,
+      carbs: labelResult.glucides ?? 0,
+      fat: labelResult.lipides ?? 0,
+      fiber: labelResult.fibres ?? undefined,
+      source: "estimated" as const,
+    }
+    const entry = { foodId, food, amount: 100, mealType: inferMealTypeFromTime(), date: currentDate }
+    const localId = addMealEntry(entry)
+    // Sync to backend — estimated foods may not be in products DB yet; error is non-blocking
+    addJournalEntry(entry)
+      .then((backendEntry) => { updateMealEntryId(localId, backendEntry.id) })
+      .catch((err) => { console.error("[ScannerModal] addJournalEntry (label) sync failed:", err) })
     onClose()
   }
 

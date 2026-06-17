@@ -146,6 +146,52 @@ describe("getJournal", () => {
   })
 })
 
+describe("addJournalEntry (TU-P417)", () => {
+  it("TU-P417-FE-1 : retourne MealEntry avec id du backend (UUID)", async () => {
+    const { addJournalEntry } = await import("../api")
+    server.use(
+      http.post(`${API_BASE}/api/journal`, () =>
+        HttpResponse.json({
+          id: "e7c5a431-dcfc-40c3-88d7-d8c34de76ada",
+          user_id: "u1",
+          product_id: 7,
+          grams: 400,
+          meal_type: "pdej",
+          date: "2026-06-15",
+          kcal: 304,
+        }, { status: 201 })
+      )
+    )
+    const food = {
+      id: "7", name: "Pomme de terre", nameAr: undefined, nameEn: undefined,
+      cuisine: "International", calories: 76, protein: 2, carbs: 16, fat: 0.1, fiber: 1.4,
+      source: "ciqual" as const,
+    }
+    const result = await addJournalEntry({ foodId: "7", food, amount: 400, mealType: "breakfast", date: "2026-06-15" })
+    expect(result.id).toBe("e7c5a431-dcfc-40c3-88d7-d8c34de76ada") // backend UUID propagé
+    expect(result.food.calories).toBe(76)   // food préservé depuis l'input
+    expect(result.amount).toBe(400)
+    expect(result.mealType).toBe("breakfast")
+  })
+
+  it("TU-P417-FE-2 : lève ApiError(404) si backend répond 404", async () => {
+    const { addJournalEntry, ApiError } = await import("../api")
+    server.use(
+      http.post(`${API_BASE}/api/journal`, () =>
+        HttpResponse.json({ error: "Produit non trouvé" }, { status: 404 })
+      )
+    )
+    const food = {
+      id: "999", name: "Inconnu", nameAr: undefined, nameEn: undefined,
+      cuisine: "International", calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0,
+      source: "ciqual" as const,
+    }
+    const err = await addJournalEntry({ foodId: "999", food, amount: 100, mealType: "lunch", date: "2026-06-15" }).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(ApiError)
+    expect((err as InstanceType<typeof ApiError>).status).toBe(404)
+  })
+})
+
 describe("scanLabelImage (TU-P414-03)", () => {
   it("mappe les champs français standards (kcal, glucides, proteines...)", async () => {
     const { scanLabelImage } = await import("../api")

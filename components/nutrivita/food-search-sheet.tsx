@@ -31,6 +31,7 @@ export function FoodSearchSheet() {
     selectedMealType,
     t,
     addMealEntry,
+    updateMealEntryId,
     currentDate,
     isRTL,
     language,
@@ -119,16 +120,16 @@ export function FoodSearchSheet() {
       date: currentDate,
     }
 
-    // Optimistic local update — UI reflects immediately
-    addMealEntry(entry)
+    // Optimistic local update — UI reflects immediately; capture local ID for later UUID swap
+    const localId = addMealEntry(entry)
     setSelectedFood(null)
     setPortion(100)
     setShowFoodSearch(false)
 
-    // Background sync to backend — errors are non-blocking
-    addJournalEntry(entry).catch((err) => {
-      console.error("[FoodSearch] addJournalEntry sync failed:", err)
-    })
+    // Background sync — on success replace local ID with backend UUID so delete works
+    addJournalEntry(entry)
+      .then((backendEntry) => { updateMealEntryId(localId, backendEntry.id) })
+      .catch((err) => { console.error("[FoodSearch] addJournalEntry sync failed:", err) })
   }
 
   const calories = selectedFood
