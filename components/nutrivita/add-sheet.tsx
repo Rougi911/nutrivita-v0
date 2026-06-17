@@ -530,6 +530,7 @@ function VoiceModal({
 
 type ScanStep =
   | "camera"            // caméra active (BarcodeDetector)
+  | "scanning"          // code détecté — appel réseau en cours (évite écran noir)
   | "no-detector"       // BarcodeDetector absent — choix photo ou manuel
   | "manual"            // saisie manuelle
   | "unknown"           // produit non trouvé — choix à faire
@@ -587,6 +588,7 @@ function ScannerModal({
       }
       console.error("[ScannerModal] scanBarcode failed:", "/api/scan", err)
       setError(t("scannerError"))
+      setStep("manual")
     } finally {
       setScanning(false)
     }
@@ -668,6 +670,8 @@ function ScannerModal({
               if (codes.length > 0) {
                 activeRef.current = false
                 stream.getTracks().forEach((tr) => tr.stop())
+                streamRef.current = null
+                setStep("scanning")
                 handleBarcode(codes[0].rawValue)
               } else {
                 requestAnimationFrame(loop)
@@ -692,6 +696,7 @@ function ScannerModal({
     return () => {
       activeRef.current = false
       streamRef.current?.getTracks().forEach((tr) => tr.stop())
+      streamRef.current = null
     }
   }, [step, handleBarcode, t])
 
@@ -736,6 +741,14 @@ function ScannerModal({
                 {t("scannerManualBarcode")}
               </button>
             </>
+          )}
+
+          {/* ── Analyse code-barres en cours ── */}
+          {step === "scanning" && (
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="h-10 w-10 animate-spin" style={{ color: "var(--primary)" }} />
+              <p className="text-[14px] text-muted-foreground">{t("analyzingBarcode")}</p>
+            </div>
           )}
 
           {/* ── BarcodeDetector absent ── */}

@@ -454,6 +454,7 @@ export const translations = {
     portionNormal: "Normal",
     portionDouble: "Double",
     noEntriesYesterday: "Aucune entrée hier",
+    analyzingBarcode: "Analyse du code-barres…",
   },
   ar: {
     journal: "اليومية",
@@ -717,6 +718,7 @@ export const translations = {
     portionNormal: "عادي",
     portionDouble: "ضعف",
     noEntriesYesterday: "\u0644\u0627 \u062A\u0648\u062C\u062F \u0625\u062F\u062E\u0627\u0644\u0627\u062A \u0623\u0645\u0633",
+    analyzingBarcode: "\u062C\u0627\u0631\u064A \u062A\u062D\u0644\u064A\u0644 \u0627\u0644\u0631\u0645\u0632 \u0627\u0644\u0634\u0631\u064A\u0637\u064A\u2026",
   },
   en: {
     journal: "Journal",
@@ -980,6 +982,7 @@ export const translations = {
     portionNormal: "Normal",
     portionDouble: "Double",
     noEntriesYesterday: "No entries yesterday",
+    analyzingBarcode: "Analyzing barcode…",
   },
 }
 
