@@ -20,15 +20,43 @@ export function CalorieRing({
 }: CalorieRingProps) {
   const cappedBurned = Math.min(burned, 1000) // AL-03 plafond 1000 kcal
   const effectiveTarget = target + cappedBurned
+
+  // Arc progress: fills from 0 to 100% as consumed approaches effectiveTarget
   const percentage = Math.min((consumed / effectiveTarget) * 100, 100)
-  const overTarget = consumed > effectiveTarget
-  const remaining = effectiveTarget - consumed
   const radius = (size - 20) / 2
   const circumference = 2 * Math.PI * radius
   const strokeDashoffset = circumference - (percentage / 100) * circumference
 
+  // Balance: negative = sous l'objectif, positive = dépassement
+  const balance = consumed - effectiveTarget
+
+  // Arc + text color based on balance vs target
+  let progressColor: string
+  if (balance <= 0) {
+    progressColor = "var(--primary)" // teal
+  } else if (balance <= effectiveTarget * 0.10) {
+    progressColor = "#BA7517" // orange — dépassement modéré
+  } else {
+    progressColor = "#A32D2D" // rouge — dépassement important
+  }
+
+  // Central display value
+  const displayValue =
+    balance < 0
+      ? balance.toLocaleString()          // ex. "-2200"
+      : balance === 0
+        ? "0"
+        : `+${balance.toLocaleString()}` // ex. "+150"
+
+  // Label under the value
+  const displayLabel =
+    balance < 0
+      ? "kcal restantes"
+      : balance === 0
+        ? "kcal objectif atteint"
+        : "kcal en excès"
+
   const trackColor = "var(--muted)"
-  const progressColor = overTarget ? "var(--destructive)" : "var(--primary)"
 
   // Font sizes scaled to ring size
   const bigFontSize = Math.max(18, Math.round(size * 0.155))
@@ -69,16 +97,16 @@ export function CalorieRing({
 
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-3">
         <motion.span
-          className="font-semibold text-foreground tabular-nums"
-          style={{ fontSize: bigFontSize }}
+          className="font-semibold tabular-nums"
+          style={{ fontSize: bigFontSize, color: progressColor }}
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3 }}
         >
-          {remaining > 0 ? remaining.toLocaleString() : "0"}
+          {displayValue}
         </motion.span>
         <span className="text-muted-foreground mt-0.5" style={{ fontSize: labelFontSize }}>
-          kcal restantes
+          {displayLabel}
         </span>
         {size >= 160 && (
           <>
