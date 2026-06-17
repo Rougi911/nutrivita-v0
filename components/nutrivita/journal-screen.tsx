@@ -26,14 +26,14 @@ import {
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { useApp } from "@/lib/app-context"
-import { interpretMedia } from "@/lib/api"
+import { interpretMedia, getJournal } from "@/lib/api"
 import type { ApiInterpretResponse } from "@/lib/api-types"
 import { InterpretConfirm } from "./interpret-confirm"
 import { CalorieRing } from "./calorie-ring"
 import { MacroPillCard } from "./macro-pill-card"
 import { MealSectionCard } from "./meal-section-card"
 import { Button } from "@/components/ui/button"
-import { MEALS, type ActivityEntry } from "@/lib/types"
+import { MEALS, type ActivityEntry, type MealEntry } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { OfflineBanner } from "@/components/nutrivita/offline-banner"
@@ -55,12 +55,15 @@ export function JournalScreen() {
     removeActivity,
     todayBurnedCalories,
     isLoading,
+    addMealEntry,
   } = useApp()
 
   const [showVoiceInput, setShowVoiceInput] = useState(false)
   const [voiceInterpResult, setVoiceInterpResult] = useState<ApiInterpretResponse | null>(null)
   const [showActivityVoice, setShowActivityVoice] = useState(false)
   const [showActivityManual, setShowActivityManual] = useState(false)
+  const [copyConfirm, setCopyConfirm] = useState<{ entries: MealEntry[]; count: number } | null>(null)
+  const [copyLoading, setCopyLoading] = useState(false)
 
   const todayActivities = activities.filter((a) => a.date === currentDate)
 
@@ -117,12 +120,35 @@ export function JournalScreen() {
     setShowFoodSearch(true)
   }
 
+  const handleCopyYesterday = async () => {
+    const yesterday = new Date(currentDate)
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayStr = yesterday.toISOString().split("T")[0]
+    const entries = await getJournal(yesterdayStr)
+    if (!entries || entries.length === 0) {
+      alert(t("noEntriesYesterday") ?? "Aucune entrée hier.")
+      return
+    }
+    setCopyConfirm({ entries, count: entries.length })
+  }
+
+  const handleConfirmCopy = async () => {
+    if (!copyConfirm) return
+    setCopyLoading(true)
+    for (const entry of copyConfirm.entries) {
+      const { id, createdAt, ...rest } = entry
+      addMealEntry({ ...rest, date: currentDate })
+    }
+    setCopyLoading(false)
+    setCopyConfirm(null)
+  }
+
   const quickActions = [
     { icon: Mic,        label: t("voice"),        onClick: () => setShowVoiceInput(true) },
     { icon: Camera,     label: t("photo"),         onClick: () => setShowAddSheet(true) },
     { icon: ScanBarcode,label: t("scanner"),       onClick: () => setShowAddSheet(true) },
     { icon: Star,       label: t("favorites"),     onClick: () => { setSelectedMealType(null); setShowFoodSearch(true) } },
-    { icon: Copy,       label: t("copyYesterday"), onClick: () => setShowAddSheet(true) },
+    { icon: Copy,       label: t("copyYesterday"), onClick: handleCopyYesterday },
   ]
 
   return (
@@ -408,6 +434,20 @@ export function JournalScreen() {
           }}
           userWeight={user.weight}
         />
+      )}
+
+      {copyConfirm && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setCopyConfirm(null)}>
+          <div className="bg-background rounded-t-2xl p-6 w-full max-w-sm space-y-4" onClick={e => e.stopPropagation()}>
+            <p className="text-sm font-semibold">{`Copier ${copyConfirm.count} repas d'hier ?`}</p>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setCopyConfirm(null)}>Annuler</Button>
+              <Button className="flex-1" onClick={handleConfirmCopy} disabled={copyLoading}>
+                {copyLoading ? "Copie…" : "Confirmer"}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
