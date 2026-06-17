@@ -574,7 +574,6 @@ function ScannerModal({
   const labelInputRef = useRef<HTMLInputElement>(null)
 
   const handleBarcode = useCallback(async (barcode: string) => {
-    if (!activeRef.current) return
     setScanning(true)
     setError(null)
     try {
@@ -645,8 +644,8 @@ function ScannerModal({
   }
 
   useEffect(() => {
-    activeRef.current = true
     if (step !== "camera") return
+    activeRef.current = true
 
     const codeReader = new BrowserMultiFormatReader()
 
@@ -655,13 +654,13 @@ function ScannerModal({
       videoRef.current ?? undefined,
       (result, err) => {
         if (result) {
+          if (!activeRef.current) return   // déduplication : ignorer si déjà en cours
+          activeRef.current = false        // bloquer les détections suivantes
+          const code = result.getText().trim()
           scannerControlsRef.current?.stop()
           scannerControlsRef.current = undefined
-          if (activeRef.current) {
-            activeRef.current = false
-            setStep("scanning")
-            handleBarcode(result.getText())
-          }
+          setStep("scanning")
+          handleBarcode(code)
           return
         }
         if (err && !(err instanceof NotFoundException)) {
