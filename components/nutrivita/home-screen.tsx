@@ -30,8 +30,8 @@ function MacroBar({
     <div className="flex-1 min-w-0">
       <div className="flex items-center justify-between mb-1">
         <span className="text-[11px] text-muted-foreground font-medium truncate">{label}</span>
-        <span className="text-[11px] text-foreground font-semibold ml-1 shrink-0">
-          {consumed}g
+        <span className="text-[10px] text-foreground font-semibold ml-1 shrink-0 whitespace-nowrap">
+          {consumed}g / {target}g
         </span>
       </div>
       <div className="h-1.5 rounded-full bg-muted overflow-hidden">
@@ -40,9 +40,6 @@ function MacroBar({
           style={{ width: `${pct}%`, backgroundColor: color }}
         />
       </div>
-      <span className="text-[10px] text-muted-foreground mt-0.5 block">
-        / {target}g
-      </span>
     </div>
   )
 }
