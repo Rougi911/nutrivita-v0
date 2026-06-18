@@ -130,6 +130,17 @@ function mapFood(raw: ApiMealEntry["food"]): FoodItem {
     sugar: raw.sugar,
     sodium: raw.sodium,
     source: raw.source,
+    // Mappe les micronutriments imbriqués (camelCase backend) vers les champs
+    // plats attendus par le radar (calcRadarData). ?? null préserve la sémantique
+    // "donnée inconnue" ; un 0 réel (ex. vit D/B12 d'un légume) est conservé.
+    vit_c_mg:     raw.micronutrients?.vitaminC   ?? null,
+    vit_d_ug:     raw.micronutrients?.vitaminD   ?? null,
+    b9_ug:        raw.micronutrients?.vitaminB9  ?? null,
+    b12_ug:       raw.micronutrients?.vitaminB12 ?? null,
+    iron_mg:      raw.micronutrients?.iron       ?? null,
+    calcium_mg:   raw.micronutrients?.calcium    ?? null,
+    magnesium_mg: raw.micronutrients?.magnesium  ?? null,
+    zinc_mg:      raw.micronutrients?.zinc        ?? null,
   }
 }
 

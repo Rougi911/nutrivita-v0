@@ -84,6 +84,18 @@ export interface ApiMealEntry {
     sugar?: number
     sodium?: number
     source: "nutrivita" | "ciqual" | "usda" | "estimated"
+    // Micronutriments imbriqués renvoyés par /api/journal (clés camelCase backend).
+    // null = donnée inconnue (≠ 0). Absent si l'aliment n'a pas de données détaillées.
+    micronutrients?: {
+      vitaminC?: number | null
+      vitaminD?: number | null
+      vitaminB9?: number | null
+      vitaminB12?: number | null
+      iron?: number | null
+      calcium?: number | null
+      magnesium?: number | null
+      zinc?: number | null
+    } | null
   }
   amount: number
   meal_type: "breakfast" | "lunch" | "snack" | "dinner"
