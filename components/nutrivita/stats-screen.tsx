@@ -25,11 +25,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { computeGlucoseMetrics } from "@/lib/glucose-metrics"
 import { deurenbergBodyFat, leanBodyMass, bmi } from "@/lib/body-composition"
 import { formatGlucose } from "@/lib/glucose-units"
-import {
-  sampleWeekCalories,
-  sampleMonthCalories,
-  type DayCalories,
-} from "@/lib/mock-data"
+import { type DayCalories } from "@/lib/mock-data"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { calcRadarData, DEFAULT_VNR } from "@/lib/micronutrients-radar"
@@ -101,11 +97,8 @@ export function StatsScreen() {
         : String(d.getDate())
       result.push({ date: dateStr, label, calories, protein, carbs, fat })
     }
-    // Fall back to mock data only if ALL real entries are zero (no backend data loaded yet)
-    const hasRealData = result.some((r) => r.calories > 0)
-    if (!hasRealData) {
-      return segment === "semaine" ? sampleWeekCalories : sampleMonthCalories
-    }
+    // Journal vide / sans calories → on retourne les vraies données (zéros).
+    // Jamais de données fictives (intégrité santé + cohérence avec le radar).
     return result
   }, [mealEntries, segment])
 
