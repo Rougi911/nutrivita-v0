@@ -26,6 +26,7 @@ import {
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { useApp } from "@/lib/app-context"
+import { getLocalDateStr } from "@/lib/date-utils"
 import { interpretMedia, getJournal } from "@/lib/api"
 import type { ApiInterpretResponse } from "@/lib/api-types"
 import { InterpretConfirm } from "./interpret-confirm"
@@ -95,7 +96,7 @@ export function JournalScreen() {
   const navigateDate = (direction: number) => {
     const newDate = new Date(date)
     newDate.setDate(newDate.getDate() + direction)
-    setCurrentDate(newDate.toISOString().split("T")[0])
+    setCurrentDate(getLocalDateStr(newDate))
   }
 
   // Calculate macro targets
@@ -123,7 +124,7 @@ export function JournalScreen() {
   const handleCopyYesterday = async () => {
     const yesterday = new Date(currentDate)
     yesterday.setDate(yesterday.getDate() - 1)
-    const yesterdayStr = yesterday.toISOString().split("T")[0]
+    const yesterdayStr = getLocalDateStr(yesterday)
     const entries = await getJournal(yesterdayStr)
     if (!entries || entries.length === 0) {
       alert(t("noEntriesYesterday") ?? "Aucune entrée hier.")

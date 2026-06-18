@@ -14,6 +14,7 @@ import {
   type TranslationKey,
 } from "@/lib/types"
 import { defaultWaterIntake } from "@/lib/mock-data"
+import { getLocalDateStr } from "@/lib/date-utils"
 import {
   getJournal,
   getGlucoseReadings as fetchGlucoseReadings,
@@ -160,13 +161,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Set current date client-side only (date LOCALE, pas UTC) — fixes React #418 hydration
   // mismatch et évite le décalage de jour en soirée (UTC+1 Algeria).
   useEffect(() => {
-    const now = new Date()
-    const localDate = [
-      now.getFullYear(),
-      String(now.getMonth() + 1).padStart(2, "0"),
-      String(now.getDate()).padStart(2, "0"),
-    ].join("-")
-    setCurrentDate(localDate)
+    setCurrentDate(getLocalDateStr())
   }, [])
 
   const login = useCallback((token: string, serverUser: { id: string; email: string; name: string }) => {
