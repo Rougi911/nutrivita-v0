@@ -128,11 +128,16 @@ export function GroceriesScreen() {
   }, [])
 
   const handleScan = async () => {
-    if (!scanInput.trim()) return
+    const code = scanInput.trim()
+    if (!code) return
+    if (!/^\d+$/.test(code)) {
+      setScanError(t("scannerError"))
+      return
+    }
     setScanning(true)
     setScanError(null)
     try {
-      const product = await scanBarcode(scanInput.trim())
+      const product = await scanBarcode(code)
       addScannedProduct(product)
       setScanInput("")
     } catch {
@@ -146,10 +151,6 @@ export function GroceriesScreen() {
     <div className={cn("flex flex-col min-h-screen bg-background pb-8", isRTL && "rtl")}>
       <OfflineBanner />
 
-      {scanError && (
-        <p className="text-[12px] px-4 py-1" style={{ color: "var(--risk)" }}>{scanError}</p>
-      )}
-
       {/* Header */}
       <div className="px-4 pt-5 pb-3 flex items-center justify-between">
         <div>
@@ -159,9 +160,10 @@ export function GroceriesScreen() {
         <div className="flex items-center gap-2">
           <input
             type="text"
+            inputMode="numeric"
             placeholder={t("scanProduct")}
             value={scanInput}
-            onChange={(e) => setScanInput(e.target.value)}
+            onChange={(e) => { setScanInput(e.target.value); setScanError(null) }}
             onKeyDown={(e) => { if (e.key === "Enter") handleScan() }}
             className="h-9 rounded-xl border border-border bg-muted px-3 text-[13px] w-36 focus:outline-none"
           />
@@ -171,6 +173,9 @@ export function GroceriesScreen() {
           </Button>
         </div>
       </div>
+      {scanError && (
+        <p className="text-[12px] px-4 pb-2" style={{ color: "var(--risk)" }}>{scanError}</p>
+      )}
 
       <div className="px-4 space-y-4">
 
