@@ -53,6 +53,16 @@ export interface FoodItem {
   sodium?: number
   source: "nutrivita" | "ciqual" | "usda" | "estimated"
   isFavorite?: boolean
+
+  // Micronutriments optionnels (CIQUAL) — null = donnée inconnue (≠ 0)
+  vit_c_mg?: number | null      // Vitamine C (mg/100g)
+  vit_d_ug?: number | null      // Vitamine D (µg/100g)
+  b9_ug?: number | null         // Folates B9 (µg/100g)
+  b12_ug?: number | null        // Vitamine B12 (µg/100g)
+  iron_mg?: number | null       // Fer (mg/100g)
+  calcium_mg?: number | null    // Calcium (mg/100g)
+  magnesium_mg?: number | null  // Magnésium (mg/100g)
+  zinc_mg?: number | null       // Zinc (mg/100g)
 }
 
 export interface MealEntry {
@@ -148,17 +158,69 @@ export interface ScannedProduct {
 }
 
 // Sample food database (no emojis — IDs are stable)
+// Micronutriment values (mg or µg per 100g) from CIQUAL 2020 / ANSES estimates.
+// null = donnée inconnue dans CIQUAL (≠ 0).
 export const SAMPLE_FOODS: FoodItem[] = [
-  { id: "1",  name: "Laban",         nameAr: "لبن",                  nameEn: "Laban",              cuisine: "Maghreb",        calories: 63,  protein: 3.5, carbs: 4.8, fat: 3.2, source: "nutrivita" },
-  { id: "2",  name: "Pain complet",  nameAr: "خبز كامل", nameEn: "Whole wheat bread", cuisine: "Française",  calories: 262, protein: 9,   carbs: 49,  fat: 3.4, source: "ciqual" },
-  { id: "3",  name: "Couscous royal",nameAr: "كسكس ملكي", nameEn: "Royal couscous", cuisine: "Maghreb",  calories: 178, protein: 12,  carbs: 22,  fat: 5,   source: "nutrivita" },
-  { id: "4",  name: "Salade niçoise",nameAr: "سلطة نيسواز", nameEn: "Niçoise salad", cuisine: "Française", calories: 285, protein: 18, carbs: 12, fat: 22, source: "ciqual" },
-  { id: "5",  name: "Tajine poulet", nameAr: "طاجين دجاج", nameEn: "Chicken tagine", cuisine: "Maghreb", calories: 195, protein: 22, carbs: 8, fat: 9, source: "nutrivita" },
-  { id: "6",  name: "Croissant",     nameAr: "كرواسون",  nameEn: "Croissant",          cuisine: "Française",  calories: 406, protein: 8,   carbs: 45,  fat: 21,  source: "ciqual" },
-  { id: "7",  name: "Riz blanc",     nameAr: "أرز أبيض",  nameEn: "White rice",         cuisine: "International", calories: 130, protein: 2.7, carbs: 28, fat: 0.3, source: "ciqual" },
-  { id: "8",  name: "Huile d'olive", nameAr: "زيت الزيتون", nameEn: "Olive oil", cuisine: "Méditerranée", calories: 884, protein: 0, carbs: 0, fat: 100, source: "ciqual" },
-  { id: "9",  name: "Poulet grillé", nameAr: "دجاج مشوي", nameEn: "Grilled chicken", cuisine: "International", calories: 165, protein: 31, carbs: 0, fat: 3.6, source: "ciqual" },
-  { id: "10", name: "Omelette",      nameAr: "أومليت",         nameEn: "Omelette",           cuisine: "Française",  calories: 154, protein: 11,  carbs: 1,   fat: 12,  source: "ciqual" },
+  {
+    id: "1",  name: "Laban", nameAr: "لبن", nameEn: "Laban",
+    cuisine: "Maghreb", calories: 63, protein: 3.5, carbs: 4.8, fat: 3.2, source: "nutrivita",
+    vit_c_mg: 1.0, vit_d_ug: 0.04, b9_ug: 5.0, b12_ug: 0.4,
+    iron_mg: 0.05, calcium_mg: 120, magnesium_mg: 11, zinc_mg: 0.4,
+  },
+  {
+    id: "2",  name: "Pain complet", nameAr: "خبز كامل", nameEn: "Whole wheat bread",
+    cuisine: "Française", calories: 262, protein: 9, carbs: 49, fat: 3.4, source: "ciqual",
+    vit_c_mg: 0, vit_d_ug: null, b9_ug: 27, b12_ug: null,
+    iron_mg: 2.5, calcium_mg: 25, magnesium_mg: 58, zinc_mg: 1.8,
+  },
+  {
+    id: "3",  name: "Couscous royal", nameAr: "كسكس ملكي", nameEn: "Royal couscous",
+    cuisine: "Maghreb", calories: 178, protein: 12, carbs: 22, fat: 5, source: "nutrivita",
+    vit_c_mg: null, vit_d_ug: null, b9_ug: null, b12_ug: null,
+    iron_mg: null, calcium_mg: null, magnesium_mg: null, zinc_mg: null,
+  },
+  {
+    id: "4",  name: "Salade niçoise", nameAr: "سلطة نيسواز", nameEn: "Niçoise salad",
+    cuisine: "Française", calories: 285, protein: 18, carbs: 12, fat: 22, source: "ciqual",
+    vit_c_mg: 12, vit_d_ug: 1.2, b9_ug: 40, b12_ug: 1.0,
+    iron_mg: 2.0, calcium_mg: 80, magnesium_mg: 28, zinc_mg: 1.0,
+  },
+  {
+    id: "5",  name: "Tajine poulet", nameAr: "طاجين دجاج", nameEn: "Chicken tagine",
+    cuisine: "Maghreb", calories: 195, protein: 22, carbs: 8, fat: 9, source: "nutrivita",
+    vit_c_mg: null, vit_d_ug: null, b9_ug: null, b12_ug: null,
+    iron_mg: null, calcium_mg: null, magnesium_mg: null, zinc_mg: null,
+  },
+  {
+    id: "6",  name: "Croissant", nameAr: "كرواسون", nameEn: "Croissant",
+    cuisine: "Française", calories: 406, protein: 8, carbs: 45, fat: 21, source: "ciqual",
+    vit_c_mg: 0, vit_d_ug: 0.3, b9_ug: 32, b12_ug: 0.2,
+    iron_mg: 1.2, calcium_mg: 23, magnesium_mg: 16, zinc_mg: 0.6,
+  },
+  {
+    id: "7",  name: "Riz blanc", nameAr: "أرز أبيض", nameEn: "White rice",
+    cuisine: "International", calories: 130, protein: 2.7, carbs: 28, fat: 0.3, source: "ciqual",
+    vit_c_mg: 0, vit_d_ug: null, b9_ug: 2, b12_ug: null,
+    iron_mg: 0.2, calcium_mg: 3, magnesium_mg: 13, zinc_mg: 0.6,
+  },
+  {
+    id: "8",  name: "Huile d'olive", nameAr: "زيت الزيتون", nameEn: "Olive oil",
+    cuisine: "Méditerranée", calories: 884, protein: 0, carbs: 0, fat: 100, source: "ciqual",
+    vit_c_mg: 0, vit_d_ug: 0, b9_ug: 0, b12_ug: 0,
+    iron_mg: 0.4, calcium_mg: 1, magnesium_mg: 0, zinc_mg: 0,
+  },
+  {
+    id: "9",  name: "Poulet grillé", nameAr: "دجاج مشوي", nameEn: "Grilled chicken",
+    cuisine: "International", calories: 165, protein: 31, carbs: 0, fat: 3.6, source: "ciqual",
+    vit_c_mg: 0, vit_d_ug: 0.1, b9_ug: 7, b12_ug: 0.3,
+    iron_mg: 0.8, calcium_mg: 11, magnesium_mg: 27, zinc_mg: 1.6,
+  },
+  {
+    id: "10", name: "Omelette", nameAr: "أومليت", nameEn: "Omelette",
+    cuisine: "Française", calories: 154, protein: 11, carbs: 1, fat: 12, source: "ciqual",
+    vit_c_mg: 0, vit_d_ug: 1.8, b9_ug: 30, b12_ug: 1.2,
+    iron_mg: 1.7, calcium_mg: 55, magnesium_mg: 12, zinc_mg: 1.3,
+  },
 ]
 
 // Translations
@@ -456,6 +518,13 @@ export const translations = {
     portionDouble: "Double",
     noEntriesYesterday: "Aucune entrée hier",
     analyzingBarcode: "Analyse du code-barres…",
+
+    // ─── Radar vitamines & minéraux (REG-05) ───────────────────────────────
+    vitaminMineralRadar: "Vitamines & Minéraux",
+    improveIntake: "apports à améliorer",
+    estimationBased: "Estimation basée sur {pct}% de vos aliments enregistrés (le reste n'a pas de données détaillées).",
+    lowDataWarning: "Données insuffisantes pour estimer vos apports avec fiabilité.",
+    radarDisclaimer: "Estimation indicative — ne remplace pas un bilan sanguin.",
   },
   ar: {
     journal: "اليومية",
@@ -721,6 +790,13 @@ export const translations = {
     portionDouble: "ضعف",
     noEntriesYesterday: "\u0644\u0627 \u062A\u0648\u062C\u062F \u0625\u062F\u062E\u0627\u0644\u0627\u062A \u0623\u0645\u0633",
     analyzingBarcode: "\u062C\u0627\u0631\u064A \u062A\u062D\u0644\u064A\u0644 \u0627\u0644\u0631\u0645\u0632 \u0627\u0644\u0634\u0631\u064A\u0637\u064A\u2026",
+
+    // \u2500\u2500\u2500 Radar vitamines & min\u00E9raux (REG-05) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    vitaminMineralRadar: "\u0627\u0644\u0641\u064A\u062A\u0627\u0645\u064A\u0646\u0627\u062A \u0648\u0627\u0644\u0645\u0639\u0627\u062F\u0646",
+    improveIntake: "\u064A\u062C\u0628 \u062A\u062D\u0633\u064A\u0646 \u0627\u0644\u0645\u062F\u062E\u0648\u0644\u0627\u062A",
+    estimationBased: "\u062A\u0642\u062F\u064A\u0631 \u0628\u0646\u0627\u0621\u064B \u0639\u0644\u0649 {pct}% \u0645\u0646 \u0623\u063A\u0630\u064A\u062A\u0643 \u0627\u0644\u0645\u0633\u062C\u0644\u0629 (\u0627\u0644\u0628\u0627\u0642\u064A \u0644\u064A\u0633 \u0644\u062F\u064A\u0647 \u0628\u064A\u0627\u0646\u0627\u062A \u062A\u0641\u0635\u064A\u0644\u064A\u0629).",
+    lowDataWarning: "\u0628\u064A\u0627\u0646\u0627\u062A \u063A\u064A\u0631 \u0643\u0627\u0641\u064A\u0629 \u0644\u062A\u0642\u062F\u064A\u0631 \u0645\u062F\u062E\u0648\u0644\u0627\u062A\u0643 \u0628\u0634\u0643\u0644 \u0645\u0648\u062B\u0648\u0642.",
+    radarDisclaimer: "\u062A\u0642\u062F\u064A\u0631 \u0627\u0633\u062A\u0631\u0634\u0627\u062F\u064A \u2014 \u0644\u0627 \u064A\u063A\u0646\u064A \u0639\u0646 \u062A\u062D\u0644\u064A\u0644 \u0627\u0644\u062F\u0645.",
   },
   en: {
     journal: "Journal",
@@ -986,6 +1062,13 @@ export const translations = {
     portionDouble: "Double",
     noEntriesYesterday: "No entries yesterday",
     analyzingBarcode: "Analyzing barcode…",
+
+    // ─── Vitamins & minerals radar (REG-05) ────────────────────────────────
+    vitaminMineralRadar: "Vitamins & Minerals",
+    improveIntake: "intakes to improve",
+    estimationBased: "Estimate based on {pct}% of your logged foods (the rest have no detailed data).",
+    lowDataWarning: "Insufficient data to estimate your intakes reliably.",
+    radarDisclaimer: "Indicative estimate — not a substitute for a blood test.",
   },
 }
 

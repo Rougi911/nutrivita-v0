@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect, useMemo } from "react"
 import { AlertTriangle, FileText, TrendingDown, TrendingUp } from "lucide-react"
@@ -32,6 +32,8 @@ import {
 } from "@/lib/mock-data"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { calcRadarData, DEFAULT_VNR } from "@/lib/micronutrients-radar"
+import { MicronutrientsRadar } from "@/components/nutrivita/micronutrients-radar"
 
 type Segment = "jour" | "semaine" | "mois" | "annee"
 
@@ -137,6 +139,18 @@ export function StatsScreen() {
     const step = Math.max(1, Math.floor(weekGlucose.length / 7))
     return weekGlucose.filter((_, i) => i % step === 0).slice(0, 7).map((v, i) => ({ x: i, y: v }))
   }, [weekGlucose])
+
+  // Radar vitamines & minéraux — entrées de la période sélectionnée
+  const radarData = useMemo(() => {
+    const days = segment === "semaine" ? 7 : segment === "mois" ? 30 : segment === "annee" ? 365 : 1
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const cutoffDate = new Date(today)
+    cutoffDate.setDate(cutoffDate.getDate() - (days - 1))
+    const cutoffStr = `${cutoffDate.getFullYear()}-${String(cutoffDate.getMonth() + 1).padStart(2, "0")}-${String(cutoffDate.getDate()).padStart(2, "0")}`
+    const periodEntries = mealEntries.filter((m) => m.date >= cutoffStr)
+    return calcRadarData(periodEntries, user.sex, DEFAULT_VNR)
+  }, [mealEntries, segment, user.sex])
 
   return (
     <div className={cn("flex flex-col min-h-screen bg-background pb-8", isRTL && "rtl")}>
@@ -401,6 +415,69 @@ export function StatsScreen() {
           ) : (
             <p className="text-[13px] text-muted-foreground">{t("noDeficiencyData")}</p>
           )}
+        </div>
+
+        {/* ─── 6. Radar vitamines & minéraux (REG-05) ─────────────────────── */}
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <h3 className="text-[14px] font-semibold text-foreground mb-1">
+            {t("vitaminMineralRadar")}
+          </h3>
+
+          {/* Radar SVG */}
+          <MicronutrientsRadar data={radarData} className="w-full max-w-[320px] mx-auto block" />
+
+          {/* Axes < 70% VNR */}
+          {radarData.nutrients.filter((n) => n.valuePercent < 70).length > 0 && (
+            <div className="mt-3">
+              <p className="text-[12px] font-semibold text-foreground mb-1.5">
+                {t("improveIntake")}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {radarData.nutrients
+                  .filter((n) => n.valuePercent < 70)
+                  .map((n) => (
+                    <span
+                      key={n.key}
+                      className="px-2 py-0.5 rounded-full text-[11px] font-semibold"
+                      style={{ backgroundColor: "var(--amber-bg, #FFF3CD)", color: "#BA7517" }}
+                    >
+                      {n.label} {n.valuePercent}%
+                    </span>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {/* Indicateur de complétude */}
+          <p className="text-[11px] text-muted-foreground mt-3 leading-snug">
+            {t("estimationBased").replace("{pct}", String(radarData.overallCompleteness))}
+          </p>
+
+          {/* Avertissement données insuffisantes */}
+          {radarData.overallCompleteness < 40 && (
+            <div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-muted/40 mt-2">
+              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "#BA7517" }} />
+              <p className="text-[11px] font-semibold leading-snug" style={{ color: "#BA7517" }}>
+                {t("lowDataWarning")}
+              </p>
+            </div>
+          )}
+
+          {/* Disclaimer REG-05 obligatoire (3 langues) */}
+          <div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-muted/40 mt-2">
+            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "var(--amber)" }} />
+            <div className="space-y-0.5">
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                Estimation indicative — ne remplace pas un bilan sanguin.
+              </p>
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                Indicative estimate — not a substitute for a blood test.
+              </p>
+              <p className="text-[11px] text-muted-foreground leading-snug" dir="rtl">
+                {"تقدير استرشادي — لا يغني عن تحليل الدم."}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Export button */}
