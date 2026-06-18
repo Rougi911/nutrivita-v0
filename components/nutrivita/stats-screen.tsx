@@ -51,7 +51,7 @@ function getBarFill(calories: number, target: number): string {
 }
 
 export function StatsScreen() {
-  const { t, dailyLog, user, weightHistory, glucoseReadings, isRTL } = useApp()
+  const { t, dailyLog, mealEntries, user, weightHistory, glucoseReadings, isRTL } = useApp()
   const [segment, setSegment] = useState<Segment>("semaine")
   const [deficiencies, setDeficiencies] = useState<ApiDeficiency[]>([])
   const [loadingDef, setLoadingDef] = useState(false)
@@ -79,8 +79,34 @@ export function StatsScreen() {
     ? ((latest.bodyFat ?? bfPct) * latest.weight / 100) - ((first.bodyFat ?? bfPct) * first.weight / 100)
     : 0
 
-  // Calorie data for charts (stable, from mock-data)
-  const calData: DayCalories[] = segment === "semaine" ? sampleWeekCalories : sampleMonthCalories
+  // Calorie data computed from real journal entries — J-N to J-0
+  const calData: DayCalories[] = useMemo(() => {
+    const days = segment === "semaine" ? 7 : segment === "mois" ? 30 : segment === "annee" ? 365 : 1
+    const result: DayCalories[] = []
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(today)
+      d.setDate(d.getDate() - i)
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+      const dayEntries = mealEntries.filter((m) => m.date === dateStr)
+      const calories = Math.round(dayEntries.reduce((s, m) => s + (m.food.calories * m.amount) / 100, 0))
+      const protein  = Math.round(dayEntries.reduce((s, m) => s + (m.food.protein  * m.amount) / 100, 0))
+      const carbs    = Math.round(dayEntries.reduce((s, m) => s + (m.food.carbs    * m.amount) / 100, 0))
+      const fat      = Math.round(dayEntries.reduce((s, m) => s + (m.food.fat      * m.amount) / 100, 0))
+      const label = days <= 7
+        ? ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"][d.getDay()]
+        : String(d.getDate())
+      result.push({ date: dateStr, label, calories, protein, carbs, fat })
+    }
+    // Fall back to mock data only if ALL real entries are zero (no backend data loaded yet)
+    const hasRealData = result.some((r) => r.calories > 0)
+    if (!hasRealData) {
+      return segment === "semaine" ? sampleWeekCalories : sampleMonthCalories
+    }
+    return result
+  }, [mealEntries, segment])
+
   const avgCalories = calData.length
     ? Math.round(calData.reduce((s, d) => s + d.calories, 0) / calData.length)
     : 0

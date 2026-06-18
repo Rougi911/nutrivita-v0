@@ -48,6 +48,7 @@ interface AppContextType {
   currentDate: string
   setCurrentDate: (date: string) => void
   dailyLog: DailyLog
+  mealEntries: MealEntry[]
   addMealEntry: (entry: Omit<MealEntry, "id" | "createdAt">) => string
   updateMealEntryId: (localId: string, backendId: string) => void
   removeMealEntry: (id: string) => void
@@ -368,6 +369,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         currentDate,
         setCurrentDate,
         dailyLog,
+        mealEntries,
         addMealEntry,
         updateMealEntryId,
         removeMealEntry,
