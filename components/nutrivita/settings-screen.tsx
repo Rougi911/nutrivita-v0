@@ -1,6 +1,7 @@
 ﻿"use client"
 
 import { useState } from "react"
+import { toast } from "sonner"
 import {
   ArrowLeft,
   Check,
@@ -84,6 +85,24 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
       weight: parseFloat(editWeight) || user.weight,
     })
     setShowProfileEdit(false)
+  }
+
+  const handleExportData = () => {
+    try {
+      const data = JSON.stringify({ exportedAt: new Date().toISOString(), user }, null, 2)
+      const blob = new Blob([data], { type: "application/json" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `nutrivita-export-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast(t("exportDone"), { duration: 3000 })
+    } catch {
+      toast(t("errorLoading"), { duration: 3000 })
+    }
   }
 
   const goalLabels: Record<string, string> = {
@@ -276,7 +295,7 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
             <ConfirmButton label={t("clearJournal")}    onConfirm={clearJournal}    t={t} />
             <ConfirmButton label={t("clearWeight")}     onConfirm={clearWeight}     t={t} />
             <ConfirmButton label={t("clearGlucose")}    onConfirm={clearGlucose}    t={t} />
-            <Button variant="outline" className="w-full justify-start gap-2 rounded-xl">
+            <Button variant="outline" className="w-full justify-start gap-2 rounded-xl" onClick={handleExportData}>
               <Download className="h-4 w-4" />
               {t("exportData")}
             </Button>
