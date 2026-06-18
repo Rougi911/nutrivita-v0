@@ -19,8 +19,9 @@ import {
   Scatter,
 } from "recharts"
 import { useApp } from "@/lib/app-context"
-import { getDeficiencies } from "@/lib/api"
+import { getDeficiencies, getAdditivesStats, type AdditivesStats } from "@/lib/api"
 import type { ApiDeficiency } from "@/lib/api-types"
+import { AdditivesBars } from "@/components/nutrivita/additives-bars"
 import { Skeleton } from "@/components/ui/skeleton"
 import { computeGlucoseMetrics } from "@/lib/glucose-metrics"
 import { deurenbergBodyFat, leanBodyMass, bmi } from "@/lib/body-composition"
@@ -53,6 +54,8 @@ export function StatsScreen() {
   const [segment, setSegment] = useState<Segment>("semaine")
   const [deficiencies, setDeficiencies] = useState<ApiDeficiency[]>([])
   const [loadingDef, setLoadingDef] = useState(false)
+  const [additivesStats, setAdditivesStats] = useState<AdditivesStats | null>(null)
+  const [loadingAdditives, setLoadingAdditives] = useState(false)
 
   useEffect(() => {
     setLoadingDef(true)
@@ -64,6 +67,18 @@ export function StatsScreen() {
       })
       .finally(() => setLoadingDef(false))
   }, [])
+
+  useEffect(() => {
+    const days = segment === "jour" ? 1 : segment === "semaine" ? 7 : segment === "mois" ? 30 : 365
+    setLoadingAdditives(true)
+    getAdditivesStats(days)
+      .then(setAdditivesStats)
+      .catch((err) => {
+        console.error("[StatsScreen] getAdditivesStats failed:", err)
+        setAdditivesStats(null)
+      })
+      .finally(() => setLoadingAdditives(false))
+  }, [segment])
 
   // Body composition from latest weight entry
   const latest = weightHistory.length > 0 ? weightHistory[weightHistory.length - 1] : null
@@ -472,6 +487,9 @@ export function StatsScreen() {
             </div>
           </div>
         </div>
+
+        {/* ─── 7. Additifs EFSA (AL-S4 REG-05) ───────────────────────────── */}
+        <AdditivesBars stats={additivesStats} loading={loadingAdditives} />
 
         {/* Export button */}
         <Button variant="outline" className="w-full gap-2 rounded-xl">

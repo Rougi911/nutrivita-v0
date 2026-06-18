@@ -9,6 +9,7 @@ import type {
   ApiActivityEntry,
   ApiFoodSearchResult,
   ApiLabelScanResult,
+  ApiAdditivesStats,
 } from "@/lib/api-types"
 import type {
   MealEntry,
@@ -433,4 +434,25 @@ export async function addActivityApi(
 
 export async function deleteActivityApi(id: string): Promise<void> {
   await apiFetch<void>(`/api/activities/${id}`, { method: "DELETE" })
+}
+
+// ─── Additifs EFSA (AL-S4) ───────────────────────────────────────────────────
+
+export interface AdditivesStats {
+  days: number
+  entriesWithAdditives: number
+  totalEntries: number
+  counts: { high: number; moderate: number; low: number }
+  items: { code: string; name: string; risk: "high" | "moderate" | "low"; count: number }[]
+}
+
+export async function getAdditivesStats(days: number): Promise<AdditivesStats> {
+  const raw = await apiFetch<ApiAdditivesStats>(`/api/stats/additives?days=${days}`)
+  return {
+    days: raw.days,
+    entriesWithAdditives: raw.entries_with_additives,
+    totalEntries: raw.total_entries,
+    counts: raw.counts,
+    items: raw.items,
+  }
 }

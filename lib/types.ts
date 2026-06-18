@@ -525,6 +525,15 @@ export const translations = {
     estimationBased: "Estimation basée sur {pct}% de vos aliments enregistrés (le reste n'a pas de données détaillées).",
     lowDataWarning: "Données insuffisantes pour estimer vos apports avec fiabilité.",
     radarDisclaimer: "Estimation indicative — ne remplace pas un bilan sanguin.",
+
+    // ─── Additifs alimentaires (AL-S4 REG-05) ──────────────────────────────
+    additivesTitle: "Additifs",
+    additivesHigh: "À limiter",
+    additivesModerate: "À surveiller",
+    additivesLow: "Risque faible",
+    additivesEmpty: "Ajoutez des aliments pour voir vos expositions",
+    additivesNone: "Aucun additif détecté sur cette période 👍",
+    additivesLogging: "La fiabilité dépend de la rigueur de saisie",
   },
   ar: {
     journal: "اليومية",
@@ -797,6 +806,15 @@ export const translations = {
     estimationBased: "\u062A\u0642\u062F\u064A\u0631 \u0628\u0646\u0627\u0621\u064B \u0639\u0644\u0649 {pct}% \u0645\u0646 \u0623\u063A\u0630\u064A\u062A\u0643 \u0627\u0644\u0645\u0633\u062C\u0644\u0629 (\u0627\u0644\u0628\u0627\u0642\u064A \u0644\u064A\u0633 \u0644\u062F\u064A\u0647 \u0628\u064A\u0627\u0646\u0627\u062A \u062A\u0641\u0635\u064A\u0644\u064A\u0629).",
     lowDataWarning: "\u0628\u064A\u0627\u0646\u0627\u062A \u063A\u064A\u0631 \u0643\u0627\u0641\u064A\u0629 \u0644\u062A\u0642\u062F\u064A\u0631 \u0645\u062F\u062E\u0648\u0644\u0627\u062A\u0643 \u0628\u0634\u0643\u0644 \u0645\u0648\u062B\u0648\u0642.",
     radarDisclaimer: "\u062A\u0642\u062F\u064A\u0631 \u0627\u0633\u062A\u0631\u0634\u0627\u062F\u064A \u2014 \u0644\u0627 \u064A\u063A\u0646\u064A \u0639\u0646 \u062A\u062D\u0644\u064A\u0644 \u0627\u0644\u062F\u0645.",
+
+    // \u2500\u2500\u2500 Additifs (AL-S4 REG-05) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    additivesTitle: "\u0625\u0636\u0627\u0641\u0627\u062A \u063A\u0630\u0627\u0626\u064A\u0629",
+    additivesHigh: "\u062A\u062C\u0646\u0628",
+    additivesModerate: "\u0631\u0627\u0642\u0628",
+    additivesLow: "\u062E\u0637\u0631 \u0645\u0646\u062E\u0641\u0636",
+    additivesEmpty: "\u0623\u0636\u0641 \u0623\u0637\u0639\u0645\u0629 \u0644\u0631\u0624\u064A\u0629 \u062A\u0639\u0631\u0636\u0627\u062A\u0643",
+    additivesNone: "\u0644\u0645 \u064A\u064F\u0643\u062A\u0634\u0641 \u0623\u064A \u0645\u0636\u0627\u0641 \u0641\u064A \u0647\u0630\u0647 \u0627\u0644\u0641\u062A\u0631\u0629 \uD83D\uDC4D",
+    additivesLogging: "\u0627\u0644\u0645\u0648\u062B\u0648\u0642\u064A\u0629 \u062A\u0639\u062A\u0645\u062F \u0639\u0644\u0649 \u062F\u0642\u0629 \u0627\u0644\u0625\u062F\u062E\u0627\u0644",
   },
   en: {
     journal: "Journal",
@@ -1069,6 +1087,15 @@ export const translations = {
     estimationBased: "Estimate based on {pct}% of your logged foods (the rest have no detailed data).",
     lowDataWarning: "Insufficient data to estimate your intakes reliably.",
     radarDisclaimer: "Indicative estimate — not a substitute for a blood test.",
+
+    // ─── Additives (AL-S4 REG-05) ─────────────────────────────────────────
+    additivesTitle: "Additives",
+    additivesHigh: "To limit",
+    additivesModerate: "To watch",
+    additivesLow: "Low risk",
+    additivesEmpty: "Add foods to see your exposures",
+    additivesNone: "No additives detected in this period 👍",
+    additivesLogging: "Reliability depends on logging accuracy",
   },
 }
 

@@ -155,3 +155,20 @@ export interface ApiLabelScanResult {
   sel: number | null
   fibres: number | null
 }
+
+/** GET /api/stats/additives — AL-S4 exposition additifs (REG-05) */
+export interface ApiAdditivesStatsItem {
+  code: string
+  name: string
+  risk: "high" | "moderate" | "low"
+  count: number
+}
+
+export interface ApiAdditivesStats {
+  days: number
+  entries_with_additives: number
+  total_entries: number
+  counts: { high: number; moderate: number; low: number }
+  items: ApiAdditivesStatsItem[]
+  disclaimer: { fr: string; ar: string; en: string }
+}
