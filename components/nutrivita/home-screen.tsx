@@ -211,8 +211,8 @@ export function HomeScreen({ onOpenSettings, onOpenGlucose }: HomeScreenProps) {
             )}
           </button>
 
-          {/* Activity card */}
-          <div className="rounded-2xl bg-card border border-border p-3">
+          {/* Activity card — static, pas d'écran dédié */}
+          <div className="rounded-2xl bg-card border border-border p-3 cursor-default select-none">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[12px] text-muted-foreground font-medium">{t("activity")}</span>
               <Activity className="h-3.5 w-3.5 text-muted-foreground" />
