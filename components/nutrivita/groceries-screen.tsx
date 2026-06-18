@@ -98,7 +98,7 @@ function ProgressBar({
 }
 
 export function GroceriesScreen() {
-  const { t, scannedProducts, addScannedProduct, isRTL } = useApp()
+  const { t, scannedProducts, addScannedProduct, isRTL, setShowAddSheet } = useApp()
 
   const [scanInput, setScanInput] = useState("")
   const [scanning, setScanning] = useState(false)
@@ -165,8 +165,8 @@ export function GroceriesScreen() {
             onKeyDown={(e) => { if (e.key === "Enter") handleScan() }}
             className="h-9 rounded-xl border border-border bg-muted px-3 text-[13px] w-36 focus:outline-none"
           />
-          <Button size="sm" className="gap-1.5 rounded-xl" onClick={handleScan} disabled={scanning}>
-            {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanLine className="h-4 w-4" />}
+          <Button size="sm" className="gap-1.5 rounded-xl" onClick={() => setShowAddSheet(true)}>
+            <ScanLine className="h-4 w-4" />
             {t("scanner")}
           </Button>
         </div>
