@@ -1,6 +1,6 @@
 import type { AdditiveRef } from "@/lib/types"
 
-type RiskLevel = "high" | "moderate" | "low" | null | undefined
+type RiskLevel = "high" | "moderate" | "low" | "unknown" | null | undefined
 
 /** Normalise un additif vers { code, name?, risk? }. Accepte objet ou chaîne. Ne crashe jamais. */
 export function normalizeAdditive(

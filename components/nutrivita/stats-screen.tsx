@@ -50,7 +50,7 @@ function getBarFill(calories: number, target: number): string {
 }
 
 export function StatsScreen() {
-  const { t, dailyLog, mealEntries, user, weightHistory, glucoseReadings, isRTL } = useApp()
+  const { t, dailyLog, mealEntries, user, weightHistory, glucoseReadings, scannedProducts, isRTL } = useApp()
   const [segment, setSegment] = useState<Segment>("semaine")
   const [deficiencies, setDeficiencies] = useState<ApiDeficiency[]>([])
   const [loadingDef, setLoadingDef] = useState(false)
@@ -147,6 +147,20 @@ export function StatsScreen() {
     const step = Math.max(1, Math.floor(weekGlucose.length / 7))
     return weekGlucose.filter((_, i) => i % step === 0).slice(0, 7).map((v, i) => ({ x: i, y: v }))
   }, [weekGlucose])
+
+  // Index code additif → noms de produits scannés qui le contiennent (S10b)
+  const productsByAdditiveCode = useMemo(() => {
+    const index: Record<string, string[]> = {}
+    for (const product of scannedProducts) {
+      for (const additive of product.additives) {
+        const code = (typeof additive === "string" ? additive : (additive?.code ?? "")).toUpperCase()
+        if (!code) continue
+        if (!index[code]) index[code] = []
+        if (!index[code].includes(product.name)) index[code].push(product.name)
+      }
+    }
+    return index
+  }, [scannedProducts])
 
   // Radar vitamines & minéraux — entrées de la période sélectionnée
   const radarData = useMemo(() => {
@@ -489,7 +503,7 @@ export function StatsScreen() {
         </div>
 
         {/* ─── 7. Additifs EFSA (AL-S4 REG-05) ───────────────────────────── */}
-        <AdditivesBars stats={additivesStats} loading={loadingAdditives} />
+        <AdditivesBars stats={additivesStats} loading={loadingAdditives} productsByAdditiveCode={productsByAdditiveCode} />
 
         {/* Export button */}
         <Button variant="outline" className="w-full gap-2 rounded-xl">

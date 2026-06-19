@@ -461,8 +461,8 @@ export interface AdditivesStats {
   days: number
   entriesWithAdditives: number
   totalEntries: number
-  counts: { high: number; moderate: number; low: number }
-  items: { code: string; name: string; risk: "high" | "moderate" | "low"; count: number }[]
+  counts: { high: number; moderate: number; low: number; unknown: number }
+  items: { code: string; name: string; risk: "high" | "moderate" | "low" | "unknown"; count: number }[]
 }
 
 export async function getAdditivesStats(days: number): Promise<AdditivesStats> {

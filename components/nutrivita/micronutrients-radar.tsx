@@ -57,7 +57,7 @@ export function MicronutrientsRadar({ data, className }: Props) {
 
   return (
     <svg
-      viewBox="0 0 320 320"
+      viewBox="-46 -8 412 336"
       className={className}
       aria-label="Radar vitamines et minéraux"
       role="img"

@@ -10,28 +10,35 @@ import type { AdditivesStats } from "@/lib/api"
 interface Props {
   stats: AdditivesStats | null
   loading: boolean
+  /** Index code additif (majuscules) → noms des produits scannés qui le contiennent */
+  productsByAdditiveCode?: Record<string, string[]>
 }
 
-const RISK_COLORS: Record<"high" | "moderate" | "low", string> = {
+type RiskKey = "high" | "moderate" | "low" | "unknown"
+
+const RISK_COLORS: Record<RiskKey, string> = {
   high:     "#DC2626",
   moderate: "#D97706",
   low:      "#1D9E75",
+  unknown:  "var(--muted-foreground)",
 }
 
-const RISK_LEVELS = ["high", "moderate", "low"] as const
+const RISK_LEVELS: RiskKey[] = ["high", "moderate", "low", "unknown"]
 
-const RISK_LABEL_KEYS = {
+const RISK_LABEL_KEYS: Record<RiskKey, "additivesHigh" | "additivesModerate" | "additivesLow" | "additivesUnclassified"> = {
   high:     "additivesHigh",
   moderate: "additivesModerate",
   low:      "additivesLow",
-} as const
+  unknown:  "additivesUnclassified",
+}
 
-export function AdditivesBars({ stats, loading }: Props) {
+export function AdditivesBars({ stats, loading, productsByAdditiveCode }: Props) {
   const { t, isRTL } = useApp()
   const [expanded, setExpanded] = useState(false)
 
+  const unknownCount = stats?.counts?.unknown ?? 0
   const maxCount = stats
-    ? Math.max(1, stats.counts.high, stats.counts.moderate, stats.counts.low)
+    ? Math.max(1, stats.counts.high, stats.counts.moderate, stats.counts.low, unknownCount)
     : 1
 
   return (
@@ -42,7 +49,7 @@ export function AdditivesBars({ stats, loading }: Props) {
 
       {loading ? (
         <div className="space-y-3">
-          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-7 w-full rounded-lg" />)}
+          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-7 w-full rounded-lg" />)}
         </div>
       ) : !stats || stats.totalEntries === 0 ? (
         <p className="text-[13px] text-muted-foreground text-center py-2">
@@ -54,10 +61,11 @@ export function AdditivesBars({ stats, loading }: Props) {
         </p>
       ) : (
         <>
-          {/* 3 barres horizontales */}
+          {/* 4 barres horizontales */}
           <div className="space-y-2.5 mb-3">
             {RISK_LEVELS.map((risk) => {
-              const count = stats.counts[risk]
+              const count = risk === "unknown" ? unknownCount : stats.counts[risk]
+              if (count === 0) return null
               const widthPct = Math.round((count / maxCount) * 100)
               return (
                 <div key={risk}>
@@ -65,7 +73,10 @@ export function AdditivesBars({ stats, loading }: Props) {
                     <span className="text-[12px] font-medium text-foreground">
                       {t(RISK_LABEL_KEYS[risk])}
                     </span>
-                    <span className="text-[12px] font-semibold" style={{ color: RISK_COLORS[risk] }}>
+                    <span
+                      className="text-[12px] font-semibold"
+                      style={{ color: RISK_COLORS[risk] }}
+                    >
                       ×{count}
                     </span>
                   </div>
@@ -104,15 +115,25 @@ export function AdditivesBars({ stats, loading }: Props) {
                     <p className="text-[11px] font-semibold mb-1" style={{ color: RISK_COLORS[risk] }}>
                       {t(RISK_LABEL_KEYS[risk])}
                     </p>
-                    {group.map((item) => (
-                      <div key={item.code} className="flex items-center justify-between py-0.5 ps-2">
-                        <span className="text-[12px] text-foreground">
-                          <span className="font-mono text-[11px] text-muted-foreground me-1.5">{item.code}</span>
-                          {item.name}
-                        </span>
-                        <span className="text-[11px] text-muted-foreground shrink-0 ms-2">×{item.count}</span>
-                      </div>
-                    ))}
+                    {group.map((item) => {
+                      const products = productsByAdditiveCode?.[item.code] ?? []
+                      return (
+                        <div key={item.code} className="py-0.5 ps-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[12px] text-foreground">
+                              <span className="font-mono text-[11px] text-muted-foreground me-1.5">{item.code}</span>
+                              {item.name}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground shrink-0 ms-2">×{item.count}</span>
+                          </div>
+                          {products.length > 0 && (
+                            <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                              {t("additivesIn")} : {products.join(", ")}
+                            </p>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 )
               })}

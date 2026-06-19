@@ -144,7 +144,7 @@ export const MEALS: Meal[] = [
 ]
 
 /** Additif reçu soit en string legacy ("E150d") soit en objet depuis /api/scan. */
-export type AdditiveRef = string | { code: string; name?: string; risk?: "high" | "moderate" | "low" | null }
+export type AdditiveRef = string | { code: string; name?: string; risk?: "high" | "moderate" | "low" | "unknown" | null }
 
 /** AL-08 / EB-04 — Scanned product from barcode. */
 export interface ScannedProduct {
@@ -541,6 +541,8 @@ export const translations = {
     additivesEmpty: "Ajoutez des aliments pour voir vos expositions",
     additivesNone: "Aucun additif détecté sur cette période 👍",
     additivesLogging: "La fiabilité dépend de la rigueur de saisie",
+    additivesUnclassified: "Non classé",
+    additivesIn: "dans",
   },
   ar: {
     journal: "اليومية",
@@ -824,6 +826,8 @@ export const translations = {
     additivesEmpty: "\u0623\u0636\u0641 \u0623\u0637\u0639\u0645\u0629 \u0644\u0631\u0624\u064A\u0629 \u062A\u0639\u0631\u0636\u0627\u062A\u0643",
     additivesNone: "\u0644\u0645 \u064A\u064F\u0643\u062A\u0634\u0641 \u0623\u064A \u0645\u0636\u0627\u0641 \u0641\u064A \u0647\u0630\u0647 \u0627\u0644\u0641\u062A\u0631\u0629 \uD83D\uDC4D",
     additivesLogging: "\u0627\u0644\u0645\u0648\u062B\u0648\u0642\u064A\u0629 \u062A\u0639\u062A\u0645\u062F \u0639\u0644\u0649 \u062F\u0642\u0629 \u0627\u0644\u0625\u062F\u062E\u0627\u0644",
+    additivesUnclassified: "\u063A\u064A\u0631 \u0645\u0635\u0646\u0641",
+    additivesIn: "\u0641\u064A",
   },
   en: {
     journal: "Journal",
@@ -1107,6 +1111,8 @@ export const translations = {
     additivesEmpty: "Add foods to see your exposures",
     additivesNone: "No additives detected in this period 👍",
     additivesLogging: "Reliability depends on logging accuracy",
+    additivesUnclassified: "Unclassified",
+    additivesIn: "in",
   },
 }
 

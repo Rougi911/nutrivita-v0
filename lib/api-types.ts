@@ -63,7 +63,7 @@ export interface ApiScannedProduct {
   sat_fat_g: number
   times_this_month: number
   scanned_at: string
-  additives: { code: string; name?: string; risk?: "high" | "moderate" | "low" | null }[]
+  additives: { code: string; name?: string; risk?: "high" | "moderate" | "low" | "unknown" | null }[]
 }
 
 export interface ApiScannedProductsResponse {
@@ -184,7 +184,7 @@ export interface ApiLabelScanResult {
 export interface ApiAdditivesStatsItem {
   code: string
   name: string
-  risk: "high" | "moderate" | "low"
+  risk: "high" | "moderate" | "low" | "unknown"
   count: number
 }
 
@@ -192,7 +192,7 @@ export interface ApiAdditivesStats {
   days: number
   entries_with_additives: number
   total_entries: number
-  counts: { high: number; moderate: number; low: number }
+  counts: { high: number; moderate: number; low: number; unknown: number }
   items: ApiAdditivesStatsItem[]
   disclaimer: { fr: string; ar: string; en: string }
 }
