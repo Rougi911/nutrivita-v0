@@ -144,10 +144,11 @@ export const MEALS: Meal[] = [
 ]
 
 /** Additif reçu soit en string legacy ("E150d") soit en objet depuis /api/scan. */
-export type AdditiveRef = string | { code: string; name?: string }
+export type AdditiveRef = string | { code: string; name?: string; risk?: "high" | "moderate" | "low" | null }
 
 /** AL-08 / EB-04 — Scanned product from barcode. */
 export interface ScannedProduct {
+  id?: number       // présent via GET /api/scanned (absent après POST /api/scan)
   barcode: string
   name: string
   nutriScore: "A" | "B" | "C" | "D" | "E" | null
@@ -158,6 +159,7 @@ export interface ScannedProduct {
   sucres?: number  // g per 100g
   sel?: number     // g per 100g
   ags?: number     // g per 100g (acides gras saturés)
+  scannedAt?: string // ISO timestamp (GET /api/scanned)
 }
 
 // Sample food database (no emojis — IDs are stable)
@@ -433,6 +435,8 @@ export const translations = {
     riskAdditives: "additif(s) à risque ce mois-ci",
     presentIn: "présents dans",
     products: "produits",
+    deleteProduct: "Supprimer",
+    productRemoved: "Produit retiré",
     scannedProducts: "Produits scannés",
     seeAlternatives: "Voir des alternatives plus saines",
     timesThisMonth: "×",
@@ -718,6 +722,8 @@ export const translations = {
     riskAdditives: "مضافات خطرة هذا الشهر",
     presentIn: "موجودة في",
     products: "منتجات",
+    deleteProduct: "حذف",
+    productRemoved: "تم حذف المنتج",
     scannedProducts: "المنتجات الممسوحة",
     seeAlternatives: "عرض بدائل أصح",
     timesThisMonth: "×",
@@ -999,6 +1005,8 @@ export const translations = {
     riskAdditives: "risk additive(s) this month",
     presentIn: "present in",
     products: "products",
+    deleteProduct: "Delete",
+    productRemoved: "Product removed",
     scannedProducts: "Scanned products",
     seeAlternatives: "See healthier alternatives",
     timesThisMonth: "×",

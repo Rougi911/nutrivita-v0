@@ -9,7 +9,7 @@ import { SAMPLE_FOODS, MEALS } from "@/lib/types"
 import type { ApiInterpretResponse, ApiLabelScanResult } from "@/lib/api-types"
 import { inferMealTypeFromTime } from "@/lib/meal-utils"
 import type { MealType } from "@/lib/meal-utils"
-import { normalizeAdditive } from "@/lib/additives-format"
+import { normalizeAdditive, additiveRiskColor } from "@/lib/additives-format"
 import { InterpretConfirm } from "@/components/nutrivita/interpret-confirm"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -900,11 +900,13 @@ function ScannerModal({
               {(scannedProduct.additives ?? []).length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {(scannedProduct.additives ?? []).map((a) => {
-                    const { code, name } = normalizeAdditive(a)
+                    const { code, name, risk } = normalizeAdditive(a)
+                    const color = additiveRiskColor(risk)
                     return (
                       <span
                         key={code}
-                        className="text-[11px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground"
+                        className="text-[11px] px-2 py-0.5 rounded-full border"
+                        style={{ color, borderColor: color, backgroundColor: `${color}18` }}
                       >
                         {name ?? code}
                       </span>

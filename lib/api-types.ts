@@ -43,10 +43,34 @@ export interface ApiScanResponse {
   nutri_score: "A" | "B" | "C" | "D" | "E" | null
   score: number
   verdict: "Excellent" | "Médiocre" | "Mauvais"
-  additives: (string | { code: string; name?: string })[]
+  additives: (string | { code: string; name?: string; risk?: "high" | "moderate" | "low" | null })[]
   sucres: number
   sel: number
   ags: number
+}
+
+/** GET /api/scanned — liste paginée des produits scannés avec additifs {code,name,risk} */
+export interface ApiScannedProduct {
+  id: number
+  barcode: string
+  name: string
+  score: number
+  verdict: "Excellent" | "Médiocre" | "Mauvais"
+  nutri_score: "A" | "B" | "C" | "D" | "E" | null
+  nova: number | null
+  sugars_g: number
+  salt_g: number
+  sat_fat_g: number
+  times_this_month: number
+  scanned_at: string
+  additives: { code: string; name?: string; risk?: "high" | "moderate" | "low" | null }[]
+}
+
+export interface ApiScannedProductsResponse {
+  total: number
+  limit: number
+  offset: number
+  products: ApiScannedProduct[]
 }
 
 export interface ApiGroceriesSummary {

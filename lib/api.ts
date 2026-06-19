@@ -10,6 +10,8 @@ import type {
   ApiFoodSearchResult,
   ApiLabelScanResult,
   ApiAdditivesStats,
+  ApiScannedProductsResponse,
+  ApiScannedProduct,
 } from "@/lib/api-types"
 import type {
   MealEntry,
@@ -202,6 +204,23 @@ function mapScannedProduct(
     sucres: raw.sucres,
     sel: raw.sel,
     ags: raw.ags,
+  }
+}
+
+function mapApiScannedProduct(raw: ApiScannedProduct): ScannedProduct {
+  return {
+    id:             raw.id,
+    barcode:        raw.barcode,
+    name:           raw.name,
+    nutriScore:     raw.nutri_score,
+    score:          raw.score,
+    verdict:        raw.verdict,
+    additives:      raw.additives,
+    timesThisMonth: raw.times_this_month,
+    sucres:         raw.sugars_g,
+    sel:            raw.salt_g,
+    ags:            raw.sat_fat_g,
+    scannedAt:      raw.scanned_at,
   }
 }
 
@@ -455,4 +474,23 @@ export async function getAdditivesStats(days: number): Promise<AdditivesStats> {
     counts: raw.counts,
     items: raw.items,
   }
+}
+
+// ─── Produits scannés (S9) ───────────────────────────────────────────────────
+
+export async function getScannedProducts(limit = 50, offset = 0): Promise<{ total: number; products: ScannedProduct[] }> {
+  const raw = await apiFetch<ApiScannedProductsResponse>(`/api/scanned?limit=${limit}&offset=${offset}`)
+  return {
+    total:    raw.total,
+    products: raw.products.map(mapApiScannedProduct),
+  }
+}
+
+export async function deleteScannedProduct(id: number): Promise<void> {
+  await apiFetch<{ deleted: number }>(`/api/scanned/${id}`, { method: "DELETE" })
+}
+
+export async function clearScannedProducts(): Promise<number> {
+  const raw = await apiFetch<{ deleted_count: number }>("/api/scanned", { method: "DELETE" })
+  return raw.deleted_count
 }

@@ -20,6 +20,7 @@ import {
   getGlucoseReadings as fetchGlucoseReadings,
   getWeightHistory,
   getActivities,
+  getScannedProducts,
   setSlowStartCallback,
   ApiError,
 } from "@/lib/api"
@@ -78,6 +79,8 @@ interface AppContextType {
   scannedProducts: ScannedProduct[]
   addScannedProduct: (product: ScannedProduct) => void
   removeScannedProduct: (barcode: string) => void
+  removeScannedProductById: (id: number) => void
+  loadScannedProducts: () => Promise<void>
 
   // UI state
   activeTab: string
@@ -349,6 +352,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const removeScannedProduct = (barcode: string) =>
     setScannedProducts((prev) => prev.filter((p) => p.barcode !== barcode))
 
+  const removeScannedProductById = (id: number) =>
+    setScannedProducts((prev) => prev.filter((p) => p.id !== id))
+
+  const loadScannedProducts = useCallback(async () => {
+    if (!getToken()) return
+    try {
+      const { products } = await getScannedProducts(50)
+      setScannedProducts(products)
+    } catch {
+      // offline: keep existing state
+    }
+  }, [])
+
   const reloadData = useCallback(() => loadData(currentDate), [loadData, currentDate])
 
   return (
@@ -391,6 +407,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         scannedProducts,
         addScannedProduct,
         removeScannedProduct,
+        removeScannedProductById,
+        loadScannedProducts,
         activeTab,
         setActiveTab,
         showAddSheet,
