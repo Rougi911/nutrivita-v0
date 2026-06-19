@@ -270,11 +270,20 @@ export function getMonthlyScannedStats(products: ScannedProduct[]) {
   const totalSel = products.reduce((s, p) => s + (p.sel ?? 0) * p.timesThisMonth * 0.1, 0)
   const totalAgs = products.reduce((s, p) => s + (p.ags ?? 0) * p.timesThisMonth * 0.1, 0)
 
-  const riskAdditives = [...new Set(products.flatMap((p) => p.additives))].filter((a) =>
-    ["E150d", "E471", "E250", "E338", "E476"].includes(a)
-  )
+  const RISK_CODES = new Set(["E150d", "E471", "E250", "E338", "E476"])
+  const riskAdditives = [
+    ...new Set(
+      products
+        .flatMap((p) => p.additives)
+        .map((a) => (typeof a === "string" ? a : (a?.code ?? "")))
+        .filter((code) => RISK_CODES.has(code)),
+    ),
+  ]
   const productsWithRiskAdditives = products.filter((p) =>
-    p.additives.some((a) => riskAdditives.includes(a))
+    p.additives.some((a) => {
+      const code = typeof a === "string" ? a : (a?.code ?? "")
+      return RISK_CODES.has(code)
+    })
   ).length
 
   return {

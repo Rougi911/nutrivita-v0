@@ -143,6 +143,9 @@ export const MEALS: Meal[] = [
   { type: "dinner",    name: "dinner",    nameFr: "Dîner",           nameAr: "العشاء", nameEn: "Dinner" },
 ]
 
+/** Additif reçu soit en string legacy ("E150d") soit en objet depuis /api/scan. */
+export type AdditiveRef = string | { code: string; name?: string }
+
 /** AL-08 / EB-04 — Scanned product from barcode. */
 export interface ScannedProduct {
   barcode: string
@@ -150,7 +153,7 @@ export interface ScannedProduct {
   nutriScore: "A" | "B" | "C" | "D" | "E" | null
   score: number // 0–100 (AL-08)
   verdict: "Excellent" | "Médiocre" | "Mauvais"
-  additives: string[] // e.g. ["E150d", "E471"]
+  additives: AdditiveRef[]
   timesThisMonth: number
   sucres?: number  // g per 100g
   sel?: number     // g per 100g

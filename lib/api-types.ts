@@ -43,7 +43,7 @@ export interface ApiScanResponse {
   nutri_score: "A" | "B" | "C" | "D" | "E" | null
   score: number
   verdict: "Excellent" | "Médiocre" | "Mauvais"
-  additives: string[]
+  additives: (string | { code: string; name?: string })[]
   sucres: number
   sel: number
   ags: number

@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { OfflineBanner } from "@/components/nutrivita/offline-banner"
 import { cn } from "@/lib/utils"
 import type { ScannedProduct } from "@/lib/types"
+import { additiveCode } from "@/lib/additives-format"
 
 function NutriScoreBadge({ score }: { score: "A" | "B" | "C" | "D" | "E" | null }) {
   if (!score) return null
@@ -57,7 +58,7 @@ function ProductCard({ product }: { product: ScannedProduct }) {
           </span>
           {product.additives.length > 0 && (
             <span className="text-[11px] text-muted-foreground">
-              {product.additives.slice(0, 2).join(", ")}
+              {product.additives.slice(0, 2).map(additiveCode).join(", ")}
             </span>
           )}
         </div>
@@ -109,7 +110,7 @@ export function GroceriesScreen() {
 
   const riskProductsCount = scannedProducts.filter(
     (p) => p.additives.some((a) =>
-      ["E150d", "E471", "E250", "E338", "E476"].includes(a)
+      ["E150d", "E471", "E250", "E338", "E476"].includes(additiveCode(a))
     )
   ).length
 
