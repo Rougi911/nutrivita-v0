@@ -160,6 +160,7 @@ export interface ScannedProduct {
   sel?: number     // g per 100g
   ags?: number     // g per 100g (acides gras saturés)
   scannedAt?: string // ISO timestamp (GET /api/scanned)
+  imageUrl?: string | null  // S10c — photo du produit OFF
 }
 
 // Sample food database (no emojis — IDs are stable)

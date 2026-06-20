@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { AlertTriangle, ScanLine, Trash2 } from "lucide-react"
+import { AlertTriangle, ScanLine, Trash2, ShoppingBag } from "lucide-react"
 import { Loader2 } from "lucide-react"
 import { useApp } from "@/lib/app-context"
 import { getMonthlyScannedStats } from "@/lib/mock-data"
@@ -23,19 +23,20 @@ function NutriScoreBadge({ score }: { score: "A" | "B" | "C" | "D" | "E" | null 
     D: { bg: "#EE8100", text: "#fff" },
     E: { bg: "#E63312", text: "#fff" },
   }
-  const c = colors[score]
+  const c = colors[(score ?? "").toUpperCase()] ?? { bg: "var(--muted)", text: "var(--muted-foreground)" }
   return (
     <div
       className="w-7 h-7 rounded-lg flex items-center justify-center text-[13px] font-bold shrink-0"
       style={{ backgroundColor: c.bg, color: c.text }}
     >
-      {score}
+      {(score ?? "").toUpperCase()}
     </div>
   )
 }
 
 function ProductCard({ product, onDelete }: { product: ScannedProduct; onDelete?: () => void }) {
   const { t } = useApp()
+  const [imgFailed, setImgFailed] = useState(false)
 
   const verdictStyle =
     product.verdict === "Excellent"
@@ -44,9 +45,26 @@ function ProductCard({ product, onDelete }: { product: ScannedProduct; onDelete?
       ? { bg: "var(--risk-bg)", color: "var(--risk)" }
       : { bg: "var(--amber-bg)", color: "var(--amber)" }
 
+  const avatar = product.imageUrl && !imgFailed
+    ? (
+      <img
+        src={product.imageUrl}
+        alt={product.name}
+        className="w-10 h-10 rounded-lg object-cover shrink-0"
+        onError={() => setImgFailed(true)}
+      />
+    )
+    : product.nutriScore
+    ? <NutriScoreBadge score={product.nutriScore} />
+    : (
+      <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center shrink-0">
+        <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+      </div>
+    )
+
   return (
     <div className="flex items-center gap-3 px-4 py-3">
-      <NutriScoreBadge score={product.nutriScore} />
+      {avatar}
       <div className="flex-1 min-w-0">
         <p className="text-[14px] font-medium text-foreground truncate">{product.name}</p>
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">

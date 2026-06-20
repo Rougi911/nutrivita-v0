@@ -78,7 +78,7 @@ export function StatsScreen() {
         setAdditivesStats(null)
       })
       .finally(() => setLoadingAdditives(false))
-  }, [segment])
+  }, [segment, scannedProducts.length])
 
   // Body composition from latest weight entry
   const latest = weightHistory.length > 0 ? weightHistory[weightHistory.length - 1] : null

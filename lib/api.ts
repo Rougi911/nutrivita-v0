@@ -204,6 +204,7 @@ function mapScannedProduct(
     sucres: raw.sucres,
     sel: raw.sel,
     ags: raw.ags,
+    imageUrl: raw.image_url ?? null,
   }
 }
 
@@ -221,6 +222,7 @@ function mapApiScannedProduct(raw: ApiScannedProduct): ScannedProduct {
     sel:            raw.salt_g,
     ags:            raw.sat_fat_g,
     scannedAt:      raw.scanned_at,
+    imageUrl:       raw.image_url ?? null,
   }
 }
 

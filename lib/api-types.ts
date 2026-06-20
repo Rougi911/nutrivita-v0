@@ -47,6 +47,7 @@ export interface ApiScanResponse {
   sucres: number
   sel: number
   ags: number
+  image_url?: string | null
 }
 
 /** GET /api/scanned — liste paginée des produits scannés avec additifs {code,name,risk} */
@@ -64,6 +65,7 @@ export interface ApiScannedProduct {
   times_this_month: number
   scanned_at: string
   additives: { code: string; name?: string; risk?: "high" | "moderate" | "low" | "unknown" | null }[]
+  image_url?: string | null
 }
 
 export interface ApiScannedProductsResponse {
