@@ -496,3 +496,10 @@ export async function clearScannedProducts(): Promise<number> {
   const raw = await apiFetch<{ deleted_count: number }>("/api/scanned", { method: "DELETE" })
   return raw.deleted_count
 }
+
+// ─── Export RGPD (S11) ────────────────────────────────────────────────────────
+
+/** GET /api/user/export — récupère l'intégralité des données utilisateur (RGPD). */
+export async function exportUserData(): Promise<unknown> {
+  return apiFetch<unknown>("/api/user/export")
+}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { Camera, Loader2, Mic, ScanLine, Search, X, KeyboardIcon } from "lucide-react"
+import { Camera, Loader2, Mic, ScanLine, Search, X, KeyboardIcon, ShoppingBag } from "lucide-react"
 import { useApp } from "@/lib/app-context"
 import { interpretMedia, scanBarcode, scanLabelImage, ProductUnknownError, addJournalEntry } from "@/lib/api"
 import { SAMPLE_FOODS, MEALS } from "@/lib/types"
@@ -569,6 +569,7 @@ function ScannerModal({
   const [labelResult, setLabelResult] = useState<ApiLabelScanResult | null>(null)
   const [labelName, setLabelName] = useState("")
   const [scannedProduct, setScannedProduct] = useState<import("@/lib/types").ScannedProduct | null>(null)
+  const [productImgFailed, setProductImgFailed] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const scannerControlsRef = useRef<IScannerControls | undefined>(undefined)
   const activeRef = useRef(true)
@@ -871,11 +872,25 @@ function ScannerModal({
           {/* ── Fiche produit après scan réussi (T5) ── */}
           {step === "product-confirm" && scannedProduct && (
             <div className="w-full max-w-sm space-y-4">
-              <div>
-                <p className="text-[17px] font-semibold text-foreground leading-tight">
-                  {scannedProduct.name}
-                </p>
-                <p className="text-[12px] text-muted-foreground mt-0.5">{scannedProduct.barcode}</p>
+              <div className="flex items-center gap-3">
+                {scannedProduct.imageUrl && !productImgFailed ? (
+                  <img
+                    src={scannedProduct.imageUrl}
+                    alt={scannedProduct.name}
+                    className="w-12 h-12 rounded-lg object-cover shrink-0"
+                    onError={() => setProductImgFailed(true)}
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <ShoppingBag className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="text-[17px] font-semibold text-foreground leading-tight">
+                    {scannedProduct.name}
+                  </p>
+                  <p className="text-[12px] text-muted-foreground mt-0.5">{scannedProduct.barcode}</p>
+                </div>
               </div>
 
               {/* Nutri-Score + verdict + score */}

@@ -142,20 +142,12 @@ export function AdditivesBars({ stats, loading, productsByAdditiveCode }: Props)
         </>
       )}
 
-      {/* Disclaimer REG-05 tri-lingue obligatoire */}
+      {/* Disclaimer REG-05 obligatoire — langue active uniquement */}
       <div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-muted/40 mt-2">
         <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "var(--amber)" }} />
-        <div className="space-y-0.5">
-          <p className="text-[11px] text-muted-foreground leading-snug">
-            {t("additivesLogging")} — Comptage d&apos;expositions, aucune dose.
-          </p>
-          <p className="text-[11px] text-muted-foreground leading-snug">
-            Exposure count, no dose calculated.
-          </p>
-          <p className="text-[11px] text-muted-foreground leading-snug" dir="rtl">
-            {"عد التعرضات — لا تُحسب الجرعة."}
-          </p>
-        </div>
+        <p className="text-[11px] text-muted-foreground leading-snug" dir={isRTL ? "rtl" : undefined}>
+          {t("additivesLogging")} — {t("additivesExposureDisclaimer")}
+        </p>
       </div>
     </div>
   )

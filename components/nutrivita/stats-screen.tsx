@@ -19,7 +19,8 @@ import {
   Scatter,
 } from "recharts"
 import { useApp } from "@/lib/app-context"
-import { getDeficiencies, getAdditivesStats, type AdditivesStats } from "@/lib/api"
+import { getDeficiencies, getAdditivesStats, exportUserData, type AdditivesStats } from "@/lib/api"
+import { toast } from "sonner"
 import type { ApiDeficiency } from "@/lib/api-types"
 import { AdditivesBars } from "@/components/nutrivita/additives-bars"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -174,6 +175,26 @@ export function StatsScreen() {
     return calcRadarData(periodEntries, user.sex, DEFAULT_VNR)
   }, [mealEntries, segment, user.sex])
 
+  // Export RGPD — récupère le JSON utilisateur et déclenche le téléchargement (S11)
+  const handleExport = async () => {
+    try {
+      const data = await exportUserData()
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `nutrivita-export-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast(t("exportDone"), { duration: 2000 })
+    } catch (err) {
+      console.error("[StatsScreen] export failed:", err)
+      toast(t("errorLoading"), { duration: 3000 })
+    }
+  }
+
   return (
     <div className={cn("flex flex-col min-h-screen bg-background pb-8", isRTL && "rtl")}>
       {/* Flat header */}
@@ -182,7 +203,7 @@ export function StatsScreen() {
           <h1 className="text-[18px] font-semibold text-foreground">{t("stats")}</h1>
           <p className="text-[13px] text-muted-foreground mt-0.5">Analysez vos progrès</p>
         </div>
-        <button className="w-8 h-8 rounded-full bg-muted flex items-center justify-center" aria-label={t("export")}>
+        <button onClick={handleExport} className="w-8 h-8 rounded-full bg-muted flex items-center justify-center" aria-label={t("export")}>
           <FileText className="h-4 w-4 text-muted-foreground" />
         </button>
       </div>
@@ -485,20 +506,12 @@ export function StatsScreen() {
             </div>
           )}
 
-          {/* Disclaimer REG-05 obligatoire (3 langues) */}
+          {/* Disclaimer REG-05 obligatoire — langue active uniquement */}
           <div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-muted/40 mt-2">
             <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "var(--amber)" }} />
-            <div className="space-y-0.5">
-              <p className="text-[11px] text-muted-foreground leading-snug">
-                Estimation indicative — ne remplace pas un bilan sanguin.
-              </p>
-              <p className="text-[11px] text-muted-foreground leading-snug">
-                Indicative estimate — not a substitute for a blood test.
-              </p>
-              <p className="text-[11px] text-muted-foreground leading-snug" dir="rtl">
-                {"تقدير استرشادي — لا يغني عن تحليل الدم."}
-              </p>
-            </div>
+            <p className="text-[11px] text-muted-foreground leading-snug" dir={isRTL ? "rtl" : undefined}>
+              {t("radarDisclaimer")}
+            </p>
           </div>
         </div>
 
@@ -506,7 +519,7 @@ export function StatsScreen() {
         <AdditivesBars stats={additivesStats} loading={loadingAdditives} productsByAdditiveCode={productsByAdditiveCode} />
 
         {/* Export button */}
-        <Button variant="outline" className="w-full gap-2 rounded-xl">
+        <Button variant="outline" className="w-full gap-2 rounded-xl" onClick={handleExport}>
           <FileText className="h-4 w-4" />
           {t("export")}
         </Button>

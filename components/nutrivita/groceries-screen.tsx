@@ -150,7 +150,7 @@ export function GroceriesScreen() {
 
   const riskProductsCount = scannedProducts.filter(
     (p) => p.additives.some((a) =>
-      ["E150d", "E471", "E250", "E338", "E476"].includes(additiveCode(a))
+      ["E150D", "E471", "E250", "E338", "E476"].includes(additiveCode(a).toUpperCase())
     )
   ).length
 
@@ -198,7 +198,7 @@ export function GroceriesScreen() {
   }
 
   return (
-    <div className={cn("flex flex-col min-h-screen bg-background pb-8", isRTL && "rtl")}>
+    <div className={cn("flex flex-col min-h-screen bg-background pb-24", isRTL && "rtl")}>
       <OfflineBanner />
 
       {/* Header */}
