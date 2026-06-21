@@ -129,13 +129,14 @@ export function StatsScreen() {
     { name: t("fat"),     value: dailyLog.totalFat,     color: "var(--lipids)"  },
   ]
 
-  // Glucose summary for stats (7-day readings)
+  // Glucose de la période sélectionnée (s'adapte à jour / semaine / mois / année)
   const weekGlucose = useMemo(() => {
-    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000
+    const days = segment === "jour" ? 1 : segment === "semaine" ? 7 : segment === "mois" ? 30 : 365
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
     return glucoseReadings
       .filter((r) => new Date(r.timestamp).getTime() > cutoff)
       .map((r) => r.value)
-  }, [glucoseReadings])
+  }, [glucoseReadings, segment])
 
   const glucoseMetrics = useMemo(
     () => computeGlucoseMetrics(weekGlucose, 70, 180),
@@ -203,7 +204,7 @@ export function StatsScreen() {
         }
       }
       const head = scalars.length
-        ? ["# informations", "champ" + SEP + "valeur", ...scalars.map(([k, v]) => esc(k) + SEP + esc(v))]
+        ? ["# " + t("exportSectionInfo"), t("exportColField") + SEP + t("exportColValue"), ...scalars.map(([k, v]) => esc(k) + SEP + esc(v))]
         : []
       const csv = "﻿" + [...head, ...lines].join("\r\n")
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8" })
@@ -399,8 +400,8 @@ export function StatsScreen() {
           </div>
         )}
 
-        {/* ─── 4. Glycemia summary (with N<12 guard AL-05) ─────────────────── */}
-        {user.isDiabetic && (
+        {/* ─── 4. Glycémie — affichée si suivi activé OU si des mesures existent (N<12 guard AL-05) ─── */}
+        {(user.isDiabetic || glucoseReadings.length > 0) && (
           <div className="rounded-2xl border border-border bg-card p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-[14px] font-semibold text-foreground">{t("glucoseSummary")}</h3>
