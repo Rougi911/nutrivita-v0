@@ -196,7 +196,7 @@ function mapScannedProduct(
   return {
     barcode: raw.barcode,
     name: raw.name,
-    nutriScore: raw.nutri_score,
+    nutriScore: raw.nutri_score ? (raw.nutri_score.toUpperCase() as "A" | "B" | "C" | "D" | "E") : null,
     score: raw.score,
     verdict: raw.verdict,
     additives: raw.additives,
@@ -213,7 +213,7 @@ function mapApiScannedProduct(raw: ApiScannedProduct): ScannedProduct {
     id:             raw.id,
     barcode:        raw.barcode,
     name:           raw.name,
-    nutriScore:     raw.nutri_score,
+    nutriScore:     raw.nutri_score ? (raw.nutri_score.toUpperCase() as "A" | "B" | "C" | "D" | "E") : null,
     score:          raw.score,
     verdict:        raw.verdict,
     additives:      raw.additives,

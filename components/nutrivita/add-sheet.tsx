@@ -542,7 +542,7 @@ type ScanStep =
   | "product-confirm"   // fiche produit — confirmation après scan réussi
 
 function nutriScoreColor(score: "A" | "B" | "C" | "D" | "E" | null): string {
-  switch (score) {
+  switch (String(score ?? "").toUpperCase()) {
     case "A": return "#038148"
     case "B": return "#85bb2f"
     case "C": return "#fecb02"
