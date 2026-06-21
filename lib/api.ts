@@ -172,12 +172,22 @@ function mapWeightEntry(raw: ApiWeightEntry): WeightEntry {
   }
 }
 
+// Le backend stocke reading_type (snake) ; le frontend utilise des libellés à tirets.
+const GLUCOSE_TYPE_FROM_API: Record<string, GlucoseReading["type"]> = {
+  fasting: "fasting", pre_meal: "pre-meal", post_meal: "post-meal",
+  random: "pontuelle", bedtime: "pontuelle", cgm: "cgm",
+}
+const GLUCOSE_TYPE_TO_API: Record<string, string> = {
+  fasting: "fasting", "pre-meal": "pre_meal", "post-meal": "post_meal",
+  pontuelle: "random", cgm: "cgm",
+}
+
 function mapGlucoseReading(raw: ApiGlucoseReading): GlucoseReading {
   return {
-    id: raw.id,
-    value: raw.value,
+    id: String(raw.id),
+    value: raw.glucose_mg_dl,
     timestamp: raw.timestamp,
-    type: raw.type,
+    type: GLUCOSE_TYPE_FROM_API[raw.reading_type] ?? "pontuelle",
     source: raw.source,
   }
 }
@@ -428,7 +438,11 @@ export async function addGlucoseReadingApi(
 ): Promise<GlucoseReading> {
   const raw = await apiFetch<ApiGlucoseReading>("/api/glucose", {
     method: "POST",
-    body: JSON.stringify(reading),
+    body: JSON.stringify({
+      glucose_mg_dl: reading.value,
+      reading_type: GLUCOSE_TYPE_TO_API[reading.type] ?? "random",
+      timestamp: reading.timestamp,
+    }),
   })
   return mapGlucoseReading(raw)
 }

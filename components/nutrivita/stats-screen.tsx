@@ -175,15 +175,42 @@ export function StatsScreen() {
     return calcRadarData(periodEntries, user.sex, DEFAULT_VNR)
   }, [mealEntries, segment, user.sex])
 
-  // Export RGPD — récupère le JSON utilisateur et déclenche le téléchargement (S11)
+  // Export RGPD en CSV lisible (Excel/Sheets) — une section par table, séparateur ';', BOM UTF-8 (S-AUDIT)
   const handleExport = async () => {
     try {
       const data = await exportUserData()
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+      const SEP = ";"
+      const esc = (v: unknown) => {
+        if (v == null) return ""
+        const s = typeof v === "object" ? JSON.stringify(v) : String(v)
+        return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
+      }
+      const lines: string[] = []
+      const scalars: [string, unknown][] = []
+      for (const [key, val] of Object.entries(data as Record<string, unknown>)) {
+        if (Array.isArray(val)) {
+          lines.push("", "# " + key)
+          if (!val.length) { lines.push("(vide)"); continue }
+          const cols = Array.from(new Set(val.flatMap((o) => (o && typeof o === "object" ? Object.keys(o) : ["valeur"]))))
+          lines.push(cols.map(esc).join(SEP))
+          for (const row of val) {
+            lines.push(row && typeof row === "object"
+              ? cols.map((c) => esc((row as Record<string, unknown>)[c])).join(SEP)
+              : esc(row))
+          }
+        } else {
+          scalars.push([key, val])
+        }
+      }
+      const head = scalars.length
+        ? ["# informations", "champ" + SEP + "valeur", ...scalars.map(([k, v]) => esc(k) + SEP + esc(v))]
+        : []
+      const csv = "﻿" + [...head, ...lines].join("\r\n")
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" })
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `nutrivita-export-${new Date().toISOString().slice(0, 10)}.json`
+      a.download = `nutrivita-export-${new Date().toISOString().slice(0, 10)}.csv`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)

@@ -137,10 +137,11 @@ export interface ApiWeightEntry {
 }
 
 export interface ApiGlucoseReading {
-  id: string
-  value: number  // mg/dL — AL-04
+  id: string | number
+  glucose_mg_dl: number  // mg/dL — AL-04 (champ réel du backend)
   timestamp: string
-  type: "fasting" | "pre-meal" | "post-meal" | "pontuelle" | "cgm"
+  reading_type: "fasting" | "pre_meal" | "post_meal" | "bedtime" | "random" | "cgm"
+  notes?: string | null
   source: "manual" | "libreview"
 }
 

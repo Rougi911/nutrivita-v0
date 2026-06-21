@@ -37,9 +37,9 @@ describe("TI-05 changement unité glycémie", () => {
         HttpResponse.json(
           MOCK_READINGS_MG_DL.slice(0, 5).map((v, i) => ({
             id: `g${i}`,
-            value: v,
+            glucose_mg_dl: v,
             timestamp: `2026-06-12T0${i}:00:00Z`,
-            type: "fasting",
+            reading_type: "fasting",
             source: "manual",
           }))
         )

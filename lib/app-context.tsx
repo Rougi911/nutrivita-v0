@@ -21,6 +21,10 @@ import {
   getWeightHistory,
   getActivities,
   getScannedProducts,
+  addGlucoseReadingApi,
+  addWeightEntryApi,
+  addActivityApi,
+  deleteActivityApi,
   setSlowStartCallback,
   ApiError,
 } from "@/lib/api"
@@ -306,8 +310,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const clearJournal = () => setMealEntries([])
 
   const addGlucoseReading = (reading: Omit<GlucoseReading, "id">) => {
-    const newReading: GlucoseReading = { ...reading, id: `glucose-${Date.now()}` }
-    setGlucoseReadings((prev) => [...prev, newReading])
+    // Ajout optimiste local puis persistance serveur (sinon la mesure disparaît au reload).
+    const tempId = `glucose-${Date.now()}`
+    setGlucoseReadings((prev) => [...prev, { ...reading, id: tempId }])
+    addGlucoseReadingApi(reading)
+      .then((saved) => setGlucoseReadings((prev) => prev.map((r) => (r.id === tempId ? saved : r))))
+      .catch((err) => console.error("[addGlucoseReading] sync serveur échouée:", err))
   }
 
   const clearGlucose = () => setGlucoseReadings([])
@@ -322,16 +330,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       return [...prev, entry]
     })
+    addWeightEntryApi(entry).catch((err) => console.error("[addWeightEntry] sync serveur échouée:", err))
   }
 
   const clearWeight = () => setWeightHistory([])
 
   const addActivity = (entry: Omit<ActivityEntry, "id" | "createdAt">) => {
-    const newEntry: ActivityEntry = { ...entry, id: `act-${Date.now()}`, createdAt: new Date().toISOString() }
-    setActivities((prev) => [...prev, newEntry])
+    const tempId = `act-${Date.now()}`
+    setActivities((prev) => [...prev, { ...entry, id: tempId, createdAt: new Date().toISOString() }])
+    addActivityApi(entry)
+      .then((saved) => setActivities((prev) => prev.map((a) => (a.id === tempId ? saved : a))))
+      .catch((err) => console.error("[addActivity] sync serveur échouée:", err))
   }
 
-  const removeActivity = (id: string) => setActivities((prev) => prev.filter((a) => a.id !== id))
+  const removeActivity = (id: string) => {
+    setActivities((prev) => prev.filter((a) => a.id !== id))
+    // Ne pas appeler l'API pour un id local non encore synchronisé
+    if (!id.startsWith("act-")) {
+      deleteActivityApi(id).catch((err) => console.error("[removeActivity] sync serveur échouée:", err))
+    }
+  }
 
   const todayBurnedCalories = activities
     .filter((a) => a.date === currentDate)

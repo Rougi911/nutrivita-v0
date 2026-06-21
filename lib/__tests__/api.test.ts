@@ -265,7 +265,7 @@ describe("getGlucoseReadings", () => {
     server.use(
       http.post(`${API_BASE}/api/glucose/query`, () =>
         HttpResponse.json([
-          { id: "g1", value: 92, timestamp: "2026-06-12T07:00:00Z", type: "fasting", source: "manual" },
+          { id: "g1", glucose_mg_dl: 92, timestamp: "2026-06-12T07:00:00Z", reading_type: "fasting", source: "manual" },
         ])
       )
     )
