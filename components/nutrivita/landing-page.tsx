@@ -16,7 +16,7 @@ interface LandingPageProps {
 const features = [
   { icon: Camera,       title: "Détection par photo",      desc: "L'IA identifie le plat et calcule les calories automatiquement" },
   { icon: Droplets,     title: "Suivi glycémique",         desc: "Import CGM, analyse GMI/TIR, alertes personnalisées" },
-  { icon: ShoppingCart, title: "Scan des courses",         desc: "Nutri-Score, additifs à risque, alternatives plus saines" },
+  { icon: ShoppingCart, title: "Scan des courses",         desc: "Nutri-Score, additifs à surveiller, alternatives plus saines" },
   { icon: Mic,          title: "Saisie vocale",            desc: "Parlez en français, arabe ou anglais" },
   { icon: Globe,        title: "Multilingue",              desc: "Interface complète en 3 langues avec support RTL" },
   { icon: Lock,         title: "Données protégées · RGPD", desc: "Vos données restent sur votre appareil, chiffrées" },
@@ -25,7 +25,7 @@ const features = [
 const testimonials = [
   { name: "Samira B.", location: "Alger", text: "Enfin une app qui comprend nos plats ! Le couscous, le tajine... tout y est.", rating: 5 },
   { name: "Pierre M.", location: "Lyon",  text: "La saisie vocale est incroyable. Je dis juste ce que je mange.", rating: 5 },
-  { name: "Fatima Z.", location: "Paris", text: "Je gère mon diabète bien plus facilement avec le suivi glycémique.", rating: 5 },
+  { name: "Fatima Z.", location: "Paris", text: "Le suivi de ma glycémie est devenu simple au quotidien.", rating: 5 },
 ]
 
 type Tab = "user" | "pro"

@@ -946,6 +946,11 @@ function ScannerModal({
                 </div>
               )}
 
+              {/* Disclaimer REG-05 (langue active) */}
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                {t("scanDisclaimer")}
+              </p>
+
               {/* Actions */}
               <div className="space-y-2">
                 {/* M-01 : onScanned appelle déjà setShowScanner(false)+setShowAddSheet(false) */}

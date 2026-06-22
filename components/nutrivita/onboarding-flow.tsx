@@ -25,7 +25,7 @@ const POIDS_OPTIONS = [
 ]
 // CONDITION group — cumulative
 const CONDITION_OPTIONS = [
-  { value: "diabetes", icon: Droplets, label: "Gérer le diabète" },
+  { value: "diabetes", icon: Droplets, label: "Suivre ma glycémie" },
 ]
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -544,13 +544,13 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
             initial="enter" animate="center" exit="exit"
             className="flex-1 flex flex-col px-6 py-6"
           >
-            <h1 className="text-[22px] font-semibold text-foreground mb-3">Êtes-vous diabétique ?</h1>
+            <h1 className="text-[22px] font-semibold text-foreground mb-3">Suivez-vous votre glycémie ?</h1>
             <p className="text-[14px] text-muted-foreground mb-8">
               Cela active le suivi glycémique personnalisé.
             </p>
             <div className="space-y-3 flex-1">
               {([
-                { value: true  as boolean, icon: <Droplets className="h-5 w-5" />, label: "Oui, je suis diabétique" },
+                { value: true  as boolean, icon: <Droplets className="h-5 w-5" />, label: "Oui, activer le suivi" },
                 { value: false as boolean, icon: <ChevronRight className="h-5 w-5" />, label: "Non, continuer sans" },
               ] as const).map((opt) => {
                 const selected = isDiabeticStep5 === opt.value

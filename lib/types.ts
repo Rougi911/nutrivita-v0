@@ -547,6 +547,7 @@ export const translations = {
     exportSectionInfo: "Informations",
     exportColField: "Champ",
     exportColValue: "Valeur",
+    scanDisclaimer: "Informations indicatives — ne remplacent pas un avis médical.",
     additivesIn: "dans",
   },
   ar: {
@@ -836,6 +837,7 @@ export const translations = {
     exportSectionInfo: "\u0645\u0639\u0644\u0648\u0645\u0627\u062A",
     exportColField: "\u0627\u0644\u062D\u0642\u0644",
     exportColValue: "\u0627\u0644\u0642\u064A\u0645\u0629",
+    scanDisclaimer: "\u0645\u0639\u0644\u0648\u0645\u0627\u062A \u0625\u0631\u0634\u0627\u062F\u064A\u0629 \u2014 \u0644\u0627 \u062A\u064F\u063A\u0646\u064A \u0639\u0646 \u0627\u0633\u062A\u0634\u0627\u0631\u0629 \u0637\u0628\u064A\u0629.",
     additivesIn: "\u0641\u064A",
   },
   en: {
@@ -1125,6 +1127,7 @@ export const translations = {
     exportSectionInfo: "Information",
     exportColField: "Field",
     exportColValue: "Value",
+    scanDisclaimer: "Indicative information — not a substitute for medical advice.",
     additivesIn: "in",
   },
 }
