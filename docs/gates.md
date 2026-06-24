@@ -472,3 +472,15 @@ Rejouer S1-S6 en conditions réelles (extension Chrome + Ctrl+Shift+R) avant de 
 
 ### Note — modifs pré-session bundlées
 Les fichiers `add-sheet.tsx` et `groceries-screen.tsx` portaient des modifications **non commitées présentes au démarrage de session** (non écrites par cette session) : (a) i18n du verdict via `t()` dans add-sheet ; (b) `riskProductsCount` basé sur la classification `normalizeAdditive().risk` (high/moderate) au lieu d'une liste figée. Les deux gates les ont auditées (CONFORME/OK) ; elles sont commitées avec P1-7 frontend car indissociables des mêmes fichiers/zones.
+
+---
+
+## Gate P1-8 (frontend) — 2026-06-25 — Ressenti perf scan
+
+**Session :** feat(P1-8 front) — indice « réveil serveur » pendant un scan lent (cold start Render). Le backend P1-8 (cache barcode + persist async + /health, `4e2b00d`) est déjà fait.
+**Fichier :** `components/nutrivita/add-sheet.tsx` (ScannerModal)
+**Changement :** état `scanSlow` + `useEffect([scanning])` (timer 2,5 s) → si l'appel `scanBarcode` dépasse 2,5 s, affiche `t("serverWaking")` sous le spinner du step "scanning" et sous le bouton de saisie manuelle (au lieu d'un spinner muet). Clé i18n existante (FR/AR/EN), aucune nouvelle chaîne.
+**Verdict build :** GO — `npx tsc --noEmit` 0 erreur
+**Verdict tests :** GO — 172/172 tests verts
+**Verdict revue-code :** GO (CONFORME) — effet sans fuite (cleanup `clearTimeout`), reset propre via `finally`, deps `[scanning]` correctes, design system OK (text-[12px] ≥ 11px, muted). 1 MINEUR cosmétique non bloquant (garde `scanning && scanSlow` redondante).
+**Verdict réglementaire :** GO — texte technique neutre, aucun disclaimer touché (REG-04), aucune formulation REG-05, aucun impact RGPD/HDS/18-07 (timer local client).

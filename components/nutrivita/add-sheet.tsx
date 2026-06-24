@@ -563,6 +563,9 @@ function ScannerModal({
   const [step, setStep] = useState<ScanStep>("camera")
   const [manualBarcode, setManualBarcode] = useState("")
   const [scanning, setScanning] = useState(false)
+  // P1-8 (ressenti perf) — au-delà de ~2,5 s d'attente réseau (cold start Render),
+  // on affiche un indice « réveil serveur » plutôt qu'un spinner muet.
+  const [scanSlow, setScanSlow] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [unknownBarcode, setUnknownBarcode] = useState("")
@@ -596,6 +599,16 @@ function ScannerModal({
       setScanning(false)
     }
   }, [t])
+
+  // P1-8 — déclenche l'indice « réveil serveur » si l'appel scan dépasse 2,5 s.
+  useEffect(() => {
+    if (!scanning) {
+      setScanSlow(false)
+      return
+    }
+    const id = setTimeout(() => setScanSlow(true), 2500)
+    return () => clearTimeout(id)
+  }, [scanning])
 
   const handleLabelPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -736,6 +749,9 @@ function ScannerModal({
             <div className="flex flex-col items-center gap-4">
               <Loader2 className="h-10 w-10 animate-spin" style={{ color: "var(--primary)" }} />
               <p className="text-[14px] text-muted-foreground">{t("analyzingBarcode")}</p>
+              {scanSlow && (
+                <p className="text-[12px] text-muted-foreground text-center">{t("serverWaking")}</p>
+              )}
             </div>
           )}
 
@@ -765,6 +781,9 @@ function ScannerModal({
                   {scanning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
                   {t("scannerScanBarcode")}
                 </Button>
+                {scanning && scanSlow && (
+                  <p className="text-[12px] text-muted-foreground text-center">{t("serverWaking")}</p>
+                )}
                 {!cameraError && (
                   <button onClick={() => setStep("camera")} className="w-full text-[13px] text-primary text-center">
                     {t("scannerOpenCamera")}
