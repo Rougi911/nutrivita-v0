@@ -57,3 +57,22 @@ Stockage interne TOUJOURS en mg/dL. Conversion uniquement à l'affichage et à l
 ## Données mockées
 
 Toutes les données mockées sont dans `lib/mock-data.ts` (données fixes, aucun `Math.random()` dans les `useMemo`). Aucune connexion backend dans la session UI — les appels API seront branchés lors de la session backend.
+
+## Boucle de dev autonome (déclencheur : « lance la boucle »)
+
+Quand l'utilisateur dit « lance la boucle » : lire `C:\AppliSanteNutriVita\BACKLOG.md`, appliquer ses règles, et traiter **uniquement les tâches frontend** dans l'ordre (P1-3 i18n, P1-4 arabe double-échappé, P1-5 RTL, P1-6 boutons morts, + affichage « non noté » lié à P1-7 et ressenti perf lié à P1-8).
+
+Pour chaque tâche :
+1. Implémenter la modif minimale.
+2. **Passer le Gate de fin de session ci-dessus** (`npm run build`, `npm run test` au vert, `revue-code` + `reglementaire` sur le diff). Corriger tout écart BLOQUANT/MAJEUR.
+3. Si vert → `git add` (fichiers touchés) + commit conventionnel + `git push` → mettre à jour le Journal du backlog + cocher la case.
+4. Enchaîner la tâche suivante **sans redemander**.
+
+Pousser sur `main` (= déploiement auto Render) est autorisé pour ces tâches : le gate + le CI servent de garde-fou, une régression visuelle n'est pas critique.
+
+**Rappels** : respecter SL-03 (arabe en `\uXXXX` simple — pour P1-4, corriger le double-échappement `\\u` → `\u`, ne JAMAIS introduire de caractères arabes bruts). Ne jamais modifier `package.json`/`package-lock.json`.
+
+**EXCEPTION — cutover P0-2 (bascule cookies httpOnly dans `lib/api.ts`, withCredentials + X-CSRF-Token + /refresh + /logout)** :
+- NE PAS pousser sur `main`. Créer une branche `feat/jwt-httponly-front`, committer dessus, ouvrir une PR, puis **s'arrêter**. Le merge (= déploiement, déconnexion possible de tous les users en prod) est une décision humaine.
+
+**S'arrêter et demander** aussi si : tâche 🔒, décision produit, ou blocage après 2 essais.
