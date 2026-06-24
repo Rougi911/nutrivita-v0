@@ -8,30 +8,31 @@ import { Input } from "@/components/ui/input"
 import { CalorieRing } from "./calorie-ring"
 import { useApp } from "@/lib/app-context"
 import { loginApi, ApiError } from "@/lib/api"
+import type { TranslationKey } from "@/lib/types"
 
 interface LandingPageProps {
   onGetStarted: () => void
 }
 
-const features = [
-  { icon: Camera,       title: "Détection par photo",      desc: "L'IA identifie le plat et calcule les calories automatiquement" },
-  { icon: Droplets,     title: "Suivi glycémique",         desc: "Import CGM, analyse GMI/TIR, alertes personnalisées" },
-  { icon: ShoppingCart, title: "Scan des courses",         desc: "Nutri-Score, additifs à surveiller, alternatives plus saines" },
-  { icon: Mic,          title: "Saisie vocale",            desc: "Parlez en français, arabe ou anglais" },
-  { icon: Globe,        title: "Multilingue",              desc: "Interface complète en 3 langues avec support RTL" },
-  { icon: Lock,         title: "Données protégées · RGPD", desc: "Vos données restent sur votre appareil, chiffrées" },
+const features: { icon: typeof Camera; titleKey: TranslationKey; descKey: TranslationKey }[] = [
+  { icon: Camera,       titleKey: "featurePhoto",       descKey: "featurePhotoDesc" },
+  { icon: Droplets,     titleKey: "featureGlucose",     descKey: "featureGlucoseDesc" },
+  { icon: ShoppingCart, titleKey: "featureBarcode",     descKey: "featureBarcodeDesc" },
+  { icon: Mic,          titleKey: "featureVoice",       descKey: "featureVoiceDesc" },
+  { icon: Globe,        titleKey: "featureMultilingual", descKey: "featureMultilingualDesc" },
+  { icon: Lock,         titleKey: "dataProtected",      descKey: "featurePrivacyDesc" },
 ]
 
-const testimonials = [
-  { name: "Samira B.", location: "Alger", text: "Enfin une app qui comprend nos plats ! Le couscous, le tajine... tout y est.", rating: 5 },
-  { name: "Pierre M.", location: "Lyon",  text: "La saisie vocale est incroyable. Je dis juste ce que je mange.", rating: 5 },
-  { name: "Fatima Z.", location: "Paris", text: "Le suivi de ma glycémie est devenu simple au quotidien.", rating: 5 },
+const testimonials: { name: string; location: string; textKey: TranslationKey; rating: number }[] = [
+  { name: "Samira B.", location: "Alger", textKey: "testimonial1", rating: 5 },
+  { name: "Pierre M.", location: "Lyon",  textKey: "testimonial2", rating: 5 },
+  { name: "Fatima Z.", location: "Paris", textKey: "testimonial3", rating: 5 },
 ]
 
 type Tab = "user" | "pro"
 
 export function LandingPage({ onGetStarted }: LandingPageProps) {
-  const { login } = useApp()
+  const { login, t } = useApp()
   const [tab, setTab] = useState<Tab>("user")
   const [proEmail, setProEmail] = useState("")
 
@@ -53,9 +54,9 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
     } catch (err) {
       const status = err instanceof ApiError ? err.status : 0
       if (status === 401 || status === 400) {
-        setLoginError("Email ou mot de passe incorrect.")
+        setLoginError(t("loginErrorInvalid"))
       } else {
-        setLoginError("Erreur de connexion. Vérifiez votre réseau.")
+        setLoginError(t("loginErrorNetwork"))
       }
     } finally {
       setIsLoggingIn(false)
@@ -79,15 +80,15 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
 
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex rounded-full border border-border overflow-hidden">
-              {(["user", "pro"] as Tab[]).map((t) => (
+              {(["user", "pro"] as Tab[]).map((tabKey) => (
                 <button
-                  key={t}
-                  onClick={() => setTab(t)}
+                  key={tabKey}
+                  onClick={() => setTab(tabKey)}
                   className={`px-3.5 py-1.5 text-[13px] font-medium transition-colors ${
-                    tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                    tab === tabKey ? "bg-primary text-primary-foreground" : "text-muted-foreground"
                   }`}
                 >
-                  {t === "user" ? "Utilisateur" : "Praticien"}
+                  {tabKey === "user" ? t("userTabTitle") : t("practitioner")}
                 </button>
               ))}
             </div>
@@ -95,10 +96,10 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
               onClick={() => setShowLogin((v) => !v)}
               className="text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
-              Se connecter
+              {t("signIn")}
             </button>
             <Button size="sm" className="rounded-xl h-9 gap-1.5 text-[13px]" onClick={onGetStarted}>
-              Commencer <ChevronRight className="h-3.5 w-3.5" />
+              {t("getStarted")} <ChevronRight className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
@@ -113,17 +114,17 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
         >
           <div className="max-w-sm mx-auto px-5 py-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[17px] font-semibold text-foreground">Se connecter</h2>
+              <h2 className="text-[17px] font-semibold text-foreground">{t("signIn")}</h2>
               <button onClick={() => setShowLogin(false)}>
                 <X className="h-5 w-5 text-muted-foreground" />
               </button>
             </div>
             <form onSubmit={handleLogin} className="space-y-3">
               <div>
-                <label className="text-[13px] font-medium text-foreground mb-1.5 block">Email</label>
+                <label className="text-[13px] font-medium text-foreground mb-1.5 block">{t("emailAddress")}</label>
                 <Input
                   type="email"
-                  placeholder="vous@exemple.fr"
+                  placeholder={t("emailPlaceholder")}
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                   className="h-11 rounded-xl"
@@ -132,10 +133,10 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                 />
               </div>
               <div>
-                <label className="text-[13px] font-medium text-foreground mb-1.5 block">Mot de passe</label>
+                <label className="text-[13px] font-medium text-foreground mb-1.5 block">{t("password")}</label>
                 <Input
                   type="password"
-                  placeholder="Votre mot de passe"
+                  placeholder={t("passwordPlaceholder")}
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   className="h-11 rounded-xl"
@@ -151,17 +152,17 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                 className="w-full h-11 rounded-xl"
                 disabled={isLoggingIn || !loginEmail || !loginPassword}
               >
-                {isLoggingIn ? "Connexion..." : "Se connecter"}
+                {isLoggingIn ? t("signingIn") : t("signIn")}
               </Button>
               <p className="text-center text-[12px] text-muted-foreground">
-                Pas encore de compte ?{" "}
+                {t("noAccountYet")}{" "}
                 <button
                   type="button"
                   onClick={() => { setShowLogin(false); onGetStarted() }}
                   className="underline"
                   style={{ color: "var(--primary)" }}
                 >
-                  Créer un compte
+                  {t("createAccountShort")}
                 </button>
               </p>
             </form>
@@ -182,14 +183,14 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                 transition={{ delay: 0.1 }}
               >
                 <h1 className="text-[32px] md:text-[42px] font-semibold text-foreground leading-tight mb-4">
-                  Comprenez ce que vous mangez,<br className="hidden md:block" /> en une photo
+                  {t("heroTitle")}
                 </h1>
                 <p className="text-[16px] text-muted-foreground mb-6">
-                  Photo, voix, calories, poids, glycémie et courses — en 3 langues
+                  {t("heroSubtitle")}
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
                   <Button size="lg" className="h-12 rounded-2xl gap-2 px-6 text-[15px]" onClick={onGetStarted}>
-                    Commencer gratuitement <ChevronRight className="h-4 w-4" />
+                    {t("startFree")} <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
                 <p className="mt-4 text-[12px] text-muted-foreground">
@@ -278,7 +279,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
           {/* Features */}
           <section className="border-t border-border bg-muted/30 py-12 px-5">
             <div className="max-w-4xl mx-auto">
-              <h2 className="text-[22px] font-semibold text-foreground text-center mb-8">Fonctionnalités</h2>
+              <h2 className="text-[22px] font-semibold text-foreground text-center mb-8">{t("features")}</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {features.map((feat, i) => {
                   const Icon = feat.icon
@@ -297,8 +298,8 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                       >
                         <Icon className="h-5 w-5" style={{ color: "var(--primary)" }} />
                       </div>
-                      <p className="text-[14px] font-semibold text-foreground leading-tight mb-1">{feat.title}</p>
-                      <p className="text-[12px] text-muted-foreground leading-snug">{feat.desc}</p>
+                      <p className="text-[14px] font-semibold text-foreground leading-tight mb-1">{t(feat.titleKey)}</p>
+                      <p className="text-[12px] text-muted-foreground leading-snug">{t(feat.descKey)}</p>
                     </motion.div>
                   )
                 })}
@@ -309,9 +310,9 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
           {/* Testimonials */}
           <section className="py-12 px-5">
             <div className="max-w-4xl mx-auto">
-              <h2 className="text-[22px] font-semibold text-foreground text-center mb-8">Ce qu&apos;ils en disent</h2>
+              <h2 className="text-[22px] font-semibold text-foreground text-center mb-8">{t("testimonialsTitle")}</h2>
               <div className="grid md:grid-cols-3 gap-4">
-                {testimonials.map((t, i) => (
+                {testimonials.map((item, i) => (
                   <motion.div
                     key={i}
                     className="rounded-2xl border border-border bg-card p-4"
@@ -324,14 +325,14 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                       {Array.from({ length: 5 }).map((_, j) => (
                         <Star
                           key={j}
-                          className={`h-3.5 w-3.5 ${j < t.rating ? "fill-current" : ""}`}
-                          style={{ color: j < t.rating ? "var(--amber)" : "var(--muted-foreground)" }}
+                          className={`h-3.5 w-3.5 ${j < item.rating ? "fill-current" : ""}`}
+                          style={{ color: j < item.rating ? "var(--amber)" : "var(--muted-foreground)" }}
                         />
                       ))}
                     </div>
-                    <p className="text-[13px] text-foreground mb-3">&ldquo;{t.text}&rdquo;</p>
+                    <p className="text-[13px] text-foreground mb-3">&ldquo;{t(item.textKey)}&rdquo;</p>
                     <p className="text-[12px] text-muted-foreground">
-                      <span className="font-medium text-foreground">{t.name}</span>, {t.location}
+                      <span className="font-medium text-foreground">{item.name}</span>, {item.location}
                     </p>
                   </motion.div>
                 ))}
@@ -343,17 +344,17 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
           <section className="py-12 px-5" style={{ backgroundColor: "var(--primary)" }}>
             <div className="max-w-xl mx-auto text-center text-primary-foreground">
               <h2 className="text-[24px] font-semibold mb-3">
-                Prêt à transformer votre alimentation ?
+                {t("ctaTitle")}
               </h2>
               <p className="text-primary-foreground/80 mb-6 text-[14px]">
-                Rejoignez des milliers d&apos;utilisateurs déjà inscrits
+                {t("ctaSubtitle")}
               </p>
               <Button
                 size="lg"
                 onClick={onGetStarted}
                 className="bg-background text-foreground hover:bg-background/90 h-12 px-8 rounded-2xl text-[15px]"
               >
-                Créer mon compte gratuit <ChevronRight className="ml-1 h-4 w-4" />
+                {t("ctaButton")} <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             </div>
           </section>
@@ -369,20 +370,20 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
           >
             <span className="text-[28px] font-semibold" style={{ color: "var(--primary)" }}>N</span>
           </div>
-          <h2 className="text-[24px] font-semibold text-foreground mb-3">Espace professionnel</h2>
+          <h2 className="text-[24px] font-semibold text-foreground mb-3">{t("proTabTitle")}</h2>
           <p className="text-[14px] text-muted-foreground mb-6">
-            Bientôt disponible — réservé aux praticiens partenaires (diététiciens, endocrinologues)
+            {t("proDescriptionFull")}
           </p>
           <div className="flex flex-col gap-3 max-w-sm mx-auto">
             <input
               type="email"
-              placeholder="votre@email.fr"
+              placeholder={t("emailPlaceholder")}
               value={proEmail}
               onChange={(e) => setProEmail(e.target.value)}
               className="h-12 rounded-xl border border-border bg-card px-4 text-[14px] text-foreground outline-none focus:ring-2 focus:ring-primary/30"
             />
             <Button className="h-12 rounded-xl" disabled={!proEmail.includes("@")}>
-              Être prévenu du lancement
+              {t("proNotifyEmail")}
             </Button>
           </div>
           <p className="mt-4 text-[11px] text-muted-foreground">
@@ -404,9 +405,9 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
             <span className="font-semibold text-foreground">NutriVita</span>
           </div>
           <div className="flex gap-5">
-            <a href="#" className="hover:text-foreground transition-colors">Politique de confidentialité</a>
-            <a href="#" className="hover:text-foreground transition-colors">Mentions légales</a>
-            <a href="#" className="hover:text-foreground transition-colors">Contact</a>
+            <a href="#" className="hover:text-foreground transition-colors">{t("privacyPolicy")}</a>
+            <a href="#" className="hover:text-foreground transition-colors">{t("legalNotice")}</a>
+            <a href="#" className="hover:text-foreground transition-colors">{t("contact")}</a>
           </div>
           <p>© 2026 NutriVita</p>
         </div>

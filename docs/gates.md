@@ -386,3 +386,19 @@ Rejouer S1-S6 en conditions réelles (extension Chrome + Ctrl+Shift+R) avant de 
 - **S3** : bouton Recherche → FoodSearchSheet → résultats (plus de 404)
 - **S6** : "400g pomme de terre" via recherche → 304 kcal (food.calories=76, amount=400)
 - **S4/S5** : vérifier pas de régression (scan + suppression déjà PASS)
+
+---
+
+## Gate P1-3 — 2026-06-24 — i18n onboarding + landing
+
+**Session :** fix(P1-3) — extraction des chaînes FR en dur de l'onboarding et de la landing vers `lib/types.ts` (clés FR/AR/EN) + câblage `t()`
+**Fichiers :** `lib/types.ts` (60 nouvelles clés ×3 langues), `components/nutrivita/onboarding-flow.tsx`, `components/nutrivita/landing-page.tsx`
+**Verdict build :** GO — `npx tsc --noEmit` 0 erreur TypeScript
+**Verdict tests :** GO — 166/166 tests verts (19 suites), aucune régression
+**Verdict revue-code :** GO (CONFORME) — SL-03 respecté (bloc AR P1-3 100 % `\uXXXX`), parité 3 langues vérifiée, pas de `t` masquée par un `.map` (renommés `tabKey`/`item`), design system intact. 2 écarts MINEURS hors lignes du diff : boutons sexe H/F encore en dur (`onboarding-flow.tsx`), ligne RGPD trilingue double-échappée réservée à **P1-4**.
+**Verdict réglementaire :** GO — REG-04 consentement Art. 9 intact et non contournable, REG-05 aucune formulation diagnostique/thérapeutique introduite, mention « Données protégées · RGPD » présente dans les 3 langues, cohérence i18n 3/3.
+
+### Notes
+- L'outil d'écriture échappe automatiquement le non-ASCII en `\uXXXX` dans les `.ts` : conformité SL-03 garantie pour le bloc AR ajouté (vérifié via `Grep` ligne 903 : `م...`).
+- Lignes laissées volontairement pour **P1-4** : `landing-page.tsx` blocs RGPD trilingues (double-échappement `\\u`).
+- Dette à tracer (hors gate) : caractères arabes bruts pré-existants dans le bloc AR de `types.ts` (non introduits par P1-3) ; boutons sexe H/F onboarding.

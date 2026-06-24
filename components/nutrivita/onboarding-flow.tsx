@@ -9,6 +9,7 @@ import { toggleGoal, POIDS_GOALS } from "@/lib/goals"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import type { TranslationKey } from "@/lib/types"
 
 interface OnboardingProps {
   onComplete: () => void
@@ -18,20 +19,20 @@ interface OnboardingProps {
 type Step = 1 | 2 | 3 | 4 | 5 | 6
 
 // POIDS group — mutually exclusive (radio)
-const POIDS_OPTIONS = [
-  { value: "lose",     icon: ArrowDown, label: "Perdre du poids" },
-  { value: "maintain", icon: Scale,     label: "Maintenir le poids" },
-  { value: "gain",     icon: ArrowUp,   label: "Prendre du muscle" },
+const POIDS_OPTIONS: { value: string; icon: typeof ArrowDown; labelKey: TranslationKey }[] = [
+  { value: "lose",     icon: ArrowDown, labelKey: "loseWeight" },
+  { value: "maintain", icon: Scale,     labelKey: "maintainWeight" },
+  { value: "gain",     icon: ArrowUp,   labelKey: "gainMuscle" },
 ]
 // CONDITION group — cumulative
-const CONDITION_OPTIONS = [
-  { value: "diabetes", icon: Droplets, label: "Suivre ma glycémie" },
+const CONDITION_OPTIONS: { value: string; icon: typeof Droplets; labelKey: TranslationKey }[] = [
+  { value: "diabetes", icon: Droplets, labelKey: "manageDiabetes" },
 ]
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
-  const { setUser, user, setIsDiabetic, login: contextLogin, language } = useApp()
+  const { setUser, user, setIsDiabetic, login: contextLogin, language, t } = useApp()
   const [step, setStep] = useState<Step>(1)
   const [formData, setFormData] = useState({
     email: "",
@@ -119,11 +120,11 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
     } catch (err) {
       const status = err instanceof ApiError ? err.status : 0
       if (status === 409) {
-        setRegisterError("Un compte avec cet email existe déjà. Connectez-vous depuis la page d’accueil.")
+        setRegisterError(t("registerErrorExists"))
       } else if (status === 400) {
-        setRegisterError("Données invalides. Vérifiez vos informations.")
+        setRegisterError(t("registerErrorInvalid"))
       } else {
-        setRegisterError("Erreur d’inscription. Vérifiez votre connexion et réessayez.")
+        setRegisterError(t("registerErrorGeneric"))
       }
     } finally {
       setIsSubmitting(false)
@@ -182,7 +183,7 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
           <span className="text-[12px] text-muted-foreground">{displayStep}/{totalSteps}</span>
           {onSkip && step < 6 && (
             <button onClick={onSkip} className="text-[13px] text-muted-foreground">
-              Passer
+              {t("skip")}
             </button>
           )}
         </div>
@@ -203,10 +204,10 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
             >
               <span className="text-[36px] font-semibold" style={{ color: "var(--primary)" }}>N</span>
             </div>
-            <h1 className="text-[28px] font-semibold text-foreground mb-3">Bienvenue</h1>
-            <p className="text-[16px] text-primary mb-2 font-medium">Votre app nutrition</p>
+            <h1 className="text-[28px] font-semibold text-foreground mb-3">{t("onboardingWelcome")}</h1>
+            <p className="text-[16px] text-primary mb-2 font-medium">{t("onboardingTagline")}</p>
             <p className="text-[14px] text-muted-foreground mb-6">
-              Personnalisé pour vous en 2 minutes
+              {t("onboardingPersonalized")}
             </p>
 
             {/* Consentement RGPD Art. 9 — obligatoire avant collecte données de santé */}
@@ -218,7 +219,7 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
               onClick={nextStep}
               disabled={!consentChecked}
             >
-              Commencer
+              {t("getStarted")}
               <ChevronRight className="h-5 w-5" />
             </Button>
           </motion.div>
@@ -232,15 +233,15 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
             initial="enter" animate="center" exit="exit"
             className="flex-1 flex flex-col px-6 py-6"
           >
-            <h1 className="text-[22px] font-semibold text-foreground mb-2">Créez votre compte</h1>
-            <p className="text-[13px] text-muted-foreground mb-6">Vos identifiants de connexion</p>
+            <h1 className="text-[22px] font-semibold text-foreground mb-2">{t("createAccount")}</h1>
+            <p className="text-[13px] text-muted-foreground mb-6">{t("loginCredentials")}</p>
 
             <div className="flex-1 space-y-4">
               <div>
-                <label className="text-[13px] font-medium text-foreground mb-1.5 block">Adresse email</label>
+                <label className="text-[13px] font-medium text-foreground mb-1.5 block">{t("emailAddress")}</label>
                 <Input
                   type="email"
-                  placeholder="vous@exemple.fr"
+                  placeholder={t("emailPlaceholder")}
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="h-12 rounded-xl"
@@ -249,16 +250,16 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
                 />
                 {formData.email && !isEmailValid && (
                   <p className="text-[12px] mt-1" style={{ color: "var(--risk)" }}>
-                    Adresse email invalide
+                    {t("invalidEmail")}
                   </p>
                 )}
               </div>
               <div>
-                <label className="text-[13px] font-medium text-foreground mb-1.5 block">Mot de passe</label>
+                <label className="text-[13px] font-medium text-foreground mb-1.5 block">{t("password")}</label>
                 <div className="relative">
                   <Input
                     type={showPassword ? "text" : "password"}
-                    placeholder="6 caractères minimum"
+                    placeholder={t("minChars")}
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     className="h-12 rounded-xl pr-11"
@@ -278,15 +279,15 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
                 </div>
                 {formData.password && formData.password.length < 6 && (
                   <p className="text-[12px] mt-1" style={{ color: "var(--risk)" }}>
-                    6 caractères minimum
+                    {t("minChars")}
                   </p>
                 )}
               </div>
               <div>
-                <label className="text-[13px] font-medium text-foreground mb-1.5 block">Confirmer le mot de passe</label>
+                <label className="text-[13px] font-medium text-foreground mb-1.5 block">{t("confirmPassword")}</label>
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Répétez le mot de passe"
+                  placeholder={t("repeatPassword")}
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   className="h-12 rounded-xl"
@@ -294,7 +295,7 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
                 />
                 {formData.confirmPassword && formData.password !== formData.confirmPassword && (
                   <p className="text-[12px] mt-1" style={{ color: "var(--risk)" }}>
-                    Les mots de passe ne correspondent pas
+                    {t("passwordsMismatch")}
                   </p>
                 )}
               </div>
@@ -306,7 +307,7 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
               onClick={nextStep}
               disabled={!canProceed()}
             >
-              Continuer <ChevronRight className="h-5 w-5" />
+              {t("continueBtn")} <ChevronRight className="h-5 w-5" />
             </Button>
           </motion.div>
         )}
@@ -319,12 +320,12 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
             initial="enter" animate="center" exit="exit"
             className="flex-1 flex flex-col px-6 py-6"
           >
-            <h1 className="text-[22px] font-semibold text-foreground mb-6">Parlez-nous de vous</h1>
+            <h1 className="text-[22px] font-semibold text-foreground mb-6">{t("tellUs")}</h1>
             <div className="flex-1 space-y-4">
               <div>
-                <label className="text-[13px] font-medium text-foreground mb-1.5 block">Prénom</label>
+                <label className="text-[13px] font-medium text-foreground mb-1.5 block">{t("firstName")}</label>
                 <Input
-                  placeholder="Votre prénom"
+                  placeholder={t("firstNamePlaceholder")}
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="h-12 rounded-xl"
@@ -332,7 +333,7 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[13px] font-medium text-foreground mb-1.5 block">Âge</label>
+                  <label className="text-[13px] font-medium text-foreground mb-1.5 block">{t("age")}</label>
                   <div className="relative">
                     <Input
                       type="number"
@@ -341,11 +342,11 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
                       onChange={(e) => setFormData({ ...formData, age: e.target.value })}
                       className="h-12 rounded-xl pr-12"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-muted-foreground">ans</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-muted-foreground">{t("years")}</span>
                   </div>
                 </div>
                 <div>
-                  <label className="text-[13px] font-medium text-foreground mb-1.5 block">Sexe</label>
+                  <label className="text-[13px] font-medium text-foreground mb-1.5 block">{t("sex")}</label>
                   <div className="flex rounded-xl border border-border overflow-hidden h-12">
                     {[
                       { value: "male",   label: "H" },
@@ -370,7 +371,7 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[13px] font-medium text-foreground mb-1.5 block">Taille</label>
+                  <label className="text-[13px] font-medium text-foreground mb-1.5 block">{t("height")}</label>
                   <div className="relative">
                     <Input
                       type="number"
@@ -383,7 +384,7 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
                   </div>
                 </div>
                 <div>
-                  <label className="text-[13px] font-medium text-foreground mb-1.5 block">Poids</label>
+                  <label className="text-[13px] font-medium text-foreground mb-1.5 block">{t("weight")}</label>
                   <div className="relative">
                     <Input
                       type="number"
@@ -403,7 +404,7 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
               onClick={nextStep}
               disabled={!canProceed()}
             >
-              Continuer <ChevronRight className="h-5 w-5" />
+              {t("continueBtn")} <ChevronRight className="h-5 w-5" />
             </Button>
           </motion.div>
         )}
@@ -416,11 +417,11 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
             initial="enter" animate="center" exit="exit"
             className="flex-1 flex flex-col px-6 py-6"
           >
-            <h1 className="text-[22px] font-semibold text-foreground mb-2">Vos objectifs</h1>
+            <h1 className="text-[22px] font-semibold text-foreground mb-2">{t("yourGoals")}</h1>
 
             {/* POIDS — radio exclusif */}
             <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wide mb-2 mt-4">
-              Objectif de poids
+              {t("weightGoal")}
             </p>
             <div className="grid grid-cols-3 gap-3 mb-5">
               {POIDS_OPTIONS.map((goal) => {
@@ -442,7 +443,7 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
                       style={{ color: selected ? "var(--primary)" : "var(--muted-foreground)" }}
                     />
                     <span className="text-[12px] font-medium text-center text-foreground leading-tight">
-                      {goal.label}
+                      {t(goal.labelKey)}
                     </span>
                     {selected && (
                       <div
@@ -461,7 +462,7 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
 
             {/* CONDITION — cumulative */}
             <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-              Condition de santé (optionnel)
+              {t("healthCondition")}
             </p>
             <div className="space-y-2 mb-5">
               {CONDITION_OPTIONS.map((goal) => {
@@ -482,7 +483,7 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
                       className="h-5 w-5 shrink-0"
                       style={{ color: selected ? "var(--primary)" : "var(--muted-foreground)" }}
                     />
-                    <span className="text-[14px] font-medium text-foreground">{goal.label}</span>
+                    <span className="text-[14px] font-medium text-foreground">{t(goal.labelKey)}</span>
                     {selected && (
                       <div
                         className="ml-auto w-4 h-4 rounded-full flex items-center justify-center shrink-0"
@@ -501,7 +502,7 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
             {/* Activity level */}
             <div className="mb-4">
               <label className="text-[13px] font-medium text-foreground mb-3 block">
-                Niveau d&apos;activité physique
+                {t("physicalActivityLevel")}
               </label>
               <div className="flex gap-2">
                 {([1, 2, 3, 4, 5] as const).map((level) => (
@@ -520,8 +521,8 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
                 ))}
               </div>
               <div className="flex justify-between mt-1.5 text-[11px] text-muted-foreground">
-                <span>Sédentaire</span>
-                <span>Très actif</span>
+                <span>{t("sedentary")}</span>
+                <span>{t("veryActive")}</span>
               </div>
             </div>
 
@@ -531,7 +532,7 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
               onClick={nextStep}
               disabled={!canProceed()}
             >
-              Continuer <ChevronRight className="h-5 w-5" />
+              {t("continueBtn")} <ChevronRight className="h-5 w-5" />
             </Button>
           </motion.div>
         )}
@@ -544,14 +545,14 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
             initial="enter" animate="center" exit="exit"
             className="flex-1 flex flex-col px-6 py-6"
           >
-            <h1 className="text-[22px] font-semibold text-foreground mb-3">Suivez-vous votre glycémie ?</h1>
+            <h1 className="text-[22px] font-semibold text-foreground mb-3">{t("diabeticQuestion")}</h1>
             <p className="text-[14px] text-muted-foreground mb-8">
-              Cela active le suivi glycémique personnalisé.
+              {t("diabeticSubtext")}
             </p>
             <div className="space-y-3 flex-1">
               {([
-                { value: true  as boolean, icon: <Droplets className="h-5 w-5" />, label: "Oui, activer le suivi" },
-                { value: false as boolean, icon: <ChevronRight className="h-5 w-5" />, label: "Non, continuer sans" },
+                { value: true  as boolean, icon: <Droplets className="h-5 w-5" />, labelKey: "diabeticYesShort" as TranslationKey },
+                { value: false as boolean, icon: <ChevronRight className="h-5 w-5" />, labelKey: "diabeticNoShort" as TranslationKey },
               ] as const).map((opt) => {
                 const selected = isDiabeticStep5 === opt.value
                 return (
@@ -572,13 +573,13 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
                     >
                       {opt.icon}
                     </div>
-                    <span className="text-[15px] font-medium text-foreground">{opt.label}</span>
+                    <span className="text-[15px] font-medium text-foreground">{t(opt.labelKey)}</span>
                   </button>
                 )
               })}
             </div>
             <Button size="lg" className="w-full h-13 rounded-2xl gap-2 mt-6" onClick={nextStep}>
-              Continuer <ChevronRight className="h-5 w-5" />
+              {t("continueBtn")} <ChevronRight className="h-5 w-5" />
             </Button>
           </motion.div>
         )}
@@ -601,21 +602,21 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
               <span className="text-[36px] font-semibold" style={{ color: "var(--primary)" }}>N</span>
             </motion.div>
 
-            <h1 className="text-[28px] font-semibold text-foreground mb-6">Tout est prêt</h1>
+            <h1 className="text-[28px] font-semibold text-foreground mb-6">{t("allSet")}</h1>
 
             <div className="w-full max-w-sm space-y-3 mb-8">
               <div className="rounded-2xl border border-border bg-card p-4">
-                <p className="text-[13px] text-muted-foreground mb-1">Objectif calorique</p>
+                <p className="text-[13px] text-muted-foreground mb-1">{t("calorieGoal")}</p>
                 <p className="text-[30px] font-semibold text-primary leading-none">
-                  {calculateCalories().toLocaleString()} kcal/j
+                  {calculateCalories().toLocaleString()} {t("kcalPerDay")}
                 </p>
               </div>
               <div className="rounded-2xl border border-border bg-card p-4">
-                <p className="text-[13px] text-muted-foreground mb-2">Macros</p>
+                <p className="text-[13px] text-muted-foreground mb-2">{t("macrosLabel")}</p>
                 <div className="flex justify-between text-[13px]">
-                  <span><strong>{Math.round((calculateCalories() * 0.45) / 4)}g</strong> Glucides</span>
-                  <span><strong>{Math.round((calculateCalories() * 0.30) / 4)}g</strong> Protéines</span>
-                  <span><strong>{Math.round((calculateCalories() * 0.25) / 9)}g</strong> Lipides</span>
+                  <span><strong>{Math.round((calculateCalories() * 0.45) / 4)}g</strong> {t("carbs")}</span>
+                  <span><strong>{Math.round((calculateCalories() * 0.30) / 4)}g</strong> {t("protein")}</span>
+                  <span><strong>{Math.round((calculateCalories() * 0.25) / 9)}g</strong> {t("fat")}</span>
                 </div>
               </div>
             </div>
@@ -632,7 +633,7 @@ export function OnboardingFlow({ onComplete, onSkip }: OnboardingProps) {
               onClick={handleComplete}
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Création du compte..." : "Commencer"}
+              {isSubmitting ? t("creatingAccount") : t("getStarted")}
               {!isSubmitting && <ChevronRight className="h-5 w-5" />}
             </Button>
           </motion.div>
