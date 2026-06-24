@@ -213,6 +213,21 @@ export interface ApiCompositionResult {
   disclaimer: { fr: string; ar: string; en: string }
 }
 
+/** GET /api/alternatives/:barcode (S12) — produits OFF mieux notés de la même catégorie.
+ *  Le backend renvoie nutriScore en minuscule OFF ("a".."e") et imageUrl, déjà en camelCase. */
+export interface ApiAlternative {
+  barcode: string
+  name: string
+  nutriScore: string | null
+  imageUrl: string | null
+}
+
+export interface ApiAlternativesResponse {
+  source_barcode: string
+  category: string | null
+  alternatives: ApiAlternative[]
+}
+
 /** GET /api/stats/additives — AL-S4 exposition additifs (REG-05) */
 export interface ApiAdditivesStatsItem {
   code: string

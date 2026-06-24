@@ -496,3 +496,15 @@ Les fichiers `add-sheet.tsx` et `groceries-screen.tsx` portaient des modificatio
 **Verdict tests :** GO — 177/177 (5 nouveaux TU-S6-FE)
 **Verdict revue-code :** GO (CONFORME) — SL-UI OK (lucide, pas d'émoji/gradient, ≥11px, rounded-2xl), SL-03 AR `\uXXXX` vérifié (aucun arabe brut), parité i18n FR/AR/EN, null jamais → 0 (kcal obligatoire), labels accessibles. 1 mineur corrigé (`var(--amber-bg)` non défini dans `app/globals.css` → bandeau passé en `bg-muted/40`, pattern REG existant). Mineurs différés : `confidence`/`warnings[]` non exploités côté UI (non bloquant).
 **Verdict réglementaire :** GO — REG-04/05 disclaimer non contournable en langue active, vocabulaire non clinique, additifs neutres sans dose, null préservé (pas de 0 inventé), SL-03 OK.
+
+---
+
+## Gate S12 (frontend) — 2026-06-25 — Alternatives plus saines
+
+**Session :** feat(S12 front) — bouton + écran « Alternatives plus saines » (Courses). Backend `GET /api/alternatives/:barcode` (`e6305ed`) déjà fait.
+**Contrat backend :** `{ source_barcode, category, alternatives:[{ barcode, name, nutriScore("a".."e"), imageUrl }] }` (top 5 mieux notés même catégorie OFF, origine exclue ; OFF KO → `alternatives:[]`).
+**Fichiers :** `lib/api-types.ts` (ApiAlternative/ApiAlternativesResponse), `lib/api.ts` (`mapAlternative` pur normalise grade→majuscule + `getAlternatives`), `lib/types.ts` (type `Alternative` + 2 clés i18n FR/AR/EN `\uXXXX`), `lib/alternatives.ts` (`pickWorstProduct`, ignore « non notés »), `components/nutrivita/nutri-score-badge.tsx` (extrait de groceries pour réutilisation), `components/nutrivita/alternatives-sheet.tsx` (bottom sheet : skeleton/liste/vide/erreur toast, disclaimer REG-05), `components/nutrivita/groceries-screen.tsx` (badge partagé + câblage bouton, désactivé si aucun produit noté), `lib/__tests__/s12-alternatives.test.ts` (6 TU).
+**Verdict build :** GO — `npm run build` OK · tsc 0 erreur
+**Verdict tests :** GO — 183/183 (6 nouveaux TU-S12-FE)
+**Verdict revue-code :** GO (CONFORME) — SL-UI OK, SL-03 AR `\uXXXX` (0 arabe brut introduit), parité i18n FR/AR/EN, états chargement/vide/erreur + fallback image ShoppingBag, NutriScoreBadge extrait byte-identique (rendu inchangé), vocabulaire non clinique. Mineurs non bloquants alignés sur patterns projet (aria-label cancel, AnimatePresence interne, `t` en dep d'effet) — non corrigés.
+**Verdict réglementaire :** GO — REG-05 « alternatives plus saines / mieux notées » = comparatif Nutri-Score (info bien-être), aucun sain/malsain absolu, pas de conseil perso/dose/diagnostic ; disclaimer REG-05 inconditionnel en langue active ; minimisation REG-03 (live OFF, rien de persisté) ; SL-03 OK.

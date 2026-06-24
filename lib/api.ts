@@ -13,6 +13,8 @@ import type {
   ApiScannedProductsResponse,
   ApiScannedProduct,
   ApiCompositionResult,
+  ApiAlternative,
+  ApiAlternativesResponse,
 } from "@/lib/api-types"
 import type {
   MealEntry,
@@ -22,6 +24,7 @@ import type {
   ScannedProduct,
   FoodItem,
   AdditiveRef,
+  Alternative,
 } from "@/lib/types"
 import { getToken } from "@/lib/auth"
 
@@ -383,6 +386,39 @@ export async function scanCompositionImage(base64: string): Promise<CompositionR
     body: JSON.stringify({ image: base64 }),
   })
   return mapCompositionResult(raw)
+}
+
+// ─── Alternatives plus saines (S12) ────────────────────────────────────────
+
+export interface AlternativesResult {
+  sourceBarcode: string
+  category: string | null
+  alternatives: Alternative[]
+}
+
+/** Mapper pur ApiAlternative → Alternative (exporté pour les tests S12).
+ *  Normalise le grade OFF minuscule ("a") en majuscule ("A"), null si hors A–E. */
+export function mapAlternative(raw: ApiAlternative): Alternative {
+  const g = raw.nutriScore ? raw.nutriScore.toUpperCase() : null
+  const nutriScore = g && "ABCDE".includes(g) ? (g as Alternative["nutriScore"]) : null
+  return {
+    barcode: String(raw.barcode),
+    name: raw.name,
+    nutriScore,
+    imageUrl: raw.imageUrl ?? null,
+  }
+}
+
+/** GET /api/alternatives/:barcode — top 5 produits mieux notés de la même catégorie. */
+export async function getAlternatives(barcode: string): Promise<AlternativesResult> {
+  const raw = await apiFetch<ApiAlternativesResponse>(
+    `/api/alternatives/${encodeURIComponent(barcode)}`
+  )
+  return {
+    sourceBarcode: raw.source_barcode,
+    category: raw.category ?? null,
+    alternatives: Array.isArray(raw.alternatives) ? raw.alternatives.map(mapAlternative) : [],
+  }
 }
 
 export async function searchFoods(q: string): Promise<FoodItem[]> {

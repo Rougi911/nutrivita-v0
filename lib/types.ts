@@ -167,6 +167,14 @@ export interface ScannedProduct {
   imageUrl?: string | null  // S10c — photo du produit OFF
 }
 
+/** S12 — Alternative plus saine proposée pour un produit scanné (live OpenFoodFacts). */
+export interface Alternative {
+  barcode: string
+  name: string
+  nutriScore: "A" | "B" | "C" | "D" | "E" | null
+  imageUrl: string | null
+}
+
 // Sample food database (no emojis — IDs are stable)
 // Micronutriment values (mg or µg per 100g) from CIQUAL 2020 / ANSES estimates.
 // null = donnée inconnue dans CIQUAL (≠ 0).
@@ -450,6 +458,8 @@ export const translations = {
     bad: "Mauvais",
     notRated: "Non noté",
     notRatedHint: "Données nutritionnelles insuffisantes",
+    alternativesTitle: "Alternatives plus saines",
+    alternativesEmpty: "Aucune alternative trouvée pour cette catégorie",
 
     // Onboarding
     welcome: "Bienvenue sur NutriVita",
@@ -810,6 +820,8 @@ export const translations = {
     bad: "سيئ",
     notRated: "\u063A\u064A\u0631 \u0645\u0642\u064A\u0651\u0645",
     notRatedHint: "\u0628\u064A\u0627\u0646\u0627\u062A \u063A\u0630\u0627\u0626\u064A\u0629 \u063A\u064A\u0631 \u0643\u0627\u0641\u064A\u0629",
+    alternativesTitle: "\u0628\u062F\u0627\u0626\u0644 \u0623\u0635\u062D",
+    alternativesEmpty: "\u0644\u0645 \u064A\u062A\u0645 \u0627\u0644\u0639\u062B\u0648\u0631 \u0639\u0644\u0649 \u0628\u062F\u0627\u0626\u0644 \u0644\u0647\u0630\u0647 \u0627\u0644\u0641\u0626\u0629",
     welcome: "مرحباً بك في NutriVita",
     tagline: "رفيقك الذكي للتغذية",
     getStarted: "ابدأ",
@@ -1166,6 +1178,8 @@ export const translations = {
     bad: "Bad",
     notRated: "Not rated",
     notRatedHint: "Insufficient nutritional data",
+    alternativesTitle: "Healthier alternatives",
+    alternativesEmpty: "No alternatives found for this category",
     welcome: "Welcome to NutriVita",
     tagline: "Your smart nutrition companion",
     getStarted: "Get started",

@@ -12,27 +12,10 @@ import { OfflineBanner } from "@/components/nutrivita/offline-banner"
 import { cn } from "@/lib/utils"
 import type { ScannedProduct } from "@/lib/types"
 import { normalizeAdditive, additiveRiskColor } from "@/lib/additives-format"
+import { pickWorstProduct } from "@/lib/alternatives"
+import { NutriScoreBadge } from "@/components/nutrivita/nutri-score-badge"
+import { AlternativesSheet } from "@/components/nutrivita/alternatives-sheet"
 import { toast } from "sonner"
-
-function NutriScoreBadge({ score }: { score: "A" | "B" | "C" | "D" | "E" | null }) {
-  if (!score) return null
-  const colors: Record<string, { bg: string; text: string }> = {
-    A: { bg: "#038141", text: "#fff" },
-    B: { bg: "#85BB2F", text: "#fff" },
-    C: { bg: "#FECB02", text: "#000" },
-    D: { bg: "#EE8100", text: "#fff" },
-    E: { bg: "#E63312", text: "#fff" },
-  }
-  const c = colors[(score ?? "").toUpperCase()] ?? { bg: "var(--muted)", text: "var(--muted-foreground)" }
-  return (
-    <div
-      className="w-7 h-7 rounded-lg flex items-center justify-center text-[13px] font-bold shrink-0"
-      style={{ backgroundColor: c.bg, color: c.text }}
-    >
-      {(score ?? "").toUpperCase()}
-    </div>
-  )
-}
 
 function ProductCard({ product, onDelete }: { product: ScannedProduct; onDelete?: () => void }) {
   const { t } = useApp()
@@ -149,8 +132,11 @@ export function GroceriesScreen() {
   const [scanError, setScanError] = useState<string | null>(null)
   const [loadingStats, setLoadingStats] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  // S12 — produit cible pour l'écran d'alternatives (le moins bien noté)
+  const [altTarget, setAltTarget] = useState<ScannedProduct | null>(null)
 
   const stats = getMonthlyScannedStats(scannedProducts)
+  const worstProduct = pickWorstProduct(scannedProducts)
 
   // Produits contenant au moins un additif classé high/moderate (basé sur la classification, pas une liste figée)
   const riskProductsCount = scannedProducts.filter(
@@ -301,11 +287,24 @@ export function GroceriesScreen() {
           </div>
         </div>
 
-        {/* See alternatives button */}
-        <Button variant="outline" className="w-full gap-2 rounded-xl">
+        {/* See alternatives button (S12) — désactivé si aucun produit noté */}
+        <Button
+          variant="outline"
+          className="w-full gap-2 rounded-xl"
+          disabled={!worstProduct}
+          onClick={() => worstProduct && setAltTarget(worstProduct)}
+        >
           {t("seeAlternatives")}
         </Button>
       </div>
+
+      {altTarget && (
+        <AlternativesSheet
+          barcode={altTarget.barcode}
+          productName={altTarget.name}
+          onClose={() => setAltTarget(null)}
+        />
+      )}
     </div>
   )
 }
