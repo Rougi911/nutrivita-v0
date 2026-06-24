@@ -417,3 +417,21 @@ Rejouer S1-S6 en conditions réelles (extension Chrome + Ctrl+Shift+R) avant de 
 
 ### Note
 - L'auto-échappement de l'outil d'écriture est **incohérent** selon le fichier (.tsx ici a conservé l'arabe brut) → pour tout ajout arabe, vérifier le disque via `Grep`/script et forcer les `\uXXXX` par script Node si besoin. Le RTL réel de ce segment relève de **P1-5**.
+
+---
+
+## Gate P1-5 — 2026-06-24 — RTL arabe réel + persistance de la langue
+
+**Session :** feat(P1-5) — classe CSS `.rtl` + persistance localStorage de la langue (avant : reset FR au reload)
+**Fichiers :** `lib/language.ts` (NEW), `lib/__tests__/language.test.ts` (NEW, 6 TU-P15), `app/globals.css` (règle `.rtl`), `lib/app-context.tsx` (persistance + restauration au montage)
+**Implémentation :**
+- `lib/language.ts` : `getStoredLanguage`/`setStoredLanguage` (SSR-safe, whitelist `["fr","ar","en"]`) + `dirForLanguage`.
+- `app/globals.css` : `.rtl { direction: rtl; font-family: var(--font-arabic) }` (pas de `text-align: right` pour ne pas casser `text-center`) — rend fonctionnels les `cn(..., isRTL && "rtl")` déjà présents dans les écrans.
+- `app-context` : `setLanguage` persiste le choix ; effet de montage restaure la langue stockée et applique `document.documentElement.dir/lang`.
+**Verdict build :** GO — `npx tsc --noEmit` 0 erreur TypeScript
+**Verdict tests :** GO — 172/172 tests verts (20 suites) dont 6 TU-P15 (null défaut, persistance 3 langues, rejet valeur invalide, mapping dir)
+**Verdict revue-code :** GO (CONFORME) — SSR-safe, pas de régression du flux langue, effet montage deps `[]` sans boucle, design system OK. Aucun BLOQUANT/MAJEUR ; 1 MINEUR corrigé (commentaire CSS reformulé).
+**Verdict réglementaire :** GO — EB-11 RTL servi, RGPD minimisation REG-03 OK (seule la préférence de langue non identifiante est persistée, aucune PII/donnée santé), aucun disclaimer touché (REG-04/05 N.A.).
+
+### Note (INFO, non bloquant)
+- Flash LTR→RTL possible au 1er paint si un utilisateur arabe recharge (l'effet client s'exécute après hydratation). Acceptable pour P1-5 ; à traiter si un rendu RTL sans flash devient une exigence.

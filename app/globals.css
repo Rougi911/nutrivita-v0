@@ -200,6 +200,14 @@
   [dir="rtl"] {
     font-family: var(--font-arabic);
   }
+  /* P1-5 — classe RTL réelle appliquée par les écrans via cn(..., isRTL && "rtl").
+     On ne pose que `direction: rtl` (l'alignement logique start/end s'inverse
+     naturellement) sans forcer `text-align: right`, pour ne pas casser les
+     conteneurs en `text-center`. */
+  .rtl {
+    direction: rtl;
+    font-family: var(--font-arabic);
+  }
 }
 
 @layer utilities {

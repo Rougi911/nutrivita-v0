@@ -29,6 +29,7 @@ import {
   ApiError,
 } from "@/lib/api"
 import { getToken, setToken, removeToken } from "@/lib/auth"
+import { getStoredLanguage, setStoredLanguage, dirForLanguage } from "@/lib/language"
 
 interface AppContextType {
   // Auth
@@ -172,6 +173,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setCurrentDate(getLocalDateStr())
   }, [])
 
+  // P1-5 — Restaure la langue persistée au montage (sinon reset FR au reload) et
+  // applique le sens d'écriture (RTL pour l'arabe) sur <html>.
+  useEffect(() => {
+    const stored = getStoredLanguage()
+    const lang = stored ?? "fr"
+    if (stored) {
+      setLanguageState(stored)
+      setUser((prev) => ({ ...prev, language: stored }))
+    }
+    if (typeof document !== "undefined") {
+      document.documentElement.dir = dirForLanguage(lang)
+      document.documentElement.lang = lang
+    }
+  }, [])
+
   const login = useCallback((token: string, serverUser: { id: string; email: string; name: string }) => {
     setToken(token)
     setIsAuthenticated(true)
@@ -263,8 +279,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setLanguage = (lang: Language) => {
     setLanguageState(lang)
     setUser((prev) => ({ ...prev, language: lang }))
+    setStoredLanguage(lang) // P1-5 — persiste le choix (survit au reload)
     if (typeof document !== "undefined") {
-      document.documentElement.dir = lang === "ar" ? "rtl" : "ltr"
+      document.documentElement.dir = dirForLanguage(lang)
       document.documentElement.lang = lang
     }
   }
