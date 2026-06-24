@@ -194,7 +194,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                   </Button>
                 </div>
                 <p className="mt-4 text-[12px] text-muted-foreground">
-                  Données protégées · RGPD &nbsp;|&nbsp; Protected data · GDPR &nbsp;|&nbsp; {"\\u0628\\u064A\\u0627\\u0646\\u0627\\u062A \\u0645\\u062D\\u0645\\u064A\\u0629 \\u00B7 RGPD"}
+                  Données protégées · RGPD &nbsp;|&nbsp; Protected data · GDPR &nbsp;|&nbsp; {"\u0628\u064A\u0627\u0646\u0627\u062A \u0645\u062D\u0645\u064A\u0629 \u00B7 RGPD"}
                 </p>
               </motion.div>
 
@@ -387,7 +387,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
             </Button>
           </div>
           <p className="mt-4 text-[11px] text-muted-foreground">
-            Données protégées · RGPD &nbsp;|&nbsp; Protected data · GDPR &nbsp;|&nbsp; {"\\u0628\\u064A\\u0627\\u0646\\u0627\\u062A \\u0645\\u062D\\u0645\\u064A\\u0629 \\u00B7 RGPD"}
+            Données protégées · RGPD &nbsp;|&nbsp; Protected data · GDPR &nbsp;|&nbsp; {"\u0628\u064A\u0627\u0646\u0627\u062A \u0645\u062D\u0645\u064A\u0629 \u00B7 RGPD"}
           </p>
         </section>
       )}

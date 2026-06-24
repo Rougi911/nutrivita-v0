@@ -402,3 +402,18 @@ Rejouer S1-S6 en conditions réelles (extension Chrome + Ctrl+Shift+R) avant de 
 - L'outil d'écriture échappe automatiquement le non-ASCII en `\uXXXX` dans les `.ts` : conformité SL-03 garantie pour le bloc AR ajouté (vérifié via `Grep` ligne 903 : `م...`).
 - Lignes laissées volontairement pour **P1-4** : `landing-page.tsx` blocs RGPD trilingues (double-échappement `\\u`).
 - Dette à tracer (hors gate) : caractères arabes bruts pré-existants dans le bloc AR de `types.ts` (non introduits par P1-3) ; boutons sexe H/F onboarding.
+
+---
+
+## Gate P1-4 — 2026-06-24 — Bug arabe double-échappé (landing)
+
+**Session :** fix(P1-4) — correction de l'encodage de la mention RGPD trilingue
+**Fichier :** `components/nutrivita/landing-page.tsx` (2 occurrences, hero + onglet pro)
+**Correctif :** double-échappement `{"\\u0628..."}` (rendu littéral `ب…`) → échappement simple `\uXXXX` rendant l'arabe « بيانات محمية · RGPD ». Appliqué via script Node (fs) pour garantir des `\u` ASCII sur disque.
+**Verdict build :** GO — `npx tsc --noEmit` 0 erreur TypeScript
+**Verdict tests :** GO — 166/166 tests verts (19 suites)
+**Verdict revue-code :** GO (CONFORME) — SL-03 OK (0 caractère arabe brut, 0 `\\u` résiduel, 24 `\u` simples), parité trilingue FR/AR/EN, diff borné à 2 lignes, design system intact. Aucun écart bloquant/majeur/mineur.
+**Verdict réglementaire :** GO — mention « Données protégées · RGPD » désormais lisible en arabe (amélioration transparence, marché DZ), REG-05 OK (« données protégées · RGPD », rien de diagnostique), aucun disclaimer santé supprimé.
+
+### Note
+- L'auto-échappement de l'outil d'écriture est **incohérent** selon le fichier (.tsx ici a conservé l'arabe brut) → pour tout ajout arabe, vérifier le disque via `Grep`/script et forcer les `\uXXXX` par script Node si besoin. Le RTL réel de ce segment relève de **P1-5**.
