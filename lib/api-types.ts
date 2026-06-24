@@ -41,8 +41,12 @@ export interface ApiScanResponse {
   barcode: string
   name: string
   nutri_score: "A" | "B" | "C" | "D" | "E" | null
-  score: number
-  verdict: "Excellent" | "Médiocre" | "Mauvais"
+  /** null = « non noté » (P1-7, produit sans donnée nutritionnelle exploitable). */
+  score: number | null
+  /** null = « non noté » (P1-7). */
+  verdict: "Excellent" | "Médiocre" | "Mauvais" | null
+  /** P1-7 — source du score renvoyée par le backend. */
+  nutriscore_source?: "nutriscore_off" | "nutriscore_calcule" | "non_note"
   additives: (string | { code: string; name?: string; risk?: "high" | "moderate" | "low" | null })[]
   sucres: number
   sel: number

@@ -152,8 +152,12 @@ export interface ScannedProduct {
   barcode: string
   name: string
   nutriScore: "A" | "B" | "C" | "D" | "E" | null
-  score: number // 0–100 (AL-08)
-  verdict: "Excellent" | "Médiocre" | "Mauvais"
+  /** 0–100 (AL-08). null = « non noté » (P1-7) — aucune donnée exploitable, NE PAS colorer comme un mauvais score. */
+  score: number | null
+  /** null = « non noté » (P1-7). */
+  verdict: "Excellent" | "Médiocre" | "Mauvais" | null
+  /** Source du score (P1-7) : OFF, recalculé officiel, ou non noté. */
+  nutriScoreSource?: "nutriscore_off" | "nutriscore_calcule" | "non_note"
   additives: AdditiveRef[]
   timesThisMonth: number
   sucres?: number  // g per 100g
@@ -444,6 +448,8 @@ export const translations = {
     excellent: "Excellent",
     mediocre: "Médiocre",
     bad: "Mauvais",
+    notRated: "Non noté",
+    notRatedHint: "Données nutritionnelles insuffisantes",
 
     // Onboarding
     welcome: "Bienvenue sur NutriVita",
@@ -796,6 +802,8 @@ export const translations = {
     excellent: "ممتاز",
     mediocre: "متوسط",
     bad: "سيئ",
+    notRated: "\u063A\u064A\u0631 \u0645\u0642\u064A\u0651\u0645",
+    notRatedHint: "\u0628\u064A\u0627\u0646\u0627\u062A \u063A\u0630\u0627\u0626\u064A\u0629 \u063A\u064A\u0631 \u0643\u0627\u0641\u064A\u0629",
     welcome: "مرحباً بك في NutriVita",
     tagline: "رفيقك الذكي للتغذية",
     getStarted: "ابدأ",
@@ -1144,6 +1152,8 @@ export const translations = {
     excellent: "Excellent",
     mediocre: "Mediocre",
     bad: "Bad",
+    notRated: "Not rated",
+    notRatedHint: "Insufficient nutritional data",
     welcome: "Welcome to NutriVita",
     tagline: "Your smart nutrition companion",
     getStarted: "Get started",

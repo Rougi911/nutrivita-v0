@@ -457,3 +457,18 @@ Rejouer S1-S6 en conditions réelles (extension Chrome + Ctrl+Shift+R) avant de 
 - `privacyPolicy`/`legalNotice` restent des rows sans `onClick` (contenu réel à brancher avant prod publique — exigence RGPD + loi DZ 18-07).
 - Clés i18n désormais orphelines : `importCsv`, `rateApp` (nettoyage optionnel).
 - Pré-existant hors P1-6 : émojis + FR en dur dans `meals-screen.tsx` (`cuisineFilters`, « Base de données »).
+
+---
+
+## Gate P1-7 (frontend) — 2026-06-24 — Affichage « non noté »
+
+**Session :** feat(P1-7 front) — rendu « non noté » quand le backend renvoie `score: null` / `verdict: null` / `nutriscore_source: "non_note"` (produit sans donnée nutritionnelle exploitable). Le backend P1-7 (`fff43d5`) était déjà fait ; ici on branche le rendu côté v0design.
+**Contrat backend confirmé** (`nutridz/backend/routes/scan.js`) : `/api/scan` → `{ score: number|null, verdict: "Excellent"|"Médiocre"|"Mauvais"|null, nutriscore_source: "nutriscore_off"|"nutriscore_calcule"|"non_note", ... }`. Non noté NON persisté (mais peut entrer dans la liste groceries via `addScannedProduct` client-side).
+**Fichiers :** `lib/types.ts` (`ScannedProduct.score/verdict` nullable + `nutriScoreSource` + clés i18n `notRated`/`notRatedHint` FR/AR/EN), `lib/api-types.ts` (`ApiScanResponse` nullable + `nutriscore_source`), `lib/api.ts` (`mapScannedProduct` achemine la source), `components/nutrivita/add-sheet.tsx` (badge neutre « Non noté »), `components/nutrivita/groceries-screen.tsx` (style muted + label + tri non-noté en fin).
+**Verdict build :** GO — `npx tsc --noEmit` 0 erreur (nullable propagé sans casse)
+**Verdict tests :** GO — 172/172 tests verts
+**Verdict revue-code :** GO (CONFORME) — SL-03 AR `\uXXXX` (ligne 805-806) + parité 3 langues, « non noté » jamais coloré comme mauvais score (add-sheet `text-muted-foreground` sans `/100` ; groceries fallback `--muted`), nullable bien gardé partout. 1 MINEUR corrigé (import mort `additiveCode` retiré).
+**Verdict réglementaire :** GO — REG-05 : « Non noté » honnête et neutre (ni bon ni mauvais), corrige le bug trompeur « 50/unknown » ; REG-04 `scanDisclaimer` conservé hors conditionnel (non contournable) ; i18n santé cohérent FR/AR/EN.
+
+### Note — modifs pré-session bundlées
+Les fichiers `add-sheet.tsx` et `groceries-screen.tsx` portaient des modifications **non commitées présentes au démarrage de session** (non écrites par cette session) : (a) i18n du verdict via `t()` dans add-sheet ; (b) `riskProductsCount` basé sur la classification `normalizeAdditive().risk` (high/moderate) au lieu d'une liste figée. Les deux gates les ont auditées (CONFORME/OK) ; elles sont commitées avec P1-7 frontend car indissociables des mêmes fichiers/zones.

@@ -904,10 +904,26 @@ function ScannerModal({
                   </div>
                 )}
                 <div>
-                  <p className="text-[15px] font-semibold text-foreground">{scannedProduct.verdict}</p>
-                  <p className="text-[12px] text-muted-foreground">
-                    {scannedProduct.score}/100 · {(scannedProduct.additives ?? []).length} {t("additiveCount")}
-                  </p>
+                  {scannedProduct.score === null ? (
+                    <>
+                      {/* P1-7 — « non noté » : aucune donnée exploitable, ton neutre (pas de score, pas de couleur risque). */}
+                      <p className="text-[15px] font-semibold text-muted-foreground">{t("notRated")}</p>
+                      <p className="text-[12px] text-muted-foreground">
+                        {t("notRatedHint")} · {(scannedProduct.additives ?? []).length} {t("additiveCount")}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-[15px] font-semibold text-foreground">
+                        {scannedProduct.verdict === "Excellent" ? t("excellent")
+                          : scannedProduct.verdict === "Mauvais" ? t("bad")
+                          : t("mediocre")}
+                      </p>
+                      <p className="text-[12px] text-muted-foreground">
+                        {scannedProduct.score}/100 · {(scannedProduct.additives ?? []).length} {t("additiveCount")}
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
 

@@ -213,6 +213,7 @@ function mapScannedProduct(
     nutriScore: raw.nutri_score ? (raw.nutri_score.toUpperCase() as "A" | "B" | "C" | "D" | "E") : null,
     score: raw.score,
     verdict: raw.verdict,
+    nutriScoreSource: raw.nutriscore_source, // P1-7 — non noté = "non_note"
     additives: raw.additives,
     timesThisMonth: raw.times_this_month ?? 1,
     sucres: raw.sucres,

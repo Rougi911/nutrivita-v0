@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { OfflineBanner } from "@/components/nutrivita/offline-banner"
 import { cn } from "@/lib/utils"
 import type { ScannedProduct } from "@/lib/types"
-import { additiveCode, normalizeAdditive, additiveRiskColor } from "@/lib/additives-format"
+import { normalizeAdditive, additiveRiskColor } from "@/lib/additives-format"
 import { toast } from "sonner"
 
 function NutriScoreBadge({ score }: { score: "A" | "B" | "C" | "D" | "E" | null }) {
@@ -38,12 +38,15 @@ function ProductCard({ product, onDelete }: { product: ScannedProduct; onDelete?
   const { t } = useApp()
   const [imgFailed, setImgFailed] = useState(false)
 
+  // P1-7 — « non noté » (verdict null) : ton neutre muted, surtout PAS amber/risk.
   const verdictStyle =
     product.verdict === "Excellent"
       ? { bg: "var(--badge-positive-bg)", color: "var(--badge-positive)" }
       : product.verdict === "Mauvais"
       ? { bg: "var(--risk-bg)", color: "var(--risk)" }
-      : { bg: "var(--amber-bg)", color: "var(--amber)" }
+      : product.verdict === "Médiocre"
+      ? { bg: "var(--amber-bg)", color: "var(--amber)" }
+      : { bg: "var(--muted)", color: "var(--muted-foreground)" }
 
   const avatar = product.imageUrl && !imgFailed
     ? (
@@ -73,7 +76,8 @@ function ProductCard({ product, onDelete }: { product: ScannedProduct; onDelete?
             style={{ backgroundColor: verdictStyle.bg, color: verdictStyle.color }}
           >
             {product.verdict === "Excellent" ? t("excellent") :
-             product.verdict === "Mauvais"   ? t("bad")       : t("mediocre")}
+             product.verdict === "Mauvais"   ? t("bad")       :
+             product.verdict === "Médiocre"  ? t("mediocre")  : t("notRated")}
           </span>
           {product.additives.slice(0, 3).map((a) => {
             const { code, name, risk } = normalizeAdditive(a)
@@ -148,14 +152,18 @@ export function GroceriesScreen() {
 
   const stats = getMonthlyScannedStats(scannedProducts)
 
+  // Produits contenant au moins un additif classé high/moderate (basé sur la classification, pas une liste figée)
   const riskProductsCount = scannedProducts.filter(
-    (p) => p.additives.some((a) =>
-      ["E150D", "E471", "E250", "E338", "E476"].includes(additiveCode(a).toUpperCase())
-    )
+    (p) => p.additives.some((a) => {
+      const r = normalizeAdditive(a).risk
+      return r === "high" || r === "moderate"
+    })
   ).length
 
-  // Sort: worst first
-  const sorted = [...scannedProducts].sort((a, b) => a.score - b.score)
+  // Sort: worst first. P1-7 — « non noté » (score null) en fin de liste (ni bon ni mauvais).
+  const sorted = [...scannedProducts].sort(
+    (a, b) => (a.score ?? Infinity) - (b.score ?? Infinity)
+  )
 
   useEffect(() => {
     setLoadingStats(true)
