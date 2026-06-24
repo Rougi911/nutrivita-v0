@@ -12,6 +12,7 @@ import type {
   ApiAdditivesStats,
   ApiScannedProductsResponse,
   ApiScannedProduct,
+  ApiCompositionResult,
 } from "@/lib/api-types"
 import type {
   MealEntry,
@@ -20,6 +21,7 @@ import type {
   ActivityEntry,
   ScannedProduct,
   FoodItem,
+  AdditiveRef,
 } from "@/lib/types"
 import { getToken } from "@/lib/auth"
 
@@ -324,6 +326,63 @@ export async function scanLabelImage(base64: string): Promise<ApiLabelScanResult
     sel:       n("sel", "salt", "sodium"),
     fibres:    n("fibres", "fiber", "fibre", "dietary_fiber"),
   }
+}
+
+/** Résultat S6 mappé camelCase pour l'écran de confirmation composition. */
+export interface CompositionResult {
+  source: string
+  productName: string | null
+  /** null = valeur non lue (REG : ne jamais afficher 0 à la place d'une donnée inconnue). */
+  per100g: {
+    kcal: number | null
+    glucides: number | null
+    sucres: number | null
+    proteines: number | null
+    lipides: number | null
+    satures: number | null
+    fibres: number | null
+    sel: number | null
+  }
+  additives: AdditiveRef[]
+  servingG: number | null
+  confidence: number
+  needsConfirmation: boolean
+  warnings: string[]
+}
+
+/** Mapper pur ApiCompositionResult → CompositionResult (exporté pour les tests S6). */
+export function mapCompositionResult(raw: ApiCompositionResult): CompositionResult {
+  const p = raw.per_100g ?? ({} as ApiCompositionResult["per_100g"])
+  const n = (v: number | null | undefined): number | null =>
+    typeof v === "number" && Number.isFinite(v) ? v : null
+  return {
+    source: raw.source ?? "gemini_label",
+    productName: raw.product_name ?? null,
+    per100g: {
+      kcal:      n(p.kcal),
+      glucides:  n(p.glucides),
+      sucres:    n(p.dont_sucres),
+      proteines: n(p.proteines),
+      lipides:   n(p.lipides),
+      satures:   n(p.dont_satures),
+      fibres:    n(p.fibres),
+      sel:       n(p.sel),
+    },
+    additives: Array.isArray(raw.additives) ? raw.additives : [],
+    servingG: n(raw.serving_g),
+    confidence: typeof raw.confidence === "number" ? raw.confidence : 0,
+    needsConfirmation: raw.needs_confirmation !== false, // défaut prudent : confirmer
+    warnings: Array.isArray(raw.warnings) ? raw.warnings : [],
+  }
+}
+
+/** POST /api/scan/composition (S5/S6) — extraction tableau nutritionnel + additifs. */
+export async function scanCompositionImage(base64: string): Promise<CompositionResult> {
+  const raw = await apiFetch<ApiCompositionResult>("/api/scan/composition", {
+    method: "POST",
+    body: JSON.stringify({ image: base64 }),
+  })
+  return mapCompositionResult(raw)
 }
 
 export async function searchFoods(q: string): Promise<FoodItem[]> {

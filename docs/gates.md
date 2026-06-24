@@ -484,3 +484,15 @@ Les fichiers `add-sheet.tsx` et `groceries-screen.tsx` portaient des modificatio
 **Verdict tests :** GO — 172/172 tests verts
 **Verdict revue-code :** GO (CONFORME) — effet sans fuite (cleanup `clearTimeout`), reset propre via `finally`, deps `[scanning]` correctes, design system OK (text-[12px] ≥ 11px, muted). 1 MINEUR cosmétique non bloquant (garde `scanning && scanSlow` redondante).
 **Verdict réglementaire :** GO — texte technique neutre, aucun disclaimer touché (REG-04), aucune formulation REG-05, aucun impact RGPD/HDS/18-07 (timer local client).
+
+---
+
+## Gate S6 (frontend) — 2026-06-25 — Écran de confirmation composition étiquette
+
+**Session :** feat(S6 front) — écran de confirmation de composition après photo d'étiquette d'un produit au code-barres inconnu. Le backend S5 (`services/compositionParser.js` + `POST /api/scan/composition`, `fe0a45f`) est déjà fait ; ici on branche le flux frontend (v0design).
+**Contrat backend :** `POST /api/scan/composition` → `{ source, product_name, per_100g:{kcal,glucides,dont_sucres,proteines,lipides,dont_satures,fibres,sel}, additives:[{code,name,risk}], serving_g, confidence, needs_confirmation, warnings, disclaimer:{fr,ar,en} }`.
+**Fichiers :** `lib/api-types.ts` (`ApiCompositionResult`), `lib/api.ts` (`mapCompositionResult` pur + `scanCompositionImage`), `lib/types.ts` (4 clés i18n FR/AR/EN, AR `\uXXXX`), `components/nutrivita/add-sheet.tsx` (remplace le step `label-confirm` par `composition-confirm` : champs nutritionnels ÉDITABLES, additifs en pastilles par risque, bandeau `bg-muted/40`+ambre si `needs_confirmation`/`warnings`, disclaimer REG-05 non contournable), `lib/__tests__/s6-composition.test.ts` (5 TU).
+**Verdict build :** GO — `npm run build` OK · `npx tsc --noEmit` 0 erreur
+**Verdict tests :** GO — 177/177 (5 nouveaux TU-S6-FE)
+**Verdict revue-code :** GO (CONFORME) — SL-UI OK (lucide, pas d'émoji/gradient, ≥11px, rounded-2xl), SL-03 AR `\uXXXX` vérifié (aucun arabe brut), parité i18n FR/AR/EN, null jamais → 0 (kcal obligatoire), labels accessibles. 1 mineur corrigé (`var(--amber-bg)` non défini dans `app/globals.css` → bandeau passé en `bg-muted/40`, pattern REG existant). Mineurs différés : `confidence`/`warnings[]` non exploités côté UI (non bloquant).
+**Verdict réglementaire :** GO — REG-04/05 disclaimer non contournable en langue active, vocabulaire non clinique, additifs neutres sans dose, null préservé (pas de 0 inventé), SL-03 OK.

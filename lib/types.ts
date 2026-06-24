@@ -533,6 +533,12 @@ export const translations = {
     noEntriesYesterday: "Aucune entrée hier",
     analyzingBarcode: "Analyse du code-barres…",
 
+    // ─── Confirmation composition étiquette (S6) ───────────────────────────
+    compositionTitle: "Composition de l'étiquette",
+    compositionNeedsCheck: "Lecture incertaine — vérifiez et corrigez les valeurs avant d'enregistrer.",
+    compositionAdditivesLabel: "Additifs détectés",
+    compositionNoAdditives: "Aucun additif détecté",
+
     // ─── Radar vitamines & minéraux (REG-05) ───────────────────────────────
     vitaminMineralRadar: "Vitamines & Minéraux",
     improveIntake: "apports à améliorer",
@@ -883,6 +889,12 @@ export const translations = {
     noEntriesYesterday: "\u0644\u0627 \u062A\u0648\u062C\u062F \u0625\u062F\u062E\u0627\u0644\u0627\u062A \u0623\u0645\u0633",
     analyzingBarcode: "\u062C\u0627\u0631\u064A \u062A\u062D\u0644\u064A\u0644 \u0627\u0644\u0631\u0645\u0632 \u0627\u0644\u0634\u0631\u064A\u0637\u064A\u2026",
 
+    // \u2500\u2500\u2500 Confirmation composition (S6) \u2500\u2500\u2500
+    compositionTitle: "\u062A\u0631\u0643\u064A\u0628\u0629 \u0627\u0644\u0645\u0644\u0635\u0642",
+    compositionNeedsCheck: "\u0642\u0631\u0627\u0621\u0629 \u063A\u064A\u0631 \u0645\u0624\u0643\u062F\u0629 \u2014 \u062A\u062D\u0642\u0642 \u0645\u0646 \u0627\u0644\u0642\u064A\u0645 \u0648\u0635\u062D\u062D\u0647\u0627 \u0642\u0628\u0644 \u0627\u0644\u062D\u0641\u0638.",
+    compositionAdditivesLabel: "\u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A \u0627\u0644\u0645\u0643\u062A\u0634\u0641\u0629",
+    compositionNoAdditives: "\u0644\u0645 \u064A\u064F\u0643\u062A\u0634\u0641 \u0623\u064A \u0645\u0636\u0627\u0641",
+
     // \u2500\u2500\u2500 Radar vitamines & min\u00E9raux (REG-05) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
     vitaminMineralRadar: "\u0627\u0644\u0641\u064A\u062A\u0627\u0645\u064A\u0646\u0627\u062A \u0648\u0627\u0644\u0645\u0639\u0627\u062F\u0646",
     improveIntake: "\u064A\u062C\u0628 \u062A\u062D\u0633\u064A\u0646 \u0627\u0644\u0645\u062F\u062E\u0648\u0644\u0627\u062A",
@@ -1232,6 +1244,12 @@ export const translations = {
     portionDouble: "Double",
     noEntriesYesterday: "No entries yesterday",
     analyzingBarcode: "Analyzing barcode…",
+
+    // ─── Label composition confirmation (S6) ───────────────────────────────
+    compositionTitle: "Label composition",
+    compositionNeedsCheck: "Uncertain reading — check and correct the values before saving.",
+    compositionAdditivesLabel: "Detected additives",
+    compositionNoAdditives: "No additives detected",
 
     // ─── Vitamins & minerals radar (REG-05) ────────────────────────────────
     vitaminMineralRadar: "Vitamins & Minerals",

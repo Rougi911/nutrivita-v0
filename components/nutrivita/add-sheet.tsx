@@ -2,11 +2,11 @@
 
 import { useEffect, useState, useRef, useCallback } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { Camera, Loader2, Mic, ScanLine, Search, X, KeyboardIcon, ShoppingBag } from "lucide-react"
+import { Camera, Loader2, Mic, ScanLine, Search, X, KeyboardIcon, ShoppingBag, AlertTriangle } from "lucide-react"
 import { useApp } from "@/lib/app-context"
-import { interpretMedia, scanBarcode, scanLabelImage, ProductUnknownError, addJournalEntry } from "@/lib/api"
+import { interpretMedia, scanBarcode, scanCompositionImage, ProductUnknownError, addJournalEntry, type CompositionResult } from "@/lib/api"
 import { SAMPLE_FOODS, MEALS } from "@/lib/types"
-import type { ApiInterpretResponse, ApiLabelScanResult } from "@/lib/api-types"
+import type { ApiInterpretResponse } from "@/lib/api-types"
 import { inferMealTypeFromTime } from "@/lib/meal-utils"
 import type { MealType } from "@/lib/meal-utils"
 import { normalizeAdditive, additiveRiskColor } from "@/lib/additives-format"
@@ -538,8 +538,22 @@ type ScanStep =
   | "manual"            // saisie manuelle
   | "unknown"           // produit non trouvé — choix à faire
   | "label-processing"  // analyse Gemini en cours
-  | "label-confirm"     // valeurs extraites — confirmation avant ajout
+  | "composition-confirm" // S6 — composition extraite, champs éditables avant ajout
   | "product-confirm"   // fiche produit — confirmation après scan réussi
+
+// S6 — champs nutritionnels éditables de l'écran de confirmation composition.
+const COMPOSITION_FIELDS = [
+  { key: "kcal",      labelKey: "nutritionCalories" as const,    unit: "kcal" },
+  { key: "glucides",  labelKey: "carbs" as const,                unit: "g" },
+  { key: "sucres",    labelKey: "nutritionSugarsSub" as const,   unit: "g" },
+  { key: "proteines", labelKey: "protein" as const,              unit: "g" },
+  { key: "lipides",   labelKey: "fat" as const,                  unit: "g" },
+  { key: "satures",   labelKey: "nutritionSaturatedSub" as const,unit: "g" },
+  { key: "sel",       labelKey: "salt" as const,                 unit: "g" },
+  { key: "fibres",    labelKey: "nutritionFiber" as const,       unit: "g" },
+] as const
+
+type CompositionFieldKey = (typeof COMPOSITION_FIELDS)[number]["key"]
 
 function nutriScoreColor(score: "A" | "B" | "C" | "D" | "E" | null): string {
   switch (String(score ?? "").toUpperCase()) {
@@ -569,8 +583,12 @@ function ScannerModal({
   const [error, setError] = useState<string | null>(null)
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [unknownBarcode, setUnknownBarcode] = useState("")
-  const [labelResult, setLabelResult] = useState<ApiLabelScanResult | null>(null)
-  const [labelName, setLabelName] = useState("")
+  // S6 — résultat composition + champs éditables (clé → valeur saisie, "" = inconnu)
+  const [compResult, setCompResult] = useState<CompositionResult | null>(null)
+  const [compName, setCompName] = useState("")
+  const [compEdits, setCompEdits] = useState<Record<CompositionFieldKey, string>>(
+    () => Object.fromEntries(COMPOSITION_FIELDS.map((f) => [f.key, ""])) as Record<CompositionFieldKey, string>
+  )
   const [scannedProduct, setScannedProduct] = useState<import("@/lib/types").ScannedProduct | null>(null)
   const [productImgFailed, setProductImgFailed] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -610,7 +628,13 @@ function ScannerModal({
     return () => clearTimeout(id)
   }, [scanning])
 
-  const handleLabelPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // S6 — parse une valeur saisie (FR virgule ou EN point) → nombre ou null (jamais 0 par défaut).
+  const parseField = (k: CompositionFieldKey): number | null => {
+    const v = parseFloat((compEdits[k] ?? "").replace(",", "."))
+    return Number.isFinite(v) && v >= 0 ? v : null
+  }
+
+  const handleCompositionPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     setStep("label-processing")
@@ -621,12 +645,21 @@ function ScannerModal({
         reader.onerror = reject
         reader.readAsDataURL(file)
       })
-      const result = await scanLabelImage(base64)
-      setLabelResult(result)
-      setLabelName(t("unknownFoodName"))
-      setStep("label-confirm")
+      const result = await scanCompositionImage(base64)
+      setCompResult(result)
+      setCompName(result.productName ?? "")
+      // Pré-remplit les champs éditables ; null reste "" (REG : pas de 0 inventé).
+      setCompEdits(
+        Object.fromEntries(
+          COMPOSITION_FIELDS.map((f) => {
+            const v = result.per100g[f.key]
+            return [f.key, v === null ? "" : String(v)]
+          })
+        ) as Record<CompositionFieldKey, string>
+      )
+      setStep("composition-confirm")
     } catch (err) {
-      console.error("[ScannerModal] /api/scan/label failed:", err)
+      console.error("[ScannerModal] /api/scan/composition failed:", err)
       setError(t("errorLoading"))
       setStep("unknown")
     } finally {
@@ -634,19 +667,23 @@ function ScannerModal({
     }
   }
 
-  const handleLabelConfirm = () => {
-    if (!labelResult || labelResult.kcal === null) return
+  const handleCompositionConfirm = () => {
+    const kcal = parseField("kcal")
+    if (kcal === null) return // kcal obligatoire — REG : ne pas stocker 0 à la place d'une valeur inconnue
     const foodId = `label-${Date.now()}`
+    const fibres = parseField("fibres")
+    const sucres = parseField("sucres")
     const food = {
       id: foodId,
-      name: labelName || t("unknownFoodName"),
-      nameEn: labelName || t("unknownFoodName"),
+      name: compName || t("unknownFoodName"),
+      nameEn: compName || t("unknownFoodName"),
       cuisine: "International",
-      calories: labelResult.kcal,
-      protein: labelResult.proteines ?? 0,
-      carbs: labelResult.glucides ?? 0,
-      fat: labelResult.lipides ?? 0,
-      fiber: labelResult.fibres ?? undefined,
+      calories: kcal,
+      protein: parseField("proteines") ?? 0,
+      carbs: parseField("glucides") ?? 0,
+      fat: parseField("lipides") ?? 0,
+      fiber: fibres ?? undefined,
+      sugar: sucres ?? undefined,
       source: "estimated" as const,
     }
     const entry = { foodId, food, amount: 100, mealType: inferMealTypeFromTime(), date: currentDate }
@@ -654,7 +691,7 @@ function ScannerModal({
     // Sync to backend — estimated foods may not be in products DB yet; error is non-blocking
     addJournalEntry(entry)
       .then((backendEntry) => { updateMealEntryId(localId, backendEntry.id) })
-      .catch((err) => { console.error("[ScannerModal] addJournalEntry (label) sync failed:", err) })
+      .catch((err) => { console.error("[ScannerModal] addJournalEntry (composition) sync failed:", err) })
     onClose()
   }
 
@@ -829,7 +866,7 @@ function ScannerModal({
                 accept="image/*"
                 capture="environment"
                 className="hidden"
-                onChange={handleLabelPhoto}
+                onChange={handleCompositionPhoto}
               />
             </div>
           )}
@@ -842,45 +879,92 @@ function ScannerModal({
             </div>
           )}
 
-          {/* ── Confirmation valeurs étiquette ── */}
-          {step === "label-confirm" && labelResult && (
-            <div className="w-full max-w-sm space-y-4">
-              <p className="text-[15px] font-semibold text-foreground">{t("labelExtracted")}</p>
-              <p className="text-[11px] text-muted-foreground">{labelResult.source}</p>
+          {/* ── Confirmation composition (S6) — champs éditables, OCR faillible ── */}
+          {step === "composition-confirm" && compResult && (
+            <div className="w-full max-w-sm space-y-4 overflow-y-auto max-h-full py-4">
+              <div>
+                <p className="text-[15px] font-semibold text-foreground">{t("compositionTitle")}</p>
+                <p className="text-[11px] text-muted-foreground">{t("labelExtracted")}</p>
+              </div>
+
+              {/* Bandeau si lecture incertaine (needs_confirmation ou warnings) */}
+              {(compResult.needsConfirmation || compResult.warnings.length > 0) && (
+                <div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-muted/40">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "var(--amber)" }} />
+                  <p className="text-[12px] leading-snug" style={{ color: "var(--amber)" }}>
+                    {t("compositionNeedsCheck")}
+                  </p>
+                </div>
+              )}
+
               <Input
                 placeholder={t("productNamePlaceholder")}
-                value={labelName}
-                onChange={(e) => setLabelName(e.target.value)}
+                value={compName}
+                onChange={(e) => setCompName(e.target.value)}
                 className="h-11 rounded-xl"
               />
-              <div className="rounded-2xl border border-border bg-card p-4 space-y-2">
-                {([
-                  { labelKey: "nutritionCalories" as const, value: labelResult.kcal, unit: "kcal" },
-                  { labelKey: "carbs" as const, value: labelResult.glucides, unit: "g" },
-                  { labelKey: "nutritionSugarsSub" as const, value: labelResult.sucres, unit: "g" },
-                  { labelKey: "protein" as const, value: labelResult.proteines, unit: "g" },
-                  { labelKey: "fat" as const, value: labelResult.lipides, unit: "g" },
-                  { labelKey: "nutritionSaturatedSub" as const, value: labelResult.satures, unit: "g" },
-                  { labelKey: "salt" as const, value: labelResult.sel, unit: "g" },
-                  { labelKey: "nutritionFiber" as const, value: labelResult.fibres, unit: "g" },
-                ] as const).map(({ labelKey, value, unit }) => (
-                  <div key={labelKey} className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">{t(labelKey)}</span>
-                    <span className="font-medium text-foreground">
-                      {value !== null && value !== undefined ? `${value} ${unit}` : "—"}
-                    </span>
+
+              {/* Champs nutritionnels éditables — null/"" = à compléter (jamais 0 inventé) */}
+              <div className="rounded-2xl border border-border bg-card p-4 space-y-2.5">
+                {COMPOSITION_FIELDS.map(({ key, labelKey, unit }) => (
+                  <div key={key} className="flex items-center justify-between gap-3">
+                    <label htmlFor={`comp-${key}`} className="text-[13px] text-muted-foreground">
+                      {t(labelKey)}
+                    </label>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Input
+                        id={`comp-${key}`}
+                        type="text"
+                        inputMode="decimal"
+                        value={compEdits[key]}
+                        onChange={(e) =>
+                          setCompEdits((prev) => ({ ...prev, [key]: e.target.value }))
+                        }
+                        className="h-9 w-20 rounded-lg text-right text-[13px]"
+                      />
+                      <span className="text-[12px] text-muted-foreground w-8">{unit}</span>
+                    </div>
                   </div>
                 ))}
               </div>
+
+              {/* Additifs détectés — pastilles colorées par risque */}
+              <div className="space-y-1.5">
+                <p className="text-[12px] font-medium text-foreground">{t("compositionAdditivesLabel")}</p>
+                {compResult.additives.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {compResult.additives.map((a) => {
+                      const { code, name, risk } = normalizeAdditive(a)
+                      if (!code) return null
+                      const color = additiveRiskColor(risk)
+                      return (
+                        <span
+                          key={code}
+                          className="text-[11px] px-2 py-0.5 rounded-full border"
+                          style={{ color, borderColor: color, backgroundColor: `${color}18` }}
+                        >
+                          {name ?? code}
+                        </span>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-[12px] text-muted-foreground">{t("compositionNoAdditives")}</p>
+                )}
+              </div>
+
+              {/* Disclaimer REG-05 (langue active) */}
+              <p className="text-[11px] text-muted-foreground leading-snug">{t("scanDisclaimer")}</p>
+
               <div className="flex gap-3">
                 <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setStep("unknown")}>
                   {t("cancel")}
                 </Button>
-                {/* Disabled si kcal null — REG : ne pas stocker 0 à la place d'une valeur inconnue */}
+                {/* Disabled si kcal vide/invalide — REG : ne pas stocker 0 à la place d'une valeur inconnue */}
                 <Button
                   className="flex-1 rounded-xl"
-                  disabled={labelResult.kcal === null}
-                  onClick={handleLabelConfirm}
+                  disabled={parseField("kcal") === null}
+                  onClick={handleCompositionConfirm}
                 >
                   {t("addToJournal")}
                 </Button>

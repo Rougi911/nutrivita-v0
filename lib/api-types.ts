@@ -187,6 +187,32 @@ export interface ApiLabelScanResult {
   fibres: number | null
 }
 
+/** Résultat d'extraction de composition (POST /api/scan/composition — S5/S6).
+ *  Tableau nutritionnel + liste d'ingrédients → nutriments + additifs classés.
+ *  Toute valeur absente = null (REG : jamais 0 par défaut). */
+export interface ApiCompositionResult {
+  /** "gemini_label" — REG : source obligatoire */
+  source: string
+  product_name: string | null
+  per_100g: {
+    kcal: number | null
+    glucides: number | null
+    dont_sucres: number | null
+    proteines: number | null
+    lipides: number | null
+    dont_satures: number | null
+    fibres: number | null
+    sel: number | null
+  }
+  additives: { code: string; name?: string; risk?: "high" | "moderate" | "low" | "unknown" | null }[]
+  serving_g: number | null
+  confidence: number
+  /** true = OCR incertain (incohérence ou extraction trop maigre) → confirmation appuyée */
+  needs_confirmation: boolean
+  warnings: string[]
+  disclaimer: { fr: string; ar: string; en: string }
+}
+
 /** GET /api/stats/additives — AL-S4 exposition additifs (REG-05) */
 export interface ApiAdditivesStatsItem {
   code: string
