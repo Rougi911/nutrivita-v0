@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { motion } from "framer-motion"
-import { Search, ScanBarcode, Camera, Plus, Star } from "lucide-react"
+import { Search, ScanBarcode, Camera, Star } from "lucide-react"
 import { useApp } from "@/lib/app-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,7 +10,7 @@ import { SAMPLE_FOODS, type FoodItem } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 export function MealsScreen() {
-  const { t, isRTL, setShowFoodSearch, setSelectedMealType } = useApp()
+  const { t, isRTL, setShowFoodSearch, setSelectedMealType, setShowAddSheet } = useApp()
   const [searchQuery, setSearchQuery] = useState("")
   const [activeFilter, setActiveFilter] = useState("all")
 
@@ -69,19 +69,25 @@ export function MealsScreen() {
           />
         </div>
 
-        {/* Quick actions */}
+        {/* Quick actions — P1-6 : Photo/Scanner ouvrent la feuille d'ajout unifiée
+           (qui contient détection photo + scan code-barres). « Créer plat » retiré
+           tant que l'écran de composition de plat personnalisé n'existe pas. */}
         <div className="flex gap-2">
-          <Button variant="outline" className="flex-1 gap-2 rounded-xl h-11">
+          <Button
+            variant="outline"
+            className="flex-1 gap-2 rounded-xl h-11"
+            onClick={() => setShowAddSheet(true)}
+          >
             <Camera className="h-4 w-4" />
-            Photo
+            {t("photo")}
           </Button>
-          <Button variant="outline" className="flex-1 gap-2 rounded-xl h-11">
+          <Button
+            variant="outline"
+            className="flex-1 gap-2 rounded-xl h-11"
+            onClick={() => setShowAddSheet(true)}
+          >
             <ScanBarcode className="h-4 w-4" />
-            Scanner CB
-          </Button>
-          <Button className="flex-1 gap-2 rounded-xl h-11">
-            <Plus className="h-4 w-4" />
-            Créer plat
+            {t("scanner")}
           </Button>
         </div>
       </div>

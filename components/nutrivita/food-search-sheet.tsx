@@ -10,7 +10,6 @@ import {
   Mic,
   Plus,
   Star,
-  Heart,
   Minus,
   Loader2,
 } from "lucide-react"
@@ -330,14 +329,7 @@ export function FoodSearchSheet() {
                       {selectedFood.cuisine}
                     </p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="ml-auto"
-                    onClick={() => {}}
-                  >
-                    <Heart className="h-5 w-5" />
-                  </Button>
+                  {/* P1-6 : bouton favori retiré (favoris non persistés côté backend). */}
                 </div>
 
                 {/* Nutrition ring preview */}

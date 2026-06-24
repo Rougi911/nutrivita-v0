@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { AlertTriangle, ArrowLeft, Mic, Plus, Upload } from "lucide-react"
+import { AlertTriangle, ArrowLeft, Mic, Plus } from "lucide-react"
 import {
   ScatterChart,
   Scatter,
@@ -423,11 +423,8 @@ export function GlucoseScreen({ onBack }: GlucoseScreenProps) {
               </div>
             )}
 
-            {/* Import button */}
-            <Button variant="outline" className="w-full gap-2 rounded-xl">
-              <Upload className="h-4 w-4" />
-              {t("importCsv")}
-            </Button>
+            {/* P1-6 : bouton « Importer LibreView » retiré tant que l'import CSV
+                n'est pas branché côté frontend (parser à venir avec l'intégration). */}
           </>
         )}
       </div>

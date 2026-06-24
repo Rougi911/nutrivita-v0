@@ -8,7 +8,6 @@ import {
   ChevronRight,
   Download,
   LogOut,
-  Star,
   Trash2,
   X,
 } from "lucide-react"
@@ -325,16 +324,18 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
         {/* Integrations */}
         <SettingsGroup title={t("integrations")}>
           <IntegrationRow name="Strava"       status="connected"    email={user.email} />
-          <IntegrationRow name="LibreView"    status="disconnected" actionLabel={t("importCsv")} />
+          <IntegrationRow name="LibreView"    status="disconnected" />
           <IntegrationRow name="Apple Health" status="unavailable" />
         </SettingsGroup>
 
         {/* About */}
         <SettingsGroup title={t("about")}>
           <div className="px-4 py-2 text-[12px] text-muted-foreground">NutriVita v1.0.0 · nutrivita.fr</div>
+          {/* Politique de confidentialité + Mentions légales conservées (points
+              d'accès RGPD obligatoires) — contenu réel à brancher ultérieurement.
+              P1-6 : « Évaluer l'app » retiré (aucun lien store disponible). */}
           <SettingsRow label={t("privacyPolicy")} arrow />
           <SettingsRow label={t("legalNotice")} arrow />
-          <SettingsRow label={t("rateApp")} icon={<Star className="h-4 w-4 text-muted-foreground" />} />
         </SettingsGroup>
 
         {/* Déconnexion */}
@@ -526,12 +527,10 @@ function IntegrationRow({
   name,
   status,
   email,
-  actionLabel,
 }: {
   name: string
   status: "connected" | "disconnected" | "unavailable"
   email?: string
-  actionLabel?: string
 }) {
   const { t } = useApp()
   return (
@@ -540,18 +539,17 @@ function IntegrationRow({
         <span className="text-[14px] font-medium text-foreground">{name}</span>
         {email && <p className="text-[12px] text-muted-foreground">{email}</p>}
       </div>
+      {/* P1-6 : actions d'intégration (Déco./Connecter) retirées tant que le flux
+          OAuth/import n'est pas branché — on n'affiche que le statut. */}
       <div className="flex items-center gap-2">
         {status === "connected" && (
-          <>
-            <span className="flex items-center gap-1 text-[12px]" style={{ color: "var(--primary)" }}>
-              <Check className="h-3 w-3" />
-              {t("connected")}
-            </span>
-            <Button variant="ghost" size="sm" className="text-[12px]">{t("disconnect")}</Button>
-          </>
+          <span className="flex items-center gap-1 text-[12px]" style={{ color: "var(--primary)" }}>
+            <Check className="h-3 w-3" />
+            {t("connected")}
+          </span>
         )}
         {status === "disconnected" && (
-          <Button variant="outline" size="sm" className="text-[12px] rounded-lg">{actionLabel ?? "Connecter"}</Button>
+          <span className="text-[12px] text-muted-foreground">{t("notConnected")}</span>
         )}
         {status === "unavailable" && (
           <span className="text-[12px] text-muted-foreground">{t("notAvailable")}</span>

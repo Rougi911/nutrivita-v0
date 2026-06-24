@@ -435,3 +435,25 @@ Rejouer S1-S6 en conditions réelles (extension Chrome + Ctrl+Shift+R) avant de 
 
 ### Note (INFO, non bloquant)
 - Flash LTR→RTL possible au 1er paint si un utilisateur arabe recharge (l'effet client s'exécute après hydratation). Acceptable pour P1-5 ; à traiter si un rendu RTL sans flash devient une exigence.
+
+---
+
+## Gate P1-6 — 2026-06-24 — Boutons sans action (brancher ou masquer)
+
+**Session :** fix(P1-6) — neutralisation des boutons morts. Stratégie validée PO : brancher si flux existant, sinon masquer (retrait du DOM).
+**Fichiers :** `meals-screen.tsx`, `food-search-sheet.tsx`, `glucose-screen.tsx`, `settings-screen.tsx`
+**Décisions :**
+- Meals : « Photo » + « Scanner CB » → `setShowAddSheet(true)` (l'AddSheet contient détection photo + scan CB) ; libellés via `t("photo")`/`t("scanner")`. « Créer plat » retiré (pas d'écran de composition).
+- Food search : bouton favori (cœur) retiré (favoris non persistés backend).
+- Glycémie : bouton « Importer LibreView » retiré (pas de parser CSV front).
+- Réglages : `IntegrationRow` — boutons d'action morts (Déco./Connecter/Importer) → statut texte (`connected`/`notConnected`/`notAvailable`), prop `actionLabel` supprimée. About : « Évaluer l'app » retiré. **« Politique de confidentialité » + « Mentions légales » CONSERVÉES** (points d'accès RGPD).
+- Imports inutilisés retirés (`Plus`, `Heart`, `Upload`, `Star`).
+**Verdict build :** GO — `npx tsc --noEmit` 0 erreur TypeScript
+**Verdict tests :** GO — 172/172 tests verts (20 suites)
+**Verdict revue-code :** GO (CONFORME) — plus aucun `onClick={() => {}}` ni bouton sans handler ; imports orphelins retirés ; câblage AddSheet cohérent ; design system OK. Aucun BLOQUANT/MAJEUR.
+**Verdict réglementaire :** GO — points d'accès RGPD (privacy/legal) + droits REG-02 (export/suppression) intacts, disclaimers glycémie REG-04 intacts, aucune formulation REG-05 introduite.
+
+### Réserves (non bloquantes, à tracer)
+- `privacyPolicy`/`legalNotice` restent des rows sans `onClick` (contenu réel à brancher avant prod publique — exigence RGPD + loi DZ 18-07).
+- Clés i18n désormais orphelines : `importCsv`, `rateApp` (nettoyage optionnel).
+- Pré-existant hors P1-6 : émojis + FR en dur dans `meals-screen.tsx` (`cuisineFilters`, « Base de données »).
