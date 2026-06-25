@@ -73,6 +73,8 @@ export interface MealEntry {
   mealType: "breakfast" | "lunch" | "snack" | "dinner"
   date: string // YYYY-MM-DD
   createdAt: string
+  /** S15 — id de l'entrée parente si cette entrée est une sauce/condiment rattaché. */
+  parentId?: string
 }
 
 export interface DailyLog {
@@ -583,6 +585,13 @@ export const translations = {
     sportCyclingIntense: "Vélo intensif",
     sportJumpRope: "Corde à sauter",
 
+    // ─── Édition repas + sauces (S15) ──────────────────────────────────────
+    quantityG: "Quantité (g)",
+    addSauce: "Ajouter une sauce",
+    condimentSearch: "Rechercher une sauce ou un condiment",
+    save: "Enregistrer",
+    commonCondiments: "Condiments courants",
+
     // ─── Radar vitamines & minéraux (REG-05) ───────────────────────────────
     vitaminMineralRadar: "Vitamines & Minéraux",
     improveIntake: "apports à améliorer",
@@ -975,6 +984,13 @@ export const translations = {
     sportCyclingIntense: "\u062f\u0631\u0627\u062c\u0629 \u0645\u0643\u062b\u0651\u0641\u0629",
     sportJumpRope: "\u0646\u0637\u0651 \u0627\u0644\u062d\u0628\u0644",
 
+    // \u2500\u2500\u2500 \u00c9dition repas + sauces (S15) \u2500\u2500\u2500
+    quantityG: "\u0627\u0644\u0643\u0645\u064a\u0629 (\u063a)",
+    addSauce: "\u0625\u0636\u0627\u0641\u0629 \u0635\u0644\u0635\u0629",
+    condimentSearch: "\u0627\u0628\u062d\u062b \u0639\u0646 \u0635\u0644\u0635\u0629 \u0623\u0648 \u0645\u064f\u062a\u0628\u0651\u0644",
+    save: "\u062d\u0641\u0638",
+    commonCondiments: "\u0645\u062a\u0628\u0651\u0644\u0627\u062a \u0634\u0627\u0626\u0639\u0629",
+
     // \u2500\u2500\u2500 Radar vitamines & min\u00E9raux (REG-05) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
     vitaminMineralRadar: "\u0627\u0644\u0641\u064A\u062A\u0627\u0645\u064A\u0646\u0627\u062A \u0648\u0627\u0644\u0645\u0639\u0627\u062F\u0646",
     improveIntake: "\u064A\u062C\u0628 \u062A\u062D\u0633\u064A\u0646 \u0627\u0644\u0645\u062F\u062E\u0648\u0644\u0627\u062A",
@@ -1366,6 +1382,13 @@ export const translations = {
     sportSwimFast: "Fast swimming",
     sportCyclingIntense: "Intense cycling",
     sportJumpRope: "Jump rope",
+
+    // ─── Meal editing + sauces (S15) ───────────────────────────────────────
+    quantityG: "Quantity (g)",
+    addSauce: "Add a sauce",
+    condimentSearch: "Search a sauce or condiment",
+    save: "Save",
+    commonCondiments: "Common condiments",
 
     // ─── Vitamins & minerals radar (REG-05) ────────────────────────────────
     vitaminMineralRadar: "Vitamins & Minerals",

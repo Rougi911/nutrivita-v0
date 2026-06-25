@@ -57,6 +57,7 @@ interface AppContextType {
   mealEntries: MealEntry[]
   addMealEntry: (entry: Omit<MealEntry, "id" | "createdAt">) => string
   updateMealEntryId: (localId: string, backendId: string) => void
+  updateMealEntryAmount: (id: string, amount: number) => void
   removeMealEntry: (id: string) => void
   clearJournal: () => void
 
@@ -322,6 +323,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setMealEntries((prev) => prev.map((m) => m.id === localId ? { ...m, id: backendId } : m))
   }
 
+  // S15 — mise à jour optimiste de la quantité (recalcul kcal/macros = food/100g × amount, dérivé)
+  const updateMealEntryAmount = (id: string, amount: number) => {
+    setMealEntries((prev) => prev.map((m) => m.id === id ? { ...m, amount } : m))
+  }
+
   const removeMealEntry = (id: string) => setMealEntries((prev) => prev.filter((m) => m.id !== id))
 
   const clearJournal = () => setMealEntries([])
@@ -423,6 +429,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         mealEntries,
         addMealEntry,
         updateMealEntryId,
+        updateMealEntryAmount,
         removeMealEntry,
         clearJournal,
         glucoseReadings,

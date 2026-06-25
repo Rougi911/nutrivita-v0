@@ -474,10 +474,12 @@ export async function getJournal(date: string): Promise<MealEntry[]> {
 }
 
 export async function addJournalEntry(
-  entry: Omit<MealEntry, "id" | "createdAt">
+  entry: Omit<MealEntry, "id" | "createdAt">,
+  parentEntryId?: string
 ): Promise<MealEntry> {
   // POST /api/journal returns a raw DB row (no nested food object) — don't call mapMealEntry.
   // Build MealEntry from the input data + backend UUID so callers can propagate the real id.
+  // parent_entry_id (S15) lie une sauce/condiment à l'aliment parent.
   const raw = await apiFetch<{ id: string }>("/api/journal", {
     method: "POST",
     body: JSON.stringify({
@@ -485,6 +487,7 @@ export async function addJournalEntry(
       amount: entry.amount,
       meal_type: entry.mealType,
       date: entry.date,
+      ...(parentEntryId ? { parent_entry_id: parentEntryId } : {}),
     }),
   })
   if (!raw.id || typeof raw.id !== "string") {
@@ -503,6 +506,25 @@ export async function addJournalEntry(
 
 export async function deleteJournalEntry(id: string): Promise<void> {
   await apiFetch<void>(`/api/journal/${id}`, { method: "DELETE" })
+}
+
+/** Totaux recalculés renvoyés par PATCH /api/journal/:id (déjà mis à l'échelle de la quantité). */
+export interface JournalPatchResult {
+  id: string
+  grams: number
+  kcal: number
+  glucides: number
+  proteines: number
+  lipides: number
+  fibres: number
+}
+
+/** PATCH /api/journal/:id (S15) — modifie la quantité ; le backend recalcule kcal/macros proportionnellement. */
+export async function updateJournalEntry(id: string, amount: number): Promise<JournalPatchResult> {
+  return apiFetch<JournalPatchResult>(`/api/journal/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ amount }),
+  })
 }
 
 export async function getWeightHistory(days: number): Promise<WeightEntry[]> {
