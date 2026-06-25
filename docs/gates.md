@@ -508,3 +508,15 @@ Les fichiers `add-sheet.tsx` et `groceries-screen.tsx` portaient des modificatio
 **Verdict tests :** GO — 183/183 (6 nouveaux TU-S12-FE)
 **Verdict revue-code :** GO (CONFORME) — SL-UI OK, SL-03 AR `\uXXXX` (0 arabe brut introduit), parité i18n FR/AR/EN, états chargement/vide/erreur + fallback image ShoppingBag, NutriScoreBadge extrait byte-identique (rendu inchangé), vocabulaire non clinique. Mineurs non bloquants alignés sur patterns projet (aria-label cancel, AnimatePresence interne, `t` en dep d'effet) — non corrigés.
 **Verdict réglementaire :** GO — REG-05 « alternatives plus saines / mieux notées » = comparatif Nutri-Score (info bien-être), aucun sain/malsain absolu, pas de conseil perso/dose/diagnostic ; disclaimer REG-05 inconditionnel en langue active ; minimisation REG-03 (live OFF, rien de persisté) ; SL-03 OK.
+
+---
+
+## Gate S14 (frontend) — 2026-06-25 — Répartition des repas en onglets
+
+**Session :** feat(S14 front) — l'accueil affiche les 4 repas du jour dans une carte unique à onglets (remplace les 4 MealSectionCard empilées). Frontend pur, aucun endpoint.
+**UI (maquette validée) :** barre d'onglets (picto lucide Coffee/Utensils/Cookie/Moon + libellé, actif teal) ; 2 colonnes centrées (liste aliments à gauche : nom+quantité / kcal+suppression ; anneau calorique à droite : kcal au centre, arcs P/G/L + légende grammes) ; bouton « Ajouter un aliment » ; état vide par repas ; recalcul à la bascule d'onglet.
+**Fichiers :** `lib/meal-macros.ts` (`computeMealTotals` + `macroArcSegments`, purs), `components/nutrivita/macro-ring.tsx` (anneau SVG multi-arcs, MACRO_COLORS tokens `--glucose`/`--amber`/`--lipids`), `components/nutrivita/meal-tabs-card.tsx`, `components/nutrivita/home-screen.tsx` (intègre MealTabsCard + nettoie imports/vars), `lib/types.ts` (3 clés i18n FR/AR/EN `\uXXXX`), `lib/__tests__/s14-meal-macros.test.ts` (6 TU).
+**Verdict build :** GO — `npm run build` OK · tsc 0 erreur
+**Verdict tests :** GO — 189/189 (6 nouveaux TU-S14)
+**Verdict revue-code :** GO (CONFORME) — SL-UI OK (lucide, pas d'émoji/gradient, teal, rounded-2xl, ≥11px), couleurs macros = tokens design system, SL-03 AR `\uXXXX` (0 arabe brut), parité i18n, état vide/recalcul/accessibilité (aria-pressed, aria-label) OK, suppression d'entrée non régressée, pas d'orphelin (MealSectionCard gardé pour journal-screen). 1 mineur `font-medium` (précédent établi ~20 composants, non bloquant). Crayon d'édition reporté à S15 (pas de bouton mort : suppression conservée).
+**Verdict réglementaire :** GO — REG-05 récap descriptif kcal/macros sans recommandation/objectif/diagnostic ; REG-04 aucun disclaimer régressé ; aucune donnée santé nouvelle (calculs mémoire depuis le journal) ; SL-03 OK ; REG-02/03/06/18-07 N.A.

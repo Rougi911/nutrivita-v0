@@ -549,6 +549,11 @@ export const translations = {
     compositionAdditivesLabel: "Additifs détectés",
     compositionNoAdditives: "Aucun additif détecté",
 
+    // ─── Onglets repas (S14) ───────────────────────────────────────────────
+    noFoodForMeal: "Aucun aliment pour ce repas",
+    addFoodItem: "Ajouter un aliment",
+    yes: "Oui",
+
     // ─── Radar vitamines & minéraux (REG-05) ───────────────────────────────
     vitaminMineralRadar: "Vitamines & Minéraux",
     improveIntake: "apports à améliorer",
@@ -907,6 +912,11 @@ export const translations = {
     compositionAdditivesLabel: "\u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062A \u0627\u0644\u0645\u0643\u062A\u0634\u0641\u0629",
     compositionNoAdditives: "\u0644\u0645 \u064A\u064F\u0643\u062A\u0634\u0641 \u0623\u064A \u0645\u0636\u0627\u0641",
 
+    // \u2500\u2500\u2500 Onglets repas (S14) \u2500\u2500\u2500
+    noFoodForMeal: "\u0644\u0627 \u064A\u0648\u062C\u062F \u0637\u0639\u0627\u0645 \u0644\u0647\u0630\u0647 \u0627\u0644\u0648\u062C\u0628\u0629",
+    addFoodItem: "\u0625\u0636\u0627\u0641\u0629 \u0637\u0639\u0627\u0645",
+    yes: "\u0646\u0639\u0645",
+
     // \u2500\u2500\u2500 Radar vitamines & min\u00E9raux (REG-05) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
     vitaminMineralRadar: "\u0627\u0644\u0641\u064A\u062A\u0627\u0645\u064A\u0646\u0627\u062A \u0648\u0627\u0644\u0645\u0639\u0627\u062F\u0646",
     improveIntake: "\u064A\u062C\u0628 \u062A\u062D\u0633\u064A\u0646 \u0627\u0644\u0645\u062F\u062E\u0648\u0644\u0627\u062A",
@@ -1264,6 +1274,11 @@ export const translations = {
     compositionNeedsCheck: "Uncertain reading — check and correct the values before saving.",
     compositionAdditivesLabel: "Detected additives",
     compositionNoAdditives: "No additives detected",
+
+    // ─── Meal tabs (S14) ───────────────────────────────────────────────────
+    noFoodForMeal: "No food for this meal",
+    addFoodItem: "Add a food",
+    yes: "Yes",
 
     // ─── Vitamins & minerals radar (REG-05) ────────────────────────────────
     vitaminMineralRadar: "Vitamins & Minerals",

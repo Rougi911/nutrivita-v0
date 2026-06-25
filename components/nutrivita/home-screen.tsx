@@ -3,9 +3,8 @@
 import { Settings, Droplets, Zap, ChevronRight, Activity } from "lucide-react"
 import { useApp } from "@/lib/app-context"
 import { CalorieRing } from "./calorie-ring"
-import { MealSectionCard } from "./meal-section-card"
-import { toGlucoseUnit, formatGlucose } from "@/lib/glucose-units"
-import { MEALS } from "@/lib/types"
+import { MealTabsCard } from "./meal-tabs-card"
+import { formatGlucose } from "@/lib/glucose-units"
 import { Skeleton } from "@/components/ui/skeleton"
 import { OfflineBanner } from "@/components/nutrivita/offline-banner"
 
@@ -83,8 +82,6 @@ export function HomeScreen({ onOpenSettings, onOpenGlucose }: HomeScreenProps) {
     t,
     waterIntake,
     setWaterIntake,
-    setSelectedMealType,
-    setShowAddSheet,
     isLoading,
   } = useApp()
 
@@ -112,10 +109,6 @@ export function HomeScreen({ onOpenSettings, onOpenGlucose }: HomeScreenProps) {
   const now = new Date()
   const dateLabel = now.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })
   const dateCapitalized = dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)
-
-  // Entries by meal type for today
-  const entriesByMeal = (type: string) =>
-    dailyLog.meals.filter((m) => m.mealType === type)
 
   return (
     <div className="bg-background min-h-screen">
@@ -229,23 +222,10 @@ export function HomeScreen({ onOpenSettings, onOpenGlucose }: HomeScreenProps) {
           </div>
         </div>
 
-        {/* Today's meals */}
+        {/* Today's meals — répartition en onglets (S14) */}
         <div>
           <p className="text-[13px] font-semibold text-foreground mb-2">{t("todayMeals")}</p>
-          <div className="space-y-2">
-            {MEALS.map((meal) => (
-              <MealSectionCard
-                key={meal.type}
-                name={meal.nameFr}
-                entries={entriesByMeal(meal.type)}
-                onAddFood={() => {
-                  setSelectedMealType(meal.type)
-                  setShowAddSheet(true)
-                }}
-                compact
-              />
-            ))}
-          </div>
+          <MealTabsCard />
         </div>
 
         {/* Hydration */}
