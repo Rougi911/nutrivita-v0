@@ -80,7 +80,7 @@ function AppContent() {
       case "meals":
         return <MealsScreen />
       case "stats":
-        return <StatsScreen />
+        return <StatsScreen onOpenSettings={() => setStackedView("settings")} />
       case "groceries":
         return <GroceriesScreen />
       default:

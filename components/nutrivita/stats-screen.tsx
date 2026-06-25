@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { calcRadarData, DEFAULT_VNR } from "@/lib/micronutrients-radar"
 import { MicronutrientsRadar } from "@/components/nutrivita/micronutrients-radar"
+import { DissipationCard } from "@/components/nutrivita/dissipation-card"
 
 type Segment = "jour" | "semaine" | "mois" | "annee"
 
@@ -50,7 +51,7 @@ function getBarFill(calories: number, target: number): string {
   return "var(--risk)"
 }
 
-export function StatsScreen() {
+export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } = {}) {
   const { t, dailyLog, mealEntries, user, weightHistory, glucoseReadings, scannedProducts, isRTL } = useApp()
   const [segment, setSegment] = useState<Segment>("semaine")
   const [deficiencies, setDeficiencies] = useState<ApiDeficiency[]>([])
@@ -255,6 +256,9 @@ export function StatsScreen() {
       </div>
 
       <div className="px-4 space-y-4">
+
+        {/* ─── Dissipation des calories (S13) — visible seulement si excédent du jour ─── */}
+        <DissipationCard onOpenSettings={onOpenSettings} />
 
         {/* ─── 1. Weight line chart ──────────────────────────────────────────── */}
         {weightHistory.length > 0 && (

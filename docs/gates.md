@@ -520,3 +520,16 @@ Les fichiers `add-sheet.tsx` et `groceries-screen.tsx` portaient des modificatio
 **Verdict tests :** GO — 189/189 (6 nouveaux TU-S14)
 **Verdict revue-code :** GO (CONFORME) — SL-UI OK (lucide, pas d'émoji/gradient, teal, rounded-2xl, ≥11px), couleurs macros = tokens design system, SL-03 AR `\uXXXX` (0 arabe brut), parité i18n, état vide/recalcul/accessibilité (aria-pressed, aria-label) OK, suppression d'entrée non régressée, pas d'orphelin (MealSectionCard gardé pour journal-screen). 1 mineur `font-medium` (précédent établi ~20 composants, non bloquant). Crayon d'édition reporté à S15 (pas de bouton mort : suppression conservée).
 **Verdict réglementaire :** GO — REG-05 récap descriptif kcal/macros sans recommandation/objectif/diagnostic ; REG-04 aucun disclaimer régressé ; aucune donnée santé nouvelle (calculs mémoire depuis le journal) ; SL-03 OK ; REG-02/03/06/18-07 N.A.
+
+---
+
+## Gate S13 (frontend) — 2026-06-26 — Dissipation des calories (Bilan)
+
+**Session :** feat(S13 front) — carte « Équilibrer cet excédent » dans le Bilan, visible uniquement si excédent calorique du jour > 0. Frontend pur, aucun endpoint. Cadrage bien-être REG-05 impératif.
+**UI (maquette validée) :** carte activable (repliée par défaut) ; à l'ouverture, menu déroulant custom de sports groupés par intensité (Doux/Modéré/Intense) avec icône lucide par sport ; sélection → durée en grand ; rappel poids (périmé > 3 mois/absent → note + « Mettre à jour » vers Réglages ; sinon « Basé sur ton poids : N kg ») ; cadrage bien-être REG-05 non contournable.
+**Calcul :** durée_min = excédent_kcal ÷ (MET × 3,5 × poids_kg ÷ 200) ; excédent = consommé − (objectif + activité plafonnée 1000, AL-03).
+**Fichiers :** `lib/calorie-dissipation.ts` (SPORTS 17 MET + dissipationMinutes + dailyExcessKcal + isWeightStale, purs), `components/nutrivita/dissipation-card.tsx`, `components/nutrivita/stats-screen.tsx` (prop onOpenSettings + rendu), `components/nutrivita/nutrivita-app.tsx` (passe onOpenSettings), `lib/types.ts` (26 clés i18n FR/AR/EN `\uXXXX`), `lib/__tests__/s13-dissipation.test.ts` (9 TU).
+**Verdict build :** GO — `npm run build` OK · tsc 0 erreur
+**Verdict tests :** GO — 198/198 (9 nouveaux TU-S13)
+**Verdict revue-code :** GO (CONFORME) — SL-UI OK (15 icônes lucide vérifiées, pas d'émoji/gradient, teal, rounded-2xl, ≥11px), SL-03 AR `\uXXXX` (0 arabe brut), parité i18n 26 clés ×3, carte masquée si pas d'excédent, recalcul au changement de sport, garde division par zéro, accessibilité (aria-expanded/aria-pressed), pas de bouton mort. Mineurs non bloquants : `text-white` codé en dur (pattern projet établi), `kcal` hardcodé (idem).
+**Verdict réglementaire :** GO — REG-05 ton neutre « équilibrer » (pas « brûler/compenser/punir ») ; disclaimer bien-être impératif présent, non contournable, fidèle FR/AR/EN (arabe décodé conforme) ; « Estimation indicative, non médicale » présent ; rappel poids = constat factuel sans injonction médicale ; aucune donnée santé nouvelle stockée (calcul mémoire, poids lu du profil) ; SL-03 OK.
