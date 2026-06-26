@@ -1,12 +1,13 @@
 ﻿"use client"
 
-import { useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
 import {
   ArrowLeft,
   Check,
   ChevronRight,
   Download,
+  Loader2,
   LogOut,
   Trash2,
   X,
@@ -37,6 +38,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  getStravaStatus,
+  getStravaConnectUrl,
+  syncStrava,
+  disconnectStrava,
+} from "@/lib/api"
 import { cn } from "@/lib/utils"
 import type { Language, GlucoseUnit, TranslationKey } from "@/lib/types"
 
@@ -323,7 +330,8 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
 
         {/* Integrations */}
         <SettingsGroup title={t("integrations")}>
-          <IntegrationRow name="Strava"       status="connected"    email={user.email} />
+          {/* S16 — ligne Strava réelle : statut via /status, OAuth + sync (REG-05). */}
+          <StravaIntegrationRow />
           <IntegrationRow name="LibreView"    status="disconnected" />
           <IntegrationRow name="Apple Health" status="unavailable" />
         </SettingsGroup>
@@ -520,6 +528,175 @@ function ConfirmButton({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+  )
+}
+
+// S16 — Strava : statut réel + OAuth (consentement REG-05) + sync au retour.
+// Les tokens restent backend-only ; le front ne voit que { connected, athleteName }.
+function StravaIntegrationRow() {
+  const { t, reloadData } = useApp()
+  const [status, setStatus] = useState<"loading" | "connected" | "disconnected">("loading")
+  const [athleteName, setAthleteName] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [showConsent, setShowConsent] = useState(false)
+
+  const refreshStatus = useCallback(async () => {
+    try {
+      const s = await getStravaStatus()
+      setStatus(s.connected ? "connected" : "disconnected")
+      setAthleteName(s.athleteName)
+      return s.connected
+    } catch {
+      // 401/503/réseau → on retombe sur "non connecté" plutôt que de bloquer l'écran.
+      setStatus("disconnected")
+      setAthleteName(null)
+      return false
+    }
+  }, [])
+
+  const runSync = useCallback(async () => {
+    setBusy(true)
+    toast(t("stravaSyncing"), { duration: 2000 })
+    try {
+      const r = await syncStrava()
+      if (r.connected) {
+        toast(`${t("stravaSyncDone")}${r.imported > 0 ? ` (${r.imported})` : ""}`, { duration: 3000 })
+        reloadData() // rafraîchit la carte Activité + le Bilan avec les activités importées
+      }
+    } catch {
+      toast(t("stravaSyncError"), { duration: 3000 })
+    } finally {
+      setBusy(false)
+    }
+  }, [t, reloadData])
+
+  // Statut au montage + déclenchement du sync au retour OAuth (?strava=ok).
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const connected = await refreshStatus()
+      if (cancelled || typeof window === "undefined") return
+      const params = new URLSearchParams(window.location.search)
+      const flag = params.get("strava")
+      if (!flag) return
+      // Nettoie l'URL pour éviter un re-sync au prochain rendu / partage de lien.
+      params.delete("strava"); params.delete("athlete"); params.delete("reason")
+      const qs = params.toString()
+      window.history.replaceState({}, "", window.location.pathname + (qs ? `?${qs}` : ""))
+      if (flag === "ok" && connected) {
+        await runSync()
+      } else if (flag === "error") {
+        toast(t("stravaConnectError"), { duration: 3000 })
+      }
+    })()
+    return () => { cancelled = true }
+  }, [refreshStatus, runSync, t])
+
+  const handleConnect = async () => {
+    setShowConsent(false)
+    setBusy(true)
+    try {
+      const url = await getStravaConnectUrl()
+      window.location.href = url // redirection plein écran vers Strava OAuth
+    } catch {
+      setBusy(false)
+      toast(t("stravaConnectError"), { duration: 3000 })
+    }
+  }
+
+  const handleDisconnect = async () => {
+    setBusy(true)
+    try {
+      await disconnectStrava()
+      setStatus("disconnected")
+      setAthleteName(null)
+      toast(t("stravaDisconnected"), { duration: 3000 })
+    } catch {
+      toast(t("stravaDisconnectError"), { duration: 3000 })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-between px-4 py-3">
+      <div className="min-w-0">
+        <span className="text-[14px] font-medium text-foreground">Strava</span>
+        {status === "connected" && athleteName && (
+          <p className="text-[12px] text-muted-foreground truncate">{athleteName}</p>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2 shrink-0">
+        {status === "loading" && (
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        )}
+
+        {status === "connected" && (
+          <>
+            <span className="flex items-center gap-1 text-[12px]" style={{ color: "var(--primary)" }}>
+              <Check className="h-3 w-3" />
+              {t("connected")}
+            </span>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  disabled={busy}
+                  aria-label={t("disconnect")}
+                  aria-busy={busy}
+                  className="px-2.5 py-1.5 rounded-lg border border-border text-[12px] font-medium text-foreground disabled:opacity-50"
+                >
+                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : t("disconnect")}
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{t("disconnect")}</AlertDialogTitle>
+                  <AlertDialogDescription>{t("stravaDisconnectConfirm")}</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground"
+                    onClick={handleDisconnect}
+                  >
+                    {t("disconnect")}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </>
+        )}
+
+        {status === "disconnected" && (
+          <AlertDialog open={showConsent} onOpenChange={setShowConsent}>
+            <AlertDialogTrigger asChild>
+              <button
+                disabled={busy}
+                aria-label={t("stravaConnect")}
+                aria-busy={busy}
+                className="px-2.5 py-1.5 rounded-lg text-[12px] font-medium bg-primary text-primary-foreground disabled:opacity-50"
+              >
+                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : t("stravaConnect")}
+              </button>
+            </AlertDialogTrigger>
+            {/* REG-05 — consentement explicite au partage des données d'activité avant l'OAuth. */}
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{t("stravaConsentTitle")}</AlertDialogTitle>
+                <AlertDialogDescription>{t("stravaConsentDesc")}</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConnect}>
+                  {t("stravaConsentConfirm")}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+      </div>
+    </div>
   )
 }
 

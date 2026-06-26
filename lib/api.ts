@@ -639,3 +639,54 @@ export async function clearScannedProducts(): Promise<number> {
 export async function exportUserData(): Promise<unknown> {
   return apiFetch<unknown>("/api/user/export")
 }
+
+// ─── Strava (S16) ──────────────────────────────────────────────────────────────
+// REG-05 : les tokens Strava restent backend-only ; le front ne manipule que l'état
+// de connexion. Le flux OAuth (state anti-CSRF) est entièrement géré côté backend.
+
+export interface StravaStatus {
+  connected: boolean
+  athleteName: string | null
+}
+
+/** GET /api/strava/status — état de connexion Strava (jamais les tokens). */
+export async function getStravaStatus(): Promise<StravaStatus> {
+  const raw = await apiFetch<{ connected?: boolean; athleteName?: string | null }>(
+    "/api/strava/status"
+  )
+  return {
+    connected: raw?.connected === true,
+    athleteName: raw?.athleteName ?? null,
+  }
+}
+
+/** GET /api/strava/connect — URL OAuth (state signé anti-CSRF). 503 si non configuré. */
+export async function getStravaConnectUrl(): Promise<string> {
+  const raw = await apiFetch<{ url?: string }>("/api/strava/connect")
+  if (!raw?.url || typeof raw.url !== "string") {
+    throw new ApiError(0, "GET /api/strava/connect: url manquante")
+  }
+  return raw.url
+}
+
+export interface StravaSyncResult {
+  connected: boolean
+  imported: number
+}
+
+/** POST /api/strava/sync — importe les activités du jour (dédup backend par strava_id). */
+export async function syncStrava(): Promise<StravaSyncResult> {
+  const raw = await apiFetch<{ connected?: boolean; imported?: number }>(
+    "/api/strava/sync",
+    { method: "POST" }
+  )
+  return {
+    connected: raw?.connected === true,
+    imported: typeof raw?.imported === "number" ? raw.imported : 0,
+  }
+}
+
+/** DELETE /api/strava/disconnect — efface les tokens Strava côté backend. */
+export async function disconnectStrava(): Promise<void> {
+  await apiFetch<{ connected: boolean }>("/api/strava/disconnect", { method: "DELETE" })
+}

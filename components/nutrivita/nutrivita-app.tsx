@@ -24,6 +24,15 @@ function AppContent() {
 
   const [stackedView, setStackedView] = useState<"glucose" | "settings" | null>(null)
 
+  // S16 — retour OAuth Strava (`/reglages?strava=ok|error`) : ouvre l'écran Réglages
+  // pour que la ligne Strava lise le paramètre et déclenche le sync.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (new URLSearchParams(window.location.search).has("strava")) {
+      setStackedView("settings")
+    }
+  }, [])
+
   // Auth-aware routing — runs when auth state or loading changes
   useEffect(() => {
     if (isAuthLoading) return
