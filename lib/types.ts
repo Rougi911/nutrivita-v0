@@ -435,6 +435,13 @@ export const translations = {
     offlineBanner: "Hors ligne — données locales affichées",
     loadingData: "Chargement...",
     retryLoad: "Réessayer",
+    // PWA install (S18)
+    installTitle: "Installer NutriVita",
+    installBody: "Ajoutez l'app à votre écran d'accueil pour un accès rapide, même hors ligne.",
+    installAction: "Installer",
+    installDismiss: "Plus tard",
+    installIosHint: "Appuyez sur le bouton Partager, puis « Sur l'écran d'accueil ».",
+
     errorLoading: "Erreur de chargement",
     scanProduct: "Scanner un produit",
     detectedFoods: "Aliments détectés",
@@ -853,6 +860,13 @@ export const translations = {
     offlineBanner: "\u063A\u064A\u0631 \u0645\u062A\u0635\u0644 \u2014 \u0628\u064A\u0627\u0646\u0627\u062A \u0645\u062D\u0644\u064A\u0629",
     loadingData: "\u062C\u0627\u0631\u064A \u0627\u0644\u062A\u062D\u0645\u064A\u0644...",
     retryLoad: "\u0625\u0639\u0627\u062F\u0629 \u0627\u0644\u0645\u062D\u0627\u0648\u0644\u0629",
+    // PWA install (S18)
+    installTitle: "\u062A\u062B\u0628\u064A\u062A NutriVita",
+    installBody: "\u0623\u0636\u0641 \u0627\u0644\u062A\u0637\u0628\u064A\u0642 \u0625\u0644\u0649 \u0627\u0644\u0634\u0627\u0634\u0629 \u0627\u0644\u0631\u0626\u064A\u0633\u064A\u0629 \u0644\u0644\u0648\u0635\u0648\u0644 \u0627\u0644\u0633\u0631\u064A\u0639\u060C \u062D\u062A\u0649 \u062F\u0648\u0646 \u0627\u062A\u0635\u0627\u0644.",
+    installAction: "\u062A\u062B\u0628\u064A\u062A",
+    installDismiss: "\u0644\u0627\u062D\u0642\u064B\u0627",
+    installIosHint: "\u0627\u0636\u063A\u0637 \u0639\u0644\u0649 \u0632\u0631 \u0627\u0644\u0645\u0634\u0627\u0631\u0643\u0629\u060C \u062B\u0645 \u00AB\u0625\u0636\u0627\u0641\u0629 \u0625\u0644\u0649 \u0627\u0644\u0634\u0627\u0634\u0629 \u0627\u0644\u0631\u0626\u064A\u0633\u064A\u0629\u00BB.",
+
     errorLoading: "\u062E\u0637\u0623 \u0641\u064A \u0627\u0644\u062A\u062D\u0645\u064A\u0644",
     scanProduct: "\u0645\u0633\u062D \u0645\u0646\u062A\u062C",
     detectedFoods: "\u0627\u0644\u0623\u0637\u0639\u0645\u0629 \u0627\u0644\u0645\u0643\u062A\u0634\u0641\u0629",
@@ -1263,6 +1277,13 @@ export const translations = {
     offlineBanner: "Offline — showing local data",
     loadingData: "Loading...",
     retryLoad: "Retry",
+    // PWA install (S18)
+    installTitle: "Install NutriVita",
+    installBody: "Add the app to your home screen for quick access, even offline.",
+    installAction: "Install",
+    installDismiss: "Later",
+    installIosHint: "Tap the Share button, then “Add to Home Screen”.",
+
     errorLoading: "Loading error",
     scanProduct: "Scan a product",
     detectedFoods: "Detected foods",

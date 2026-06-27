@@ -15,6 +15,7 @@ import { HomeScreen } from "./home-screen"
 import { GroceriesScreen } from "./groceries-screen"
 import { AddSheet } from "./add-sheet"
 import { FoodSearchSheet } from "./food-search-sheet"
+import { InstallPrompt } from "./install-prompt"
 
 type AppView = "checking" | "landing" | "onboarding" | "main"
 
@@ -120,6 +121,7 @@ function AppContent() {
       </AnimatePresence>
 
       {!stackedView && <BottomNavigation />}
+      {!showAddSheet && <InstallPrompt />}
       {showAddSheet && <AddSheet />}
       <FoodSearchSheet />
     </div>
