@@ -3,6 +3,7 @@ import { Inter, Noto_Sans_Arabic } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { PwaRegister } from "@/components/pwa-register"
+import { SentryListener } from "@/components/sentry-listener"
 import "./globals.css"
 
 const inter = Inter({
@@ -98,6 +99,7 @@ export default function RootLayout({
           {children}
           <Toaster />
           <PwaRegister />
+          <SentryListener />
         </ThemeProvider>
       </body>
     </html>
