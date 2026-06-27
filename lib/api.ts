@@ -31,7 +31,7 @@ import { getToken } from "@/lib/auth"
 // Strip trailing /api if present — every endpoint path already starts with /api/
 // Garde-fou : si la valeur résolue n'est pas absolue (env mal réglée / vide), on retombe
 // sur le backend par défaut — JAMAIS d'URL relative (sinon les appels partent vers le front Next → 404).
-const DEFAULT_API_BASE = "https://nutridz.onrender.com"
+const DEFAULT_API_BASE = "https://nutridz-2.onrender.com"
 export const API_BASE = (() => {
   const raw =
     (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) ||

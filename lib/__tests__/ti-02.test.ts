@@ -8,7 +8,7 @@ import { setupServer } from "msw/node"
 import { http, HttpResponse } from "msw"
 import { fromGlucoseUnit } from "../glucose-units"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "https://nutridz.onrender.com"
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "https://nutridz-2.onrender.com"
 const server = setupServer()
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }))
 afterEach(() => server.resetHandlers())

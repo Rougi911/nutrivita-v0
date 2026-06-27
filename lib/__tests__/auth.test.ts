@@ -22,7 +22,7 @@ vi.stubGlobal("localStorage", localStorageMock)
 
 // ─── MSW server pour les routes auth ────────────────────────────────────────
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "https://nutridz.onrender.com"
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "https://nutridz-2.onrender.com"
 const MOCK_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test"
 const MOCK_USER  = { id: "42", email: "test@example.com", name: "Test User" }
 

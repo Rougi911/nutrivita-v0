@@ -3,7 +3,7 @@
 > **À VÉRIFIER** contre l'API déployée avant branchement. Les shapes ci-dessous sont dérivés de
 > SL-02 (cycle-v-nutrivita.md), AL-10, et SL-03 (conventions snake_case).
 
-Base URL : `process.env.NEXT_PUBLIC_API_URL` (défaut `https://nutridz.onrender.com`)
+Base URL : `process.env.NEXT_PUBLIC_API_URL` (défaut `https://nutridz-2.onrender.com`)
 Auth : cookie de session httpOnly (`credentials: 'include'`).
 
 ## POST /api/interpret
