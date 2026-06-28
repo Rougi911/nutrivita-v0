@@ -65,9 +65,12 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
   const [periodMeals, setPeriodMeals] = useState(mealEntries)
   const [periodWeight, setPeriodWeight] = useState(weightHistory)
   const [periodGlucose, setPeriodGlucose] = useState(glucoseReadings)
+  // Point sélectionné sur un graphe (clic) → affiche valeur + date exacte.
+  const [selectedPoint, setSelectedPoint] = useState<{ chart: "weight" | "cal"; date: string; text: string } | null>(null)
 
   useEffect(() => {
     const fetchDays = segment === "semaine" ? 7 : segment === "mois" ? 30 : segment === "annee" ? 365 : 7
+    setSelectedPoint(null)
     let cancelled = false
     Promise.all([
       getJournalRange(fetchDays).catch(() => mealEntries),
@@ -145,6 +148,32 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
   const avgCalories = calData.length
     ? Math.round(calData.reduce((s, d) => s + d.calories, 0) / calData.length)
     : 0
+
+  // ── Libellés d'axe adaptés à la période ──────────────────────────────────────
+  // semaine/jour : jour de la semaine ; mois : n° de jour (clairsemé) ; année : mois.
+  // Les libellés sont clairsemés mais TOUS les points restent tracés et cliquables.
+  const labelText = (ds: string) => {
+    const d = new Date(ds)
+    if (segment === "annee") return ["jan", "fév", "mar", "avr", "mai", "juin", "juil", "août", "sep", "oct", "nov", "déc"][d.getMonth()]
+    if (segment === "mois") return String(d.getDate())
+    return ["dim", "lun", "mar", "mer", "jeu", "ven", "sam"][d.getDay()]
+  }
+  // Ensemble des dates qui portent un libellé : 1er point de chaque mois (année),
+  // 1 sur 5 (mois), tous (semaine/jour). Robuste même si les points sont espacés (ex. poids).
+  const tickSetFor = (dates: string[]): Set<string> => {
+    const set = new Set<string>()
+    if (segment === "jour" || segment === "semaine") { dates.forEach((d) => set.add(d)); return set }
+    if (segment === "annee") {
+      let lastMonth = -1
+      dates.forEach((ds) => { const m = new Date(ds).getMonth(); if (m !== lastMonth) { set.add(ds); lastMonth = m } })
+    } else {
+      dates.forEach((ds, i) => { if (i % 5 === 0) set.add(ds) })
+    }
+    return set
+  }
+  const weightTicks = useMemo(() => tickSetFor(periodWeight.map((w) => w.date)), [periodWeight, segment]) // eslint-disable-line react-hooks/exhaustive-deps
+  const calTicks = useMemo(() => tickSetFor(calData.map((c) => c.date)), [calData, segment]) // eslint-disable-line react-hooks/exhaustive-deps
+  const exactDate = (ds: string) => new Date(ds).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
 
   // Macro donut (today)
   const macroDonut = [
@@ -302,15 +331,27 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
                 </span>
               </div>
             </div>
+            {selectedPoint?.chart === "weight" && (
+              <p className="text-[12px] text-muted-foreground -mt-1 mb-2">
+                {exactDate(selectedPoint.date)} · <span className="font-semibold text-foreground">{selectedPoint.text}</span>
+              </p>
+            )}
             <ResponsiveContainer width="100%" height={150}>
-              <LineChart data={periodWeight}>
+              <LineChart
+                data={periodWeight}
+                onClick={(s: any) => {
+                  const p = s?.activePayload?.[0]?.payload
+                  if (p) setSelectedPoint({ chart: "weight", date: p.date, text: `${Number(p.weight).toFixed(1)} kg` })
+                }}
+              >
                 <XAxis
                   dataKey="date"
                   axisLine={false}
                   tickLine={false}
                   tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-                  tickFormatter={(v) => new Date(v).getDate().toString()}
-                  interval="preserveStartEnd"
+                  tickFormatter={(v) => (weightTicks.has(v) ? labelText(v) : "")}
+                  interval={0}
+                  minTickGap={0}
                 />
                 <YAxis
                   domain={["dataMin - 0.5", "dataMax + 0.5"]}
@@ -330,6 +371,8 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
                   stroke="var(--primary)"
                   strokeWidth={2}
                   dot={false}
+                  activeDot={{ r: 4 }}
+                  isAnimationActive={false}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -366,13 +409,28 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
             <h3 className="text-[14px] font-semibold text-foreground">{t("caloriesPerDay")}</h3>
             <span className="text-[13px] text-muted-foreground">moy. {avgCalories} kcal</span>
           </div>
+          {selectedPoint?.chart === "cal" && (
+            <p className="text-[12px] text-muted-foreground -mt-1 mb-2">
+              {exactDate(selectedPoint.date)} · <span className="font-semibold text-foreground">{selectedPoint.text}</span>
+            </p>
+          )}
           <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={calData} barCategoryGap="30%">
+            <BarChart
+              data={calData}
+              barCategoryGap="30%"
+              onClick={(s: any) => {
+                const p = s?.activePayload?.[0]?.payload
+                if (p) setSelectedPoint({ chart: "cal", date: p.date, text: `${p.calories} kcal` })
+              }}
+            >
               <XAxis
-                dataKey="label"
+                dataKey="date"
                 axisLine={false}
                 tickLine={false}
                 tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                tickFormatter={(v) => (calTicks.has(v) ? labelText(v) : "")}
+                interval={0}
+                minTickGap={0}
               />
               <YAxis hide />
               <ReferenceLine
@@ -384,8 +442,9 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
               <Tooltip
                 contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "0.75rem", fontSize: "12px" }}
                 formatter={(v: number) => [`${Math.round(v)} kcal`, "Calories"]}
+                labelFormatter={(_, payload: any) => (payload?.[0]?.payload?.date ? exactDate(payload[0].payload.date) : "")}
               />
-              <Bar dataKey="calories" radius={[6, 6, 0, 0]}>
+              <Bar dataKey="calories" radius={[6, 6, 0, 0]} isAnimationActive={false}>
                 {calData.map((entry, idx) => (
                   <Cell key={idx} fill={getBarFill(entry.calories, user.targetCalories)} />
                 ))}
