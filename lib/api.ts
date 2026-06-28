@@ -60,6 +60,40 @@ export class ProductUnknownError extends Error {
   }
 }
 
+/**
+ * P0-3 / DEF-1 — Session « morte » (auth invalide) → purge du token + retour au login.
+ * Sont des sessions mortes :
+ *  - status 401 (toujours),
+ *  - status 403 dont le corps désigne explicitement le token (ex. {"error":"Token invalide"},
+ *    « jwt expired »…) — typiquement après une rotation de JWT_SECRET.
+ *
+ * NE sont PAS des sessions mortes (donc ni purge, ni déconnexion) :
+ *  - 403 CSRF (« CSRF token invalide ») → erreur de requête, pas de session morte,
+ *  - 403 métier (« Accès refusé »…) → l'utilisateur reste connecté,
+ *  - status 0 / 5xx → vraie panne réseau → mode hors-ligne (voir isNetworkFailure).
+ */
+export function isDeadAuthError(err: unknown): boolean {
+  if (!(err instanceof ApiError)) return false
+  if (err.status === 401) return true
+  if (err.status !== 403) return false
+  // err.message embarque le corps brut de la réponse 403.
+  // « csrf »/« xsrf » exclus en priorité (« CSRF token invalide » contient « token »).
+  if (/csrf|xsrf/i.test(err.message)) return false
+  // « token » / « jwt » couvrent « Token invalide » (libellé backend actuel) ;
+  // « signature » couvre l'erreur brute de jsonwebtoken (« invalid signature »)
+  // typique d'une rotation de JWT_SECRET. « jwt expired » est couvert par « jwt ».
+  return /token|jwt|signature/i.test(err.message)
+}
+
+/**
+ * P0-3 — Vraie panne réseau → mode hors-ligne (données locales) + retry.
+ * Couvre le timeout/abort (status 0) et l'indisponibilité infra (502/503/504,
+ * ex. cold start Render). Tout 4xx applicatif en est exclu.
+ */
+export function isNetworkFailure(err: unknown): boolean {
+  return err instanceof ApiError && [0, 502, 503, 504].includes(err.status)
+}
+
 /** Vérifie que la réponse est bien un tableau. Si le corps contient {error:string},
  *  lève ApiError(401) pour les erreurs d'auth, ApiError(0) sinon.
  *  Empêche tout .map() sur un objet d'erreur (cause racine du faux offline). */

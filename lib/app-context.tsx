@@ -26,7 +26,8 @@ import {
   addActivityApi,
   deleteActivityApi,
   setSlowStartCallback,
-  ApiError,
+  isDeadAuthError,
+  isNetworkFailure,
 } from "@/lib/api"
 import { getToken, setToken, removeToken } from "@/lib/auth"
 import { getStoredLanguage, setStoredLanguage, dirForLanguage } from "@/lib/language"
@@ -237,16 +238,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
         break
       } catch (err) {
         if (loadCountRef.current !== loadId) return
-        if (err instanceof ApiError && err.status === 401) {
-          removeToken()
-          setIsAuthenticated(false)
+        // P0-3 / DEF-1 — session morte (401, ou 403 « Token invalide ») → purge + retour
+        // login. On NE bascule PAS en hors-ligne : un token définitivement invalide (rotation
+        // JWT_SECRET) ne se répare jamais offline, l'utilisateur resterait bloqué.
+        // logout() efface AUSSI tout l'état santé/PII résident (repas, glycémie, poids,
+        // activités, produits scannés) — pas seulement le token — pour éviter qu'il subsiste
+        // en mémoire après la mort de session (minimisation RGPD).
+        if (isDeadAuthError(err)) {
+          logout()
           setIsLoading(false)
           setServerWaking(false)
           setSlowStartCallback(null)
           return
         }
-        // Retry only on 503 (cold start) or timeout (status 0)
-        const isRetryable = err instanceof ApiError && (err.status === 503 || err.status === 0)
+        // Retry/hors-ligne réservés aux vraies pannes réseau (timeout/abort = status 0,
+        // indisponibilité infra = 502/503/504). Un 403 non-auth (CSRF, 403 métier) n'est
+        // pas retryable mais ne purge pas la session : il tombera en hors-ligne sans déconnexion.
+        const isRetryable = isNetworkFailure(err)
         if (!isRetryable || attempt === MAX_ATTEMPTS - 1) {
           console.error("[loadData] giving up after", attempt + 1, "attempt(s):", err)
           if (loadCountRef.current === loadId) {
@@ -268,7 +276,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setServerWaking(false)
       setSlowStartCallback(null)
     }
-  }, [])
+  }, [logout])
 
   // Reload when date changes or auth state changes
   useEffect(() => {
