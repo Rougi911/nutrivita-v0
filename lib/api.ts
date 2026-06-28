@@ -507,6 +507,19 @@ export async function getJournal(date: string): Promise<MealEntry[]> {
   return guardArray<ApiMealEntry>(arr, "/api/journal/query").map(mapMealEntry)
 }
 
+// S22/DEF-8 — entrées du journal sur une plage de N jours (Bilan : calories/jour + radar
+// micronutriments sur jour/semaine/mois/année). Backend renvoie { from, to, days, entries: [...] }.
+export async function getJournalRange(days: number): Promise<MealEntry[]> {
+  const raw = await apiFetch<unknown>("/api/journal/range", {
+    method: "POST",
+    body: JSON.stringify({ days }),
+  })
+  const arr = (raw != null && typeof raw === "object" && !Array.isArray(raw) && "entries" in (raw as object))
+    ? (raw as { entries: unknown }).entries
+    : raw
+  return guardArray<ApiMealEntry>(arr, "/api/journal/range").map(mapMealEntry)
+}
+
 export async function addJournalEntry(
   entry: Omit<MealEntry, "id" | "createdAt">,
   parentEntryId?: string

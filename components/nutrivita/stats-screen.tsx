@@ -19,7 +19,7 @@ import {
   Scatter,
 } from "recharts"
 import { useApp } from "@/lib/app-context"
-import { getDeficiencies, getAdditivesStats, exportUserData, type AdditivesStats } from "@/lib/api"
+import { getDeficiencies, getAdditivesStats, exportUserData, getJournalRange, getWeightHistory, getGlucoseReadings, type AdditivesStats } from "@/lib/api"
 import { toast } from "sonner"
 import type { ApiDeficiency } from "@/lib/api-types"
 import { AdditivesBars } from "@/components/nutrivita/additives-bars"
@@ -59,6 +59,29 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
   const [additivesStats, setAdditivesStats] = useState<AdditivesStats | null>(null)
   const [loadingAdditives, setLoadingAdditives] = useState(false)
 
+  // S22/DEF-8/-9/-10 — données chargées sur la PLAGE du segment (le contexte ne charge que le
+  // jour courant pour le journal, 30 j poids, 14 j glycémie → Bilan historique vide/tronqué).
+  // Initialisées sur le contexte pour un premier rendu immédiat, puis remplacées par la plage.
+  const [periodMeals, setPeriodMeals] = useState(mealEntries)
+  const [periodWeight, setPeriodWeight] = useState(weightHistory)
+  const [periodGlucose, setPeriodGlucose] = useState(glucoseReadings)
+
+  useEffect(() => {
+    const fetchDays = segment === "semaine" ? 7 : segment === "mois" ? 30 : segment === "annee" ? 365 : 7
+    let cancelled = false
+    Promise.all([
+      getJournalRange(fetchDays).catch(() => mealEntries),
+      getWeightHistory(fetchDays).catch(() => weightHistory),
+      getGlucoseReadings(fetchDays).catch(() => glucoseReadings),
+    ]).then(([m, w, g]) => {
+      if (cancelled) return
+      setPeriodMeals(m)
+      setPeriodWeight(w)
+      setPeriodGlucose(g)
+    })
+    return () => { cancelled = true }
+  }, [segment, mealEntries, weightHistory, glucoseReadings])
+
   useEffect(() => {
     setLoadingDef(true)
     getDeficiencies()
@@ -83,8 +106,8 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
   }, [segment, scannedProducts.length])
 
   // Body composition from latest weight entry
-  const latest = weightHistory.length > 0 ? weightHistory[weightHistory.length - 1] : null
-  const first  = weightHistory.length > 0 ? weightHistory[0] : null
+  const latest = periodWeight.length > 0 ? periodWeight[periodWeight.length - 1] : null
+  const first  = periodWeight.length > 0 ? periodWeight[0] : null
   const currentWeight = latest?.weight ?? user.weight
   const bmiVal  = bmi(currentWeight, user.height)
   const bfPct   = deurenbergBodyFat(currentWeight, user.height, user.age, user.sex)
@@ -104,7 +127,7 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
       const d = new Date(today)
       d.setDate(d.getDate() - i)
       const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-      const dayEntries = mealEntries.filter((m) => m.date === dateStr)
+      const dayEntries = periodMeals.filter((m) => m.date === dateStr)
       const calories = Math.round(dayEntries.reduce((s, m) => s + (m.food.calories * m.amount) / 100, 0))
       const protein  = Math.round(dayEntries.reduce((s, m) => s + (m.food.protein  * m.amount) / 100, 0))
       const carbs    = Math.round(dayEntries.reduce((s, m) => s + (m.food.carbs    * m.amount) / 100, 0))
@@ -117,7 +140,7 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
     // Journal vide / sans calories → on retourne les vraies données (zéros).
     // Jamais de données fictives (intégrité santé + cohérence avec le radar).
     return result
-  }, [mealEntries, segment])
+  }, [periodMeals, segment])
 
   const avgCalories = calData.length
     ? Math.round(calData.reduce((s, d) => s + d.calories, 0) / calData.length)
@@ -134,10 +157,10 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
   const weekGlucose = useMemo(() => {
     const days = segment === "jour" ? 1 : segment === "semaine" ? 7 : segment === "mois" ? 30 : 365
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
-    return glucoseReadings
+    return periodGlucose
       .filter((r) => new Date(r.timestamp).getTime() > cutoff)
       .map((r) => r.value)
-  }, [glucoseReadings, segment])
+  }, [periodGlucose, segment])
 
   const glucoseMetrics = useMemo(
     () => computeGlucoseMetrics(weekGlucose, 70, 180),
@@ -173,9 +196,9 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
     const cutoffDate = new Date(today)
     cutoffDate.setDate(cutoffDate.getDate() - (days - 1))
     const cutoffStr = `${cutoffDate.getFullYear()}-${String(cutoffDate.getMonth() + 1).padStart(2, "0")}-${String(cutoffDate.getDate()).padStart(2, "0")}`
-    const periodEntries = mealEntries.filter((m) => m.date >= cutoffStr)
+    const periodEntries = periodMeals.filter((m) => m.date >= cutoffStr)
     return calcRadarData(periodEntries, user.sex, DEFAULT_VNR)
-  }, [mealEntries, segment, user.sex])
+  }, [periodMeals, segment, user.sex])
 
   // Export RGPD en CSV lisible (Excel/Sheets) — une section par table, séparateur ';', BOM UTF-8 (S-AUDIT)
   const handleExport = async () => {
@@ -261,7 +284,7 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
         <DissipationCard onOpenSettings={onOpenSettings} />
 
         {/* ─── 1. Weight line chart ──────────────────────────────────────────── */}
-        {weightHistory.length > 0 && (
+        {periodWeight.length > 0 && (
           <div className="rounded-2xl border border-border bg-card p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-[14px] font-semibold text-foreground">{t("weightEvolution")}</h3>
@@ -280,7 +303,7 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
               </div>
             </div>
             <ResponsiveContainer width="100%" height={150}>
-              <LineChart data={weightHistory.slice(segment === "semaine" ? -7 : -30)}>
+              <LineChart data={periodWeight}>
                 <XAxis
                   dataKey="date"
                   axisLine={false}
@@ -405,7 +428,7 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
         )}
 
         {/* ─── 4. Glycémie — affichée si suivi activé OU si des mesures existent (N<12 guard AL-05) ─── */}
-        {(user.isDiabetic || glucoseReadings.length > 0) && (
+        {(user.isDiabetic || periodGlucose.length > 0) && (
           <div className="rounded-2xl border border-border bg-card p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-[14px] font-semibold text-foreground">{t("glucoseSummary")}</h3>
