@@ -507,6 +507,29 @@ export async function getDeficiencySuggestions(): Promise<DeficiencySuggestionsR
   return apiFetch<DeficiencySuggestionsResponse | null>("/api/suggestions/deficiencies")
 }
 
+// S26 — abonnement Web Push + préférences de rappels.
+export interface NotificationPrefs {
+  journal_enabled: boolean
+  journal_time: string
+  glucose_enabled: boolean
+  glucose_time: string
+  hydration_enabled: boolean
+  deficiency_enabled: boolean
+  geo_consent: boolean
+}
+export async function savePushSubscription(subscription: unknown): Promise<void> {
+  await apiFetch<void>("/api/notifications/subscribe", { method: "POST", body: JSON.stringify({ subscription }) })
+}
+export async function removePushSubscription(): Promise<void> {
+  await apiFetch<void>("/api/notifications/subscribe", { method: "DELETE" })
+}
+export async function getNotificationPrefs(): Promise<NotificationPrefs> {
+  return apiFetch<NotificationPrefs>("/api/notifications/prefs")
+}
+export async function updateNotificationPrefs(prefs: Partial<NotificationPrefs>): Promise<{ success: boolean; prefs: NotificationPrefs }> {
+  return apiFetch<{ success: boolean; prefs: NotificationPrefs }>("/api/notifications/prefs", { method: "PUT", body: JSON.stringify(prefs) })
+}
+
 export async function getJournal(date: string): Promise<MealEntry[]> {
   const raw = await apiFetch<unknown>("/api/journal/query", {
     method: "POST",

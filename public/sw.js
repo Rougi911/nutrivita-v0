@@ -101,3 +101,31 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
+
+// ─── S26 — Notifications push ────────────────────────────────────────────────
+// Payload attendu (neutre, sans donnée de santé — REG-05) : { title, body, url, tag }.
+self.addEventListener("push", (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (_) { data = { body: event.data && event.data.text() }; }
+  const title = data.title || "NutriVita";
+  const options = {
+    body: data.body || "",
+    icon: "/icon-192.png",
+    badge: "/icon-192.png",
+    tag: data.tag || "nutrivita",
+    data: { url: data.url || "/" },
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      const focused = clients.find((c) => "focus" in c);
+      if (focused) return focused.focus();
+      return self.clients.openWindow(target);
+    })
+  );
+});
