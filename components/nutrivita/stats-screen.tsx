@@ -19,7 +19,7 @@ import {
   Scatter,
 } from "recharts"
 import { useApp } from "@/lib/app-context"
-import { getDeficiencies, getAdditivesStats, exportUserData, getJournalRange, getWeightHistory, getGlucoseReadings, type AdditivesStats } from "@/lib/api"
+import { getDeficiencies, getAdditivesStats, exportUserData, getJournalRange, getWeightHistory, getGlucoseReadings, getDeficiencySuggestions, type AdditivesStats, type DeficiencySuggestion } from "@/lib/api"
 import { toast } from "sonner"
 import type { ApiDeficiency } from "@/lib/api-types"
 import { AdditivesBars } from "@/components/nutrivita/additives-bars"
@@ -67,6 +67,9 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
   const [periodGlucose, setPeriodGlucose] = useState(glucoseReadings)
   // Point sélectionné sur un graphe (clic) → affiche valeur + date exacte.
   const [selectedPoint, setSelectedPoint] = useState<{ chart: "weight" | "cal"; date: string; text: string } | null>(null)
+  // S27 — suggestions d'aliments de saison pour combler les carences.
+  const [seasonalSugg, setSeasonalSugg] = useState<DeficiencySuggestion[] | null>(null)
+  const [loadingSugg, setLoadingSugg] = useState(false)
 
   useEffect(() => {
     const fetchDays = segment === "semaine" ? 7 : segment === "mois" ? 30 : segment === "annee" ? 365 : 7
@@ -174,6 +177,23 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
   const weightTicks = useMemo(() => tickSetFor(periodWeight.map((w) => w.date)), [periodWeight, segment]) // eslint-disable-line react-hooks/exhaustive-deps
   const calTicks = useMemo(() => tickSetFor(calData.map((c) => c.date)), [calData, segment]) // eslint-disable-line react-hooks/exhaustive-deps
   const exactDate = (ds: string) => new Date(ds).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
+
+  // S27 — libellé FR des nutriments + chargement des suggestions d'aliments de saison.
+  const nutrientLabel = (key: string): string => ({
+    fer: "Fer", calcium: "Calcium", vitD: "Vitamine D", vitB12: "Vitamine B12",
+    magnesium: "Magnésium", folates: "Folates",
+  } as Record<string, string>)[key] || key
+  const loadSeasonalSuggestions = async () => {
+    setLoadingSugg(true)
+    try {
+      const res = await getDeficiencySuggestions()
+      setSeasonalSugg(res?.suggestions ?? [])
+    } catch {
+      setSeasonalSugg([])
+    } finally {
+      setLoadingSugg(false)
+    }
+  }
 
   // Macro donut (today)
   const macroDonut = [
@@ -627,6 +647,39 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
               {t("radarDisclaimer")}
             </p>
           </div>
+
+          {/* S27 — Idées d'aliments naturels & de saison pour combler les carences */}
+          <button
+            onClick={loadSeasonalSuggestions}
+            className="w-full mt-3 py-2 rounded-xl border border-border text-[13px] font-medium text-foreground bg-muted/40"
+          >
+            {loadingSugg ? "Chargement…" : "Idées d'aliments de saison"}
+          </button>
+          {seasonalSugg && seasonalSugg.length > 0 && (
+            <div className="mt-3 space-y-3">
+              {seasonalSugg.map((s) => (
+                <div key={s.nutrient}>
+                  <p className="text-[12px] font-semibold text-foreground mb-1">{nutrientLabel(s.nutrient)}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {s.foods.map((f) => (
+                      <span
+                        key={f.name}
+                        className="px-2 py-0.5 rounded-full text-[11px] font-medium"
+                        style={f.inSeason
+                          ? { backgroundColor: "var(--primary-bg, #E6F4EF)", color: "var(--primary)" }
+                          : { backgroundColor: "var(--muted)", color: "var(--muted-foreground)" }}
+                      >
+                        {f.name}{f.inSeason ? " · de saison" : ""}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {seasonalSugg && seasonalSugg.length === 0 && !loadingSugg && (
+            <p className="text-[12px] text-muted-foreground mt-2">Aucune carence marquée sur la période — continue ainsi.</p>
+          )}
         </div>
 
         {/* ─── 7. Additifs EFSA (AL-S4 REG-05) ───────────────────────────── */}

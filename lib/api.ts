@@ -493,6 +493,20 @@ export async function getDeficiencies(): Promise<ApiDeficienciesResponse | null>
   return apiFetch<ApiDeficienciesResponse | null>("/api/stats/deficiencies")
 }
 
+// S27 — suggestions d'aliments naturels & de saison pour combler les carences identifiées.
+export interface SeasonalFood { name: string; inSeason: boolean }
+export interface DeficiencySuggestion { nutrient: string; status: string | null; foods: SeasonalFood[] }
+export interface DeficiencySuggestionsResponse {
+  month: number
+  days_with_data?: number
+  disclaimer?: { fr: string; ar: string; en: string }
+  suggestions: DeficiencySuggestion[]
+}
+// 204 (données insuffisantes) → apiFetch renvoie null (même contrat que getDeficiencies).
+export async function getDeficiencySuggestions(): Promise<DeficiencySuggestionsResponse | null> {
+  return apiFetch<DeficiencySuggestionsResponse | null>("/api/suggestions/deficiencies")
+}
+
 export async function getJournal(date: string): Promise<MealEntry[]> {
   const raw = await apiFetch<unknown>("/api/journal/query", {
     method: "POST",
@@ -638,6 +652,27 @@ export async function addActivityApi(
 
 export async function deleteActivityApi(id: string): Promise<void> {
   await apiFetch<void>(`/api/activities/${id}`, { method: "DELETE" })
+}
+
+// S25 — modifier une activité (recalcul kcal côté serveur). La DB renvoie `duration_min`.
+export async function updateActivityApi(
+  id: string,
+  patch: { type?: string; duration_min?: number; distance_km?: number; intensite?: string }
+): Promise<ActivityEntry> {
+  const res = await apiFetch<{ success: boolean; activity: Record<string, unknown> }>(`/api/activities/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  })
+  const a = res.activity
+  return {
+    id: String(a.id),
+    type: String(a.type),
+    duration: Number(a.duration_min ?? a.duration ?? 0),
+    caloriesBurned: Number(a.calories_burned ?? 0),
+    date: String(a.date),
+    source: a.source as ActivityEntry["source"],
+    createdAt: String(a.created_at ?? ""),
+  }
 }
 
 // ─── Additifs EFSA (AL-S4) ───────────────────────────────────────────────────
