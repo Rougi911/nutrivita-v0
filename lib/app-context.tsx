@@ -25,6 +25,7 @@ import {
   addWeightEntryApi,
   addActivityApi,
   deleteActivityApi,
+  updateActivityApi,
   setSlowStartCallback,
   isDeadAuthError,
   isNetworkFailure,
@@ -80,6 +81,7 @@ interface AppContextType {
   activities: ActivityEntry[]
   addActivity: (entry: Omit<ActivityEntry, "id" | "createdAt">) => void
   removeActivity: (id: string) => void
+  updateActivity: (id: string, patch: { type?: string; duration_min?: number; distance_km?: number; intensite?: string }) => void
   todayBurnedCalories: number
 
   // Groceries
@@ -382,6 +384,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // S25 — modifier une activité : maj optimiste des champs connus, le serveur recalcule les kcal.
+  const updateActivity = (id: string, patch: { type?: string; duration_min?: number; distance_km?: number; intensite?: string }) => {
+    setActivities((prev) => prev.map((a) => a.id === id
+      ? { ...a, type: patch.type ?? a.type, duration: patch.duration_min ?? a.duration }
+      : a))
+    if (!id.startsWith("act-")) {
+      updateActivityApi(id, patch)
+        .then((saved) => setActivities((prev) => prev.map((a) => (a.id === id ? saved : a))))
+        .catch((err) => console.error("[updateActivity] sync serveur échouée:", err))
+    }
+  }
+
   const todayBurnedCalories = activities
     .filter((a) => a.date === currentDate)
     .reduce((sum, a) => sum + a.caloriesBurned, 0)
@@ -453,6 +467,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         activities,
         addActivity,
         removeActivity,
+        updateActivity,
         todayBurnedCalories,
         scannedProducts,
         addScannedProduct,

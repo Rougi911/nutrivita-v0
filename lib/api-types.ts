@@ -152,7 +152,8 @@ export interface ApiGlucoseReading {
 export interface ApiActivityEntry {
   id: string
   type: string
-  duration: number
+  duration?: number
+  duration_min?: number // colonne réelle en base (le backend renvoie duration_min)
   calories_burned: number
   date: string
   source: "manual" | "strava" | "voice"

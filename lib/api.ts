@@ -235,7 +235,7 @@ function mapActivityEntry(raw: ApiActivityEntry): ActivityEntry {
   return {
     id: raw.id,
     type: raw.type,
-    duration: raw.duration,
+    duration: raw.duration_min ?? raw.duration ?? 0,
     caloriesBurned: raw.calories_burned,
     date: raw.date,
     source: raw.source,

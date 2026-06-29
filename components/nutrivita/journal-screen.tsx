@@ -23,6 +23,8 @@ import {
   Waves,
   Zap,
   Loader2,
+  Pencil,
+  Check,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { useApp } from "@/lib/app-context"
@@ -54,6 +56,7 @@ export function JournalScreen() {
     activities,
     addActivity,
     removeActivity,
+    updateActivity,
     todayBurnedCalories,
     isLoading,
     addMealEntry,
@@ -65,6 +68,9 @@ export function JournalScreen() {
   const [showActivityManual, setShowActivityManual] = useState(false)
   const [copyConfirm, setCopyConfirm] = useState<{ entries: MealEntry[]; count: number } | null>(null)
   const [copyLoading, setCopyLoading] = useState(false)
+  // S25 — édition inline de la durée d'une activité.
+  const [editingActId, setEditingActId] = useState<string | null>(null)
+  const [editDur, setEditDur] = useState("")
 
   const todayActivities = activities.filter((a) => a.date === currentDate)
 
@@ -343,9 +349,22 @@ export function JournalScreen() {
                     <span className="text-sm font-medium text-foreground">
                       {activityLabel(act.type)}
                     </span>
-                    <span className="text-xs text-muted-foreground">
-                      {act.duration} min
-                    </span>
+                    {editingActId === act.id ? (
+                      <span className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          value={editDur}
+                          onChange={(e) => setEditDur(e.target.value)}
+                          className="w-14 h-6 rounded-lg border border-border bg-muted px-1.5 text-xs"
+                          aria-label="min"
+                        />
+                        <span className="text-xs text-muted-foreground">min</span>
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        {act.duration} min
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold" style={{ color: "var(--primary)" }}>
@@ -354,6 +373,31 @@ export function JournalScreen() {
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
                       {act.source}
                     </span>
+                    {act.source !== "strava" && (
+                      editingActId === act.id ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-primary"
+                          onClick={() => {
+                            const d = parseInt(editDur, 10)
+                            if (d > 0) updateActivity(act.id, { duration_min: d })
+                            setEditingActId(null)
+                          }}
+                        >
+                          <Check className="h-3 w-3" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-primary"
+                          onClick={() => { setEditingActId(act.id); setEditDur(String(act.duration)) }}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                      )
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"
