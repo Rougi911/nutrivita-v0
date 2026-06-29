@@ -16,6 +16,8 @@ import { useTheme } from "next-themes"
 import { AnimatePresence, motion } from "framer-motion"
 import { useApp } from "@/lib/app-context"
 import { adjustMacros } from "@/lib/macros"
+import { enablePush, pushSupported } from "@/lib/push"
+import { getNotificationPrefs, updateNotificationPrefs, type NotificationPrefs } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
@@ -70,6 +72,26 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
   const [editName,   setEditName]   = useState(user.name)
   const [editAge,    setEditAge]    = useState(user.age.toString())
   const [editWeight, setEditWeight] = useState(user.weight.toString())
+
+  // S26 — préférences de rappels (chargées depuis le backend).
+  const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs | null>(null)
+  useEffect(() => {
+    getNotificationPrefs().then(setNotifPrefs).catch(() => {})
+  }, [])
+  const savePref = async (patch: Partial<NotificationPrefs>) => {
+    setNotifPrefs((p) => ({ ...(p as NotificationPrefs), ...patch }))
+    try {
+      const r = await updateNotificationPrefs(patch)
+      setNotifPrefs(r.prefs)
+    } catch { /* hors-ligne : la valeur optimiste reste affichée */ }
+  }
+  const toggleReminder = async (key: keyof NotificationPrefs, v: boolean) => {
+    if (v && pushSupported()) {
+      const ok = await enablePush() // permission navigateur + abonnement push
+      if (!ok) { toast(t("notifBlocked")); return }
+    }
+    await savePref({ [key]: v } as Partial<NotificationPrefs>)
+  }
 
   const initials = user.name.slice(0, 2).toUpperCase()
 
@@ -265,6 +287,32 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
               </span>
             </div>
           </div>
+        </SettingsGroup>
+
+        {/* S26 — Notifications / rappels (push). Activer demande la permission + l'abonnement. */}
+        <SettingsGroup title={t("notifications")}>
+          <SettingsRow label={t("reminderJournal")}>
+            <Switch checked={!!notifPrefs?.journal_enabled} onCheckedChange={(v) => toggleReminder("journal_enabled", v)} />
+          </SettingsRow>
+          {notifPrefs?.journal_enabled && (
+            <SettingsRow label={t("reminderTime")}>
+              <Input type="time" value={notifPrefs.journal_time} onChange={(e) => savePref({ journal_time: e.target.value })} className="w-28 h-9" />
+            </SettingsRow>
+          )}
+          <SettingsRow label={t("reminderGlucose")}>
+            <Switch checked={!!notifPrefs?.glucose_enabled} onCheckedChange={(v) => toggleReminder("glucose_enabled", v)} />
+          </SettingsRow>
+          {notifPrefs?.glucose_enabled && (
+            <SettingsRow label={t("reminderTime")}>
+              <Input type="time" value={notifPrefs.glucose_time} onChange={(e) => savePref({ glucose_time: e.target.value })} className="w-28 h-9" />
+            </SettingsRow>
+          )}
+          <SettingsRow label={t("reminderHydration")}>
+            <Switch checked={!!notifPrefs?.hydration_enabled} onCheckedChange={(v) => toggleReminder("hydration_enabled", v)} />
+          </SettingsRow>
+          <SettingsRow label={t("reminderDeficiency")}>
+            <Switch checked={!!notifPrefs?.deficiency_enabled} onCheckedChange={(v) => toggleReminder("deficiency_enabled", v)} />
+          </SettingsRow>
         </SettingsGroup>
 
         {/* (e) Appearance — useTheme(), not classList.toggle */}
