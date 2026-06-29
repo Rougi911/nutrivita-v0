@@ -19,7 +19,8 @@ import {
   Scatter,
 } from "recharts"
 import { useApp } from "@/lib/app-context"
-import { getDeficiencies, getAdditivesStats, exportUserData, getJournalRange, getWeightHistory, getGlucoseReadings, getDeficiencySuggestions, type AdditivesStats, type DeficiencySuggestion } from "@/lib/api"
+import { getDeficiencies, getAdditivesStats, exportUserData, getJournalRange, getWeightHistory, getGlucoseReadings, type AdditivesStats } from "@/lib/api"
+import { suggestSeasonalFoods, type NutrientSuggestion } from "@/lib/seasonal-foods"
 import { toast } from "sonner"
 import type { ApiDeficiency } from "@/lib/api-types"
 import { AdditivesBars } from "@/components/nutrivita/additives-bars"
@@ -69,9 +70,8 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
   const [periodGlucose, setPeriodGlucose] = useState(glucoseReadings)
   // Point sélectionné sur un graphe (clic) → affiche valeur + date exacte.
   const [selectedPoint, setSelectedPoint] = useState<{ chart: "weight" | "cal"; date: string; text: string } | null>(null)
-  // S27 — suggestions d'aliments de saison pour combler les carences.
-  const [seasonalSugg, setSeasonalSugg] = useState<DeficiencySuggestion[] | null>(null)
-  const [loadingSugg, setLoadingSugg] = useState(false)
+  // S27 — suggestions d'aliments de saison (calculées depuis le radar).
+  const [seasonalSugg, setSeasonalSugg] = useState<NutrientSuggestion[] | null>(null)
 
   useEffect(() => {
     const fetchDays = segment === "semaine" ? 7 : segment === "mois" ? 30 : segment === "annee" ? 365 : 7
@@ -183,23 +183,7 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
   const calTicks = useMemo(() => tickSetFor(calData.map((c) => c.date)), [calData, segment]) // eslint-disable-line react-hooks/exhaustive-deps
   const exactDate = (ds: string) => new Date(ds).toLocaleDateString(dateLocale, { day: "numeric", month: "long", year: "numeric" })
 
-  // S27 — libellé FR des nutriments + chargement des suggestions d'aliments de saison.
-  const NUTRIENT_KEY = {
-    fer: "nutFer", calcium: "nutCalcium", vitD: "nutVitD",
-    vitB12: "nutVitB12", magnesium: "nutMagnesium", folates: "nutFolates",
-  } as Record<string, Parameters<typeof t>[0]>
-  const nutrientLabel = (key: string): string => t(NUTRIENT_KEY[key] ?? (key as Parameters<typeof t>[0]))
-  const loadSeasonalSuggestions = async () => {
-    setLoadingSugg(true)
-    try {
-      const res = await getDeficiencySuggestions()
-      setSeasonalSugg(res?.suggestions ?? [])
-    } catch {
-      setSeasonalSugg([])
-    } finally {
-      setLoadingSugg(false)
-    }
-  }
+  // (S27 — le calcul des suggestions est défini après `radarData`, dont il dépend.)
 
   // Macro donut (today)
   const macroDonut = [
@@ -254,6 +238,15 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
     const periodEntries = periodMeals.filter((m) => m.date >= cutoffStr)
     return calcRadarData(periodEntries, user.sex, DEFAULT_VNR)
   }, [periodMeals, segment, user.sex])
+
+  // S27 — propose des aliments de saison pour les nutriments que le radar signale (< 70 % VNR).
+  const loadSeasonalSuggestions = () => {
+    const month = new Date().getMonth() + 1
+    const deficient = radarData.nutrients
+      .filter((n) => n.valuePercent < 70)
+      .map((n) => ({ key: n.key, label: n.label }))
+    setSeasonalSugg(suggestSeasonalFoods(deficient, month))
+  }
 
   // Export RGPD en CSV lisible (Excel/Sheets) — une section par table, séparateur ';', BOM UTF-8 (S-AUDIT)
   const handleExport = async () => {
@@ -659,23 +652,21 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
             onClick={loadSeasonalSuggestions}
             className="w-full mt-3 py-2 rounded-xl border border-border text-[13px] font-medium text-foreground bg-muted/40"
           >
-            {loadingSugg ? t("loadingShort") : t("seasonalFoodIdeas")}
+            {t("seasonalFoodIdeas")}
           </button>
           {seasonalSugg && seasonalSugg.length > 0 && (
             <div className="mt-3 space-y-3">
               {seasonalSugg.map((s) => (
-                <div key={s.nutrient}>
-                  <p className="text-[12px] font-semibold text-foreground mb-1">{nutrientLabel(s.nutrient)}</p>
+                <div key={s.key}>
+                  <p className="text-[12px] font-semibold text-foreground mb-1">{s.label}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {s.foods.map((f) => (
                       <span
-                        key={f.name}
+                        key={f}
                         className="px-2 py-0.5 rounded-full text-[11px] font-medium"
-                        style={f.inSeason
-                          ? { backgroundColor: "var(--primary-bg, #E6F4EF)", color: "var(--primary)" }
-                          : { backgroundColor: "var(--muted)", color: "var(--muted-foreground)" }}
+                        style={{ backgroundColor: "var(--primary-bg, #E6F4EF)", color: "var(--primary)" }}
                       >
-                        {f.name}{f.inSeason ? ` · ${t("inSeasonShort")}` : ""}
+                        {f}
                       </span>
                     ))}
                   </div>
@@ -683,7 +674,7 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
               ))}
             </div>
           )}
-          {seasonalSugg && seasonalSugg.length === 0 && !loadingSugg && (
+          {seasonalSugg && seasonalSugg.length === 0 && (
             <p className="text-[12px] text-muted-foreground mt-2">{t("noDeficiencyPeriod")}</p>
           )}
         </div>
