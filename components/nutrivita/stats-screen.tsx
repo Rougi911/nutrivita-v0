@@ -52,7 +52,9 @@ function getBarFill(calories: number, target: number): string {
 }
 
 export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } = {}) {
-  const { t, dailyLog, mealEntries, user, weightHistory, glucoseReadings, scannedProducts, isRTL } = useApp()
+  const { t, language, dailyLog, mealEntries, user, weightHistory, glucoseReadings, scannedProducts, isRTL } = useApp()
+  // Locale pour les libellés de date des graphes (corrige les axes restés en français sous arabe).
+  const dateLocale = language === "ar" ? "ar" : language === "en" ? "en-GB" : "fr-FR"
   const [segment, setSegment] = useState<Segment>("semaine")
   const [deficiencies, setDeficiencies] = useState<ApiDeficiency[]>([])
   const [loadingDef, setLoadingDef] = useState(false)
@@ -75,15 +77,18 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
     const fetchDays = segment === "semaine" ? 7 : segment === "mois" ? 30 : segment === "annee" ? 365 : 7
     setSelectedPoint(null)
     let cancelled = false
+    // En cas d'échec (ex. 429), on NE remplace PAS par des données périmées : on garde
+    // l'état de période précédent (sinon le graphe « revient » au jour courant et semble
+    // ne pas se synchroniser au changement d'échelle — bug signalé).
     Promise.all([
-      getJournalRange(fetchDays).catch(() => mealEntries),
-      getWeightHistory(fetchDays).catch(() => weightHistory),
-      getGlucoseReadings(fetchDays).catch(() => glucoseReadings),
+      getJournalRange(fetchDays).catch(() => null),
+      getWeightHistory(fetchDays).catch(() => null),
+      getGlucoseReadings(fetchDays).catch(() => null),
     ]).then(([m, w, g]) => {
       if (cancelled) return
-      setPeriodMeals(m)
-      setPeriodWeight(w)
-      setPeriodGlucose(g)
+      if (m) setPeriodMeals(m)
+      if (w) setPeriodWeight(w)
+      if (g) setPeriodGlucose(g)
     })
     return () => { cancelled = true }
   }, [segment, mealEntries, weightHistory, glucoseReadings])
@@ -157,9 +162,9 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
   // Les libellés sont clairsemés mais TOUS les points restent tracés et cliquables.
   const labelText = (ds: string) => {
     const d = new Date(ds)
-    if (segment === "annee") return ["jan", "fév", "mar", "avr", "mai", "juin", "juil", "août", "sep", "oct", "nov", "déc"][d.getMonth()]
-    if (segment === "mois") return String(d.getDate())
-    return ["dim", "lun", "mar", "mer", "jeu", "ven", "sam"][d.getDay()]
+    if (segment === "annee") return d.toLocaleDateString(dateLocale, { month: "short" })
+    if (segment === "mois") return d.toLocaleDateString(dateLocale, { day: "numeric" })
+    return d.toLocaleDateString(dateLocale, { weekday: "short" })
   }
   // Ensemble des dates qui portent un libellé : 1er point de chaque mois (année),
   // 1 sur 5 (mois), tous (semaine/jour). Robuste même si les points sont espacés (ex. poids).
@@ -176,13 +181,14 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
   }
   const weightTicks = useMemo(() => tickSetFor(periodWeight.map((w) => w.date)), [periodWeight, segment]) // eslint-disable-line react-hooks/exhaustive-deps
   const calTicks = useMemo(() => tickSetFor(calData.map((c) => c.date)), [calData, segment]) // eslint-disable-line react-hooks/exhaustive-deps
-  const exactDate = (ds: string) => new Date(ds).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
+  const exactDate = (ds: string) => new Date(ds).toLocaleDateString(dateLocale, { day: "numeric", month: "long", year: "numeric" })
 
   // S27 — libellé FR des nutriments + chargement des suggestions d'aliments de saison.
-  const nutrientLabel = (key: string): string => ({
-    fer: "Fer", calcium: "Calcium", vitD: "Vitamine D", vitB12: "Vitamine B12",
-    magnesium: "Magnésium", folates: "Folates",
-  } as Record<string, string>)[key] || key
+  const NUTRIENT_KEY = {
+    fer: "nutFer", calcium: "nutCalcium", vitD: "nutVitD",
+    vitB12: "nutVitB12", magnesium: "nutMagnesium", folates: "nutFolates",
+  } as Record<string, Parameters<typeof t>[0]>
+  const nutrientLabel = (key: string): string => t(NUTRIENT_KEY[key] ?? (key as Parameters<typeof t>[0]))
   const loadSeasonalSuggestions = async () => {
     setLoadingSugg(true)
     try {
@@ -383,7 +389,7 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
                 <Tooltip
                   contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "0.75rem", fontSize: "12px" }}
                   formatter={(v: number) => [`${v.toFixed(1)} kg`, "Poids"]}
-                  labelFormatter={(v) => new Date(v).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                  labelFormatter={(v) => new Date(v).toLocaleDateString(dateLocale, { day: "numeric", month: "short" })}
                 />
                 <Line
                   type="monotone"
@@ -653,7 +659,7 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
             onClick={loadSeasonalSuggestions}
             className="w-full mt-3 py-2 rounded-xl border border-border text-[13px] font-medium text-foreground bg-muted/40"
           >
-            {loadingSugg ? "Chargement…" : "Idées d'aliments de saison"}
+            {loadingSugg ? t("loadingShort") : t("seasonalFoodIdeas")}
           </button>
           {seasonalSugg && seasonalSugg.length > 0 && (
             <div className="mt-3 space-y-3">
@@ -669,7 +675,7 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
                           ? { backgroundColor: "var(--primary-bg, #E6F4EF)", color: "var(--primary)" }
                           : { backgroundColor: "var(--muted)", color: "var(--muted-foreground)" }}
                       >
-                        {f.name}{f.inSeason ? " · de saison" : ""}
+                        {f.name}{f.inSeason ? ` · ${t("inSeasonShort")}` : ""}
                       </span>
                     ))}
                   </div>
@@ -678,7 +684,7 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
             </div>
           )}
           {seasonalSugg && seasonalSugg.length === 0 && !loadingSugg && (
-            <p className="text-[12px] text-muted-foreground mt-2">Aucune carence marquée sur la période — continue ainsi.</p>
+            <p className="text-[12px] text-muted-foreground mt-2">{t("noDeficiencyPeriod")}</p>
           )}
         </div>
 
