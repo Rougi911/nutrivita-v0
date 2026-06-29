@@ -486,7 +486,7 @@ export function JournalScreen() {
           <div className="bg-background rounded-t-2xl p-6 w-full max-w-sm space-y-4" onClick={e => e.stopPropagation()}>
             <p className="text-sm font-semibold">{`Copier ${copyConfirm.count} repas d'hier ?`}</p>
             <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setCopyConfirm(null)}>Annuler</Button>
+              <Button variant="outline" className="flex-1" onClick={() => setCopyConfirm(null)}>{t("cancel")}</Button>
               <Button className="flex-1" onClick={handleConfirmCopy} disabled={copyLoading}>
                 {copyLoading ? "Copie…" : "Confirmer"}
               </Button>

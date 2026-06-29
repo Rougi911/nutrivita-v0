@@ -433,7 +433,7 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
         <div className="rounded-2xl border border-border bg-card p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-[14px] font-semibold text-foreground">{t("caloriesPerDay")}</h3>
-            <span className="text-[13px] text-muted-foreground">moy. {avgCalories} kcal</span>
+            <span className="text-[13px] text-muted-foreground">{t("average")} {avgCalories} kcal</span>
           </div>
           {selectedPoint?.chart === "cal" && (
             <p className="text-[12px] text-muted-foreground -mt-1 mb-2">
