@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { BookOpen, Home, Plus, ShoppingCart, TrendingUp } from "lucide-react"
+import { BookOpen, Home, Plus, PackageOpen, TrendingUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useApp } from "@/lib/app-context"
 
@@ -10,7 +10,7 @@ const navItems = [
   { id: "journal",   icon: BookOpen,       labelKey: "journal"   as const },
   { id: "__add__",   icon: Plus,           labelKey: "add"       as const }, // central + button
   { id: "stats",     icon: TrendingUp,     labelKey: "stats"     as const },
-  { id: "groceries", icon: ShoppingCart,   labelKey: "groceries" as const },
+  { id: "groceries", icon: PackageOpen,     labelKey: "groceries" as const },
 ]
 
 export function BottomNavigation() {

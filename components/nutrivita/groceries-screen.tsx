@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { AlertTriangle, ScanLine, Trash2, ShoppingBag } from "lucide-react"
+import { AlertTriangle, ScanLine, Trash2, ShoppingBag, Leaf } from "lucide-react"
 import { Loader2 } from "lucide-react"
 import { useApp } from "@/lib/app-context"
 import { getMonthlyScannedStats } from "@/lib/mock-data"
@@ -17,7 +17,7 @@ import { NutriScoreBadge } from "@/components/nutrivita/nutri-score-badge"
 import { AlternativesSheet } from "@/components/nutrivita/alternatives-sheet"
 import { toast } from "sonner"
 
-function ProductCard({ product, onDelete }: { product: ScannedProduct; onDelete?: () => void }) {
+function ProductCard({ product, onDelete, onAlternatives }: { product: ScannedProduct; onDelete?: () => void; onAlternatives?: () => void }) {
   const { t } = useApp()
   const [imgFailed, setImgFailed] = useState(false)
 
@@ -82,6 +82,15 @@ function ProductCard({ product, onDelete }: { product: ScannedProduct; onDelete?
         <span className="text-[12px] text-muted-foreground">
           ×{product.timesThisMonth}
         </span>
+        {onAlternatives && (
+          <button
+            onClick={onAlternatives}
+            className="p-1 rounded-lg text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
+            aria-label={t("seeAlternatives")}
+          >
+            <Leaf className="h-3.5 w-3.5" />
+          </button>
+        )}
         {onDelete && (
           <button
             onClick={onDelete}
@@ -282,6 +291,7 @@ export function GroceriesScreen() {
                 key={product.id ?? product.barcode}
                 product={product}
                 onDelete={product.id != null ? () => handleDelete(product) : undefined}
+                onAlternatives={product.score != null ? () => setAltTarget(product) : undefined}
               />
             ))}
           </div>

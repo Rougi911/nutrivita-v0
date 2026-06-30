@@ -253,7 +253,7 @@ export const translations = {
     glucose: "Glycémie",
     settings: "Réglages",
     home: "Accueil",
-    groceries: "Courses",
+    groceries: "Produits",
     add: "Ajouter",
 
     // Journal / Home
@@ -476,7 +476,7 @@ export const translations = {
     noActivity: "Aucune activité ajoutée",
 
     // Groceries
-    myGroceries: "Mes courses",
+    myGroceries: "Produits transformés",
     monthlyOverview: "Bilan du mois",
     addedSugars: "Sucres ajoutés",
     salt: "Sel",
@@ -715,7 +715,7 @@ export const translations = {
     glucose: "\u0627\u0644\u0633\u0643\u0631",
     settings: "\u0627\u0644\u0625\u0639\u062F\u0627\u062F\u0627\u062A",
     home: "\u0627\u0644\u0631\u0626\u064A\u0633\u064A\u0629",
-    groceries: "\u0627\u0644\u062A\u0633\u0648\u0642",
+    groceries: "\u0645\u0646\u062A\u062C\u0627\u062A",
     add: "\u0625\u0636\u0627\u0641\u0629",
     greeting: "\u0645\u0631\u062D\u0628\u0627\u064B",
     streak: "\u0623\u064A\u0627\u0645 \u0645\u062A\u062A\u0627\u0644\u064A\u0629",
@@ -914,7 +914,7 @@ export const translations = {
     voiceActivity: "\u0646\u0634\u0627\u0637 \u0635\u0648\u062A\u064A",
     speakActivity: "\u0642\u0644 \u0645\u062B\u0644\u0627\u064B: \"30 \u062F\u0642\u064A\u0642\u0629 \u062C\u0631\u064A\"",
     noActivity: "\u0644\u0645 \u064A\u064F\u0636\u064E\u0641 \u0623\u064A \u0646\u0634\u0627\u0637",
-    myGroceries: "\u0645\u0634\u062A\u0631\u064A\u0627\u062A\u064A",
+    myGroceries: "\u0645\u0646\u062A\u062C\u0627\u062A \u0645\u0635\u0646\u0639\u0629",
     monthlyOverview: "\u0645\u0644\u062E\u0635 \u0627\u0644\u0634\u0647\u0631",
     addedSugars: "\u0633\u0643\u0631\u064A\u0627\u062A \u0645\u0636\u0627\u0641\u0629",
     salt: "\u0645\u0644\u062D",
@@ -1149,7 +1149,7 @@ export const translations = {
     glucose: "Glucose",
     settings: "Settings",
     home: "Home",
-    groceries: "Groceries",
+    groceries: "Products",
     add: "Add",
     greeting: "Hello",
     streak: "day streak",
@@ -1348,7 +1348,7 @@ export const translations = {
     voiceActivity: "Voice activity",
     speakActivity: "Say e.g.: \"30 minutes running\"",
     noActivity: "No activity added",
-    myGroceries: "My groceries",
+    myGroceries: "Processed foods",
     monthlyOverview: "Monthly overview",
     addedSugars: "Added sugars",
     salt: "Salt",

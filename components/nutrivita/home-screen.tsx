@@ -1,6 +1,7 @@
 "use client"
 
-import { Settings, Droplets, Zap, ChevronRight, Activity } from "lucide-react"
+import { useRef } from "react"
+import { Settings, Droplets, Zap, ChevronRight, Activity, Calendar } from "lucide-react"
 import { useApp } from "@/lib/app-context"
 import { CalorieRing } from "./calorie-ring"
 import { MealTabsCard } from "./meal-tabs-card"
@@ -78,6 +79,7 @@ export function HomeScreen({ onOpenSettings, onOpenGlucose }: HomeScreenProps) {
     glucoseReadings,
     activities,
     currentDate,
+    setCurrentDate,
     todayBurnedCalories,
     t,
     waterIntake,
@@ -105,9 +107,12 @@ export function HomeScreen({ onOpenSettings, onOpenGlucose }: HomeScreenProps) {
     }
   }
 
-  // Date formatting
-  const now = new Date()
-  const dateLabel = now.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })
+  // G6 — affiche la date SÉLECTIONNÉE (currentDate) ; modifiable via le sélecteur natif jj/mm/aaaa.
+  const dateInputRef = useRef<HTMLInputElement>(null)
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const dateObj = currentDate ? new Date(currentDate + "T00:00:00") : new Date()
+  const showYear = dateObj.getFullYear() !== new Date().getFullYear()
+  const dateLabel = dateObj.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", ...(showYear ? { year: "numeric" as const } : {}) })
   const dateCapitalized = dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)
 
   return (
@@ -116,7 +121,25 @@ export function HomeScreen({ onOpenSettings, onOpenGlucose }: HomeScreenProps) {
       {/* Header */}
       <div className="px-4 pt-5 pb-3 flex items-start justify-between">
         <div>
-          <p className="text-[13px] text-muted-foreground">{dateCapitalized}</p>
+          <button
+            type="button"
+            onClick={() => dateInputRef.current?.showPicker?.()}
+            className="flex items-center gap-1.5 text-[13px] text-muted-foreground"
+            aria-label={dateCapitalized}
+          >
+            <Calendar className="h-3.5 w-3.5" />
+            <span>{dateCapitalized}</span>
+          </button>
+          <input
+            ref={dateInputRef}
+            type="date"
+            value={currentDate || todayStr}
+            max={todayStr}
+            onChange={(e) => { if (e.target.value) setCurrentDate(e.target.value) }}
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden="true"
+          />
           <h1 className="text-[22px] font-semibold text-foreground leading-tight mt-0.5">
             {t("greeting")}, {user.name}
           </h1>
