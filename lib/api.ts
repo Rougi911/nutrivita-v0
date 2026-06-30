@@ -530,6 +530,17 @@ export async function updateNotificationPrefs(prefs: Partial<NotificationPrefs>)
   return apiFetch<{ success: boolean; prefs: NotificationPrefs }>("/api/notifications/prefs", { method: "PUT", body: JSON.stringify(prefs) })
 }
 
+// C3 — bilan mensuel composition (sucres ajoutés / sel / AGS vs référence OMS), navigable par mois.
+export interface CompositionStat { total_g: number; reference_g: number; pct: number; color: string }
+export interface GrocerySummary {
+  period: string; year: number; month: number; products_scanned: number
+  sugars: CompositionStat; salt: CompositionStat; sat_fat: CompositionStat
+}
+export async function getGrocerySummary(month?: string): Promise<GrocerySummary> {
+  const q = month ? `?month=${encodeURIComponent(month)}` : ""
+  return apiFetch<GrocerySummary>(`/api/groceries/summary${q}`)
+}
+
 export async function getJournal(date: string): Promise<MealEntry[]> {
   const raw = await apiFetch<unknown>("/api/journal/query", {
     method: "POST",
