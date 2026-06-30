@@ -19,7 +19,7 @@ import {
   Scatter,
 } from "recharts"
 import { useApp } from "@/lib/app-context"
-import { getDeficiencies, getAdditivesStats, exportUserData, getJournalRange, getWeightHistory, getGlucoseReadings, type AdditivesStats } from "@/lib/api"
+import { getDeficiencies, getAdditivesStats, exportUserData, getJournalRange, getWeightHistory, getGlucoseReadings, getActivitiesRange, type AdditivesStats } from "@/lib/api"
 import { suggestSeasonalFoods, type NutrientSuggestion } from "@/lib/seasonal-foods"
 import { toast } from "sonner"
 import type { ApiDeficiency } from "@/lib/api-types"
@@ -78,6 +78,9 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
   const [selectedPoint, setSelectedPoint] = useState<{ chart: "weight" | "cal"; date: string; text: string } | null>(null)
   // S27 — suggestions d'aliments de saison (calculées depuis le radar).
   const [seasonalSugg, setSeasonalSugg] = useState<NutrientSuggestion[] | null>(null)
+  // G4-a — métrique affichée sur le 1er graphe + calories brûlées par jour (pour l'« écart »).
+  const [metric, setMetric] = useState<"poids" | "calories" | "ecart" | "glycemie">("poids")
+  const [periodBurned, setPeriodBurned] = useState<{ date: string; burned: number }[]>([])
 
   useEffect(() => {
     const fetchDays = segment === "semaine" ? 7 : segment === "mois" ? 30 : segment === "annee" ? 365 : 7
@@ -90,11 +93,13 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
       getJournalRange(fetchDays).catch(() => null),
       getWeightHistory(fetchDays).catch(() => null),
       getGlucoseReadings(fetchDays).catch(() => null),
-    ]).then(([m, w, g]) => {
+      getActivitiesRange(fetchDays).catch(() => null),
+    ]).then(([m, w, g, b]) => {
       if (cancelled) return
       if (m) setPeriodMeals(m)
       if (w) setPeriodWeight(w)
       if (g) setPeriodGlucose(g)
+      if (b) setPeriodBurned(b)
     })
     return () => { cancelled = true }
   }, [segment, mealEntries, weightHistory, glucoseReadings])
@@ -214,9 +219,48 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
     }
     return set
   }
-  const weightTicks = useMemo(() => tickSetFor(periodWeight.map((w) => w.date)), [periodWeight, segment]) // eslint-disable-line react-hooks/exhaustive-deps
   const calTicks = useMemo(() => tickSetFor(calData.map((c) => c.date)), [calData, segment]) // eslint-disable-line react-hooks/exhaustive-deps
   const exactDate = (ds: string) => new Date(ds).toLocaleDateString(dateLocale, { day: "numeric", month: "long", year: "numeric" })
+
+  // G4-a — données du 1er graphe selon la métrique sélectionnée (mêmes dates → mêmes libellés d'axe).
+  const metricSeries = useMemo(() => {
+    if (metric === "calories") {
+      return { data: calData.map((c) => ({ date: c.date, value: c.calories })), unit: "kcal", decimals: 0, color: "var(--amber)", label: t("chartCalories") }
+    }
+    if (metric === "ecart") {
+      const burnedByDate: Record<string, number> = {}
+      for (const b of periodBurned) burnedByDate[b.date] = b.burned
+      const monthAvgBurned = (ym: string) => {
+        const mb = periodBurned.filter((b) => b.date.startsWith(ym))
+        return mb.length ? Math.round(mb.reduce((s, b) => s + b.burned, 0) / mb.length) : 0
+      }
+      const data = calData.map((c) => {
+        const burned = segment === "annee" ? monthAvgBurned(c.date.slice(0, 7)) : (burnedByDate[c.date] || 0)
+        return { date: c.date, value: c.calories - burned }
+      })
+      return { data, unit: "kcal", decimals: 0, color: "var(--primary)", label: t("chartGap") }
+    }
+    if (metric === "glycemie") {
+      const byDay: Record<string, { sum: number; n: number }> = {}
+      for (const r of periodGlucose) {
+        const day = new Date(r.timestamp).toISOString().slice(0, 10)
+        const o = (byDay[day] ||= { sum: 0, n: 0 })
+        o.sum += r.value
+        o.n += 1
+      }
+      const data = Object.keys(byDay).sort().map((date) => ({ date, value: Math.round((byDay[date].sum / byDay[date].n)) / 100 }))
+      return { data, unit: "g/L", decimals: 2, color: "var(--glucose)", label: t("chartGlucose") }
+    }
+    return { data: periodWeight.map((w) => ({ date: w.date, value: w.weight })), unit: "kg", decimals: 1, color: "var(--primary)", label: t("chartWeight") }
+  }, [metric, calData, periodWeight, periodGlucose, periodBurned, segment, t])
+
+  const metricTicks = useMemo(() => tickSetFor(metricSeries.data.map((d) => d.date)), [metricSeries, segment]) // eslint-disable-line react-hooks/exhaustive-deps
+  const METRICS: { id: typeof metric; label: string }[] = [
+    { id: "poids", label: t("chartWeight") },
+    { id: "calories", label: t("chartCalories") },
+    { id: "ecart", label: t("chartGap") },
+    { id: "glycemie", label: t("chartGlucose") },
+  ]
 
   // (S27 — le calcul des suggestions est défini après `radarData`, dont il dépend.)
 
@@ -366,72 +410,83 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
         {/* ─── Dissipation des calories (S13) — visible seulement si excédent du jour ─── */}
         <DissipationCard onOpenSettings={onOpenSettings} />
 
-        {/* ─── 1. Weight line chart ──────────────────────────────────────────── */}
-        {periodWeight.length > 0 && (
-          <div className="rounded-2xl border border-border bg-card p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[14px] font-semibold text-foreground">{t("weightEvolution")}</h3>
+        {/* ─── 1. Graphe métrique (G4-a) : Poids / Calories / Écart / Glycémie ─── */}
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-[14px] font-semibold text-foreground">{metricSeries.label}</h3>
+            {metric === "poids" && periodWeight.length > 1 && (
               <div className="flex items-center gap-1.5">
                 {weightDelta < 0 ? (
                   <TrendingDown className="h-4 w-4" style={{ color: weightColor }} />
                 ) : (
                   <TrendingUp className="h-4 w-4" style={{ color: weightColor }} />
                 )}
-                <span
-                  className="text-[13px] font-semibold"
-                  style={{ color: weightColor }}
-                >
+                <span className="text-[13px] font-semibold" style={{ color: weightColor }}>
                   {weightDelta > 0 ? "+" : ""}{weightDelta.toFixed(1)} kg
                 </span>
               </div>
-            </div>
-            {selectedPoint?.chart === "weight" && (
-              <p className="text-[12px] text-muted-foreground -mt-1 mb-2">
-                {exactDate(selectedPoint.date)} · <span className="font-semibold text-foreground">{selectedPoint.text}</span>
-              </p>
             )}
-            <ResponsiveContainer width="100%" height={150}>
-              <LineChart
-                data={periodWeight}
-                onClick={(s: any) => {
-                  const p = s?.activePayload?.[0]?.payload
-                  if (p) setSelectedPoint({ chart: "weight", date: p.date, text: `${Number(p.weight).toFixed(1)} kg` })
-                }}
-              >
-                <XAxis
-                  dataKey="date"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-                  tickFormatter={(v) => (weightTicks.has(v) ? labelText(v) : "")}
-                  interval={0}
-                  minTickGap={0}
-                />
-                <YAxis
-                  domain={["dataMin - 0.5", "dataMax + 0.5"]}
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-                  width={28}
-                />
-                <Tooltip
-                  contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "0.75rem", fontSize: "12px" }}
-                  formatter={(v: number) => [`${v.toFixed(1)} kg`, "Poids"]}
-                  labelFormatter={(v) => new Date(v).toLocaleDateString(dateLocale, { day: "numeric", month: "short" })}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="weight"
-                  stroke="var(--primary)"
-                  strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 4 }}
-                  isAnimationActive={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
           </div>
-        )}
+          <div className="flex gap-1.5 mb-3">
+            {METRICS.map((mx) => (
+              <button
+                key={mx.id}
+                onClick={() => { setMetric(mx.id); setSelectedPoint(null) }}
+                className={cn(
+                  "flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-colors",
+                  metric === mx.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                )}
+              >
+                {mx.label}
+              </button>
+            ))}
+          </div>
+          {selectedPoint?.chart === "weight" && (
+            <p className="text-[12px] text-muted-foreground -mt-1 mb-2">
+              {exactDate(selectedPoint.date)} · <span className="font-semibold text-foreground">{selectedPoint.text}</span>
+            </p>
+          )}
+          <ResponsiveContainer width="100%" height={150}>
+            <LineChart
+              data={metricSeries.data}
+              onClick={(s: any) => {
+                const p = s?.activePayload?.[0]?.payload
+                if (p) setSelectedPoint({ chart: "weight", date: p.date, text: `${Number(p.value).toFixed(metricSeries.decimals)} ${metricSeries.unit}` })
+              }}
+            >
+              <XAxis
+                dataKey="date"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                tickFormatter={(v) => (metricTicks.has(v) ? labelText(v) : "")}
+                interval={0}
+                minTickGap={0}
+              />
+              <YAxis
+                domain={["auto", "auto"]}
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                width={32}
+              />
+              <Tooltip
+                contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "0.75rem", fontSize: "12px" }}
+                formatter={(v: number) => [`${v.toFixed(metricSeries.decimals)} ${metricSeries.unit}`, metricSeries.label]}
+                labelFormatter={(v) => new Date(v).toLocaleDateString(dateLocale, { day: "numeric", month: "short" })}
+              />
+              <Line
+                type="monotone"
+                dataKey="value"
+                stroke={metricSeries.color}
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 4 }}
+                isAnimationActive={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
 
         {/* ─── 2. Body composition ──────────────────────────────────────────── */}
         <div className="rounded-2xl border border-border bg-card p-4">

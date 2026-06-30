@@ -541,6 +541,12 @@ export async function getGrocerySummary(month?: string): Promise<GrocerySummary>
   return apiFetch<GrocerySummary>(`/api/groceries/summary${q}`)
 }
 
+// G4-a — calories brûlées agrégées par jour (pour la série « écart » du graphe métrique).
+export interface DailyBurned { date: string; burned: number }
+export async function getActivitiesRange(days: number): Promise<DailyBurned[]> {
+  return apiFetch<DailyBurned[]>("/api/activities/range", { method: "POST", body: JSON.stringify({ days }) })
+}
+
 export async function getJournal(date: string): Promise<MealEntry[]> {
   const raw = await apiFetch<unknown>("/api/journal/query", {
     method: "POST",
