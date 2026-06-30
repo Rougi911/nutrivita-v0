@@ -45,11 +45,17 @@ const SEGMENTS: { id: Segment; labelKey: string }[] = [
 ]
 
 
+// G1 — code couleur des barres calories par rapport à la cible :
+//  vert si dans la cible (± TARGET_BAND kcal), rouge si trop haut (> cible + HIGH_OVER),
+//  orange sinon (trop bas, ou modérément au-dessus). Barre vide (0 kcal) → neutre.
+const TARGET_BAND = 100   // kcal de tolérance autour de la cible
+const HIGH_OVER   = 300   // au-delà de cible + ce seuil → trop haut (rouge)
 function getBarFill(calories: number, target: number): string {
-  const ratio = calories / target
-  if (ratio <= 1.0) return "var(--primary)"
-  if (ratio <= 1.1) return "var(--amber)"
-  return "var(--risk)"
+  if (!calories) return "var(--muted)"
+  const diff = calories - target
+  if (Math.abs(diff) <= TARGET_BAND) return "var(--primary)" // vert : dans la cible
+  if (diff > HIGH_OVER) return "var(--risk)"                  // rouge : trop haut
+  return "var(--amber)"                                       // orange : trop bas / modérément haut
 }
 
 export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } = {}) {
@@ -127,13 +133,44 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
   const fatDeltaKg  = first && latest
     ? ((latest.bodyFat ?? bfPct) * latest.weight / 100) - ((first.bodyFat ?? bfPct) * first.weight / 100)
     : 0
+  // G2 — couleur selon le RYTHME de variation (kg/semaine) : vert si physiologique (≤ 1 kg/sem),
+  // orange entre 1 et 1,5, rouge si trop brutal (> 1,5 kg/sem), dans les deux sens.
+  const weightSpanDays = first && latest
+    ? Math.max(1, (new Date(latest.date).getTime() - new Date(first.date).getTime()) / 86400000)
+    : 1
+  const weeklyRate = Math.abs(weightDelta) / (weightSpanDays / 7)
+  const weightColor = weeklyRate <= 1.0 ? "var(--primary)" : weeklyRate <= 1.5 ? "var(--amber)" : "var(--risk)"
 
-  // Calorie data computed from real journal entries — J-N to J-0
+  // Calorie data depuis le journal réel. Année : 12 moyennes MENSUELLES (kcal/jour moyen
+  // par mois) pour la lisibilité ; jour/semaine/mois : valeurs par jour. Jamais de données fictives.
   const calData: DayCalories[] = useMemo(() => {
-    const days = segment === "semaine" ? 7 : segment === "mois" ? 30 : segment === "annee" ? 365 : 1
     const result: DayCalories[] = []
     const today = new Date()
     today.setHours(0, 0, 0, 0)
+
+    if (segment === "annee") {
+      for (let m = 11; m >= 0; m--) {
+        const d = new Date(today.getFullYear(), today.getMonth() - m, 1)
+        const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+        const byDay: Record<string, { c: number; p: number; g: number; f: number }> = {}
+        for (const e of periodMeals) {
+          if (!e.date.startsWith(ym)) continue
+          const day = (byDay[e.date] ||= { c: 0, p: 0, g: 0, f: 0 })
+          day.c += (e.food.calories * e.amount) / 100
+          day.p += (e.food.protein * e.amount) / 100
+          day.g += (e.food.carbs * e.amount) / 100
+          day.f += (e.food.fat * e.amount) / 100
+        }
+        const vals = Object.values(byDay)
+        const n = vals.length || 1
+        const avg = (sel: (x: { c: number; p: number; g: number; f: number }) => number) =>
+          vals.length ? Math.round(vals.reduce((s, x) => s + sel(x), 0) / n) : 0
+        result.push({ date: `${ym}-01`, label: "", calories: avg((x) => x.c), protein: avg((x) => x.p), carbs: avg((x) => x.g), fat: avg((x) => x.f) })
+      }
+      return result
+    }
+
+    const days = segment === "semaine" ? 7 : segment === "mois" ? 30 : 1
     for (let i = days - 1; i >= 0; i--) {
       const d = new Date(today)
       d.setDate(d.getDate() - i)
@@ -148,8 +185,6 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
         : String(d.getDate())
       result.push({ date: dateStr, label, calories, protein, carbs, fat })
     }
-    // Journal vide / sans calories → on retourne les vraies données (zéros).
-    // Jamais de données fictives (intégrité santé + cohérence avec le radar).
     return result
   }, [periodMeals, segment])
 
@@ -338,13 +373,13 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
               <h3 className="text-[14px] font-semibold text-foreground">{t("weightEvolution")}</h3>
               <div className="flex items-center gap-1.5">
                 {weightDelta < 0 ? (
-                  <TrendingDown className="h-4 w-4" style={{ color: "var(--primary)" }} />
+                  <TrendingDown className="h-4 w-4" style={{ color: weightColor }} />
                 ) : (
-                  <TrendingUp className="h-4 w-4" style={{ color: "var(--amber)" }} />
+                  <TrendingUp className="h-4 w-4" style={{ color: weightColor }} />
                 )}
                 <span
                   className="text-[13px] font-semibold"
-                  style={{ color: weightDelta < 0 ? "var(--primary)" : "var(--amber)" }}
+                  style={{ color: weightColor }}
                 >
                   {weightDelta > 0 ? "+" : ""}{weightDelta.toFixed(1)} kg
                 </span>
