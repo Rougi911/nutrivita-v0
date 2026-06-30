@@ -14,6 +14,7 @@ import {
   Pie,
   Cell,
   ReferenceLine,
+  ReferenceArea,
   Tooltip,
   ScatterChart,
   Scatter,
@@ -26,7 +27,19 @@ import type { ApiDeficiency } from "@/lib/api-types"
 import { AdditivesBars } from "@/components/nutrivita/additives-bars"
 import { Skeleton } from "@/components/ui/skeleton"
 import { computeGlucoseMetrics } from "@/lib/glucose-metrics"
-import { deurenbergBodyFat, leanBodyMass, bmi } from "@/lib/body-composition"
+import { deurenbergBodyFat, leanBodyMass, bmi, tdee } from "@/lib/body-composition"
+import {
+  getBarFill,
+  classifyGlucose,
+  computeWeightBand,
+  computeEcart,
+  mergeSeries,
+  metricUnit,
+  axisLayout,
+  GLUCOSE_BAND,
+  type MetricId,
+  type DatedValue,
+} from "@/lib/stats-charts"
 import { formatGlucose } from "@/lib/glucose-units"
 import { type DayCalories } from "@/lib/mock-data"
 import { Button } from "@/components/ui/button"
@@ -45,18 +58,15 @@ const SEGMENTS: { id: Segment; labelKey: string }[] = [
 ]
 
 
-// G1 — code couleur des barres calories par rapport à la cible :
-//  vert si dans la cible (± TARGET_BAND kcal), rouge si trop haut (> cible + HIGH_OVER),
-//  orange sinon (trop bas, ou modérément au-dessus). Barre vide (0 kcal) → neutre.
-const TARGET_BAND = 100   // kcal de tolérance autour de la cible
-const HIGH_OVER   = 300   // au-delà de cible + ce seuil → trop haut (rouge)
-function getBarFill(calories: number, target: number): string {
-  if (!calories) return "var(--muted)"
-  const diff = calories - target
-  if (Math.abs(diff) <= TARGET_BAND) return "var(--primary)" // vert : dans la cible
-  if (diff > HIGH_OVER) return "var(--risk)"                  // rouge : trop haut
-  return "var(--amber)"                                       // orange : trop bas / modérément haut
+// Métriques disponibles sur le 1er graphe (superposables — EVO-1).
+const METRIC_COLOR: Record<MetricId, string> = {
+  poids: "var(--primary)",
+  calories: "var(--amber)",
+  ecart: "var(--lipids)",
+  glycemie: "var(--glucose)",
 }
+const METRIC_DECIMALS: Record<MetricId, number> = { poids: 1, calories: 0, ecart: 0, glycemie: 2 }
+const STORAGE_KEY = "nv.bilan.metrics"
 
 export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } = {}) {
   const { t, language, dailyLog, mealEntries, user, weightHistory, glucoseReadings, scannedProducts, isRTL } = useApp()
@@ -78,9 +88,32 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
   const [selectedPoint, setSelectedPoint] = useState<{ chart: "weight" | "cal"; date: string; text: string } | null>(null)
   // S27 — suggestions d'aliments de saison (calculées depuis le radar).
   const [seasonalSugg, setSeasonalSugg] = useState<NutrientSuggestion[] | null>(null)
-  // G4-a — métrique affichée sur le 1er graphe + calories brûlées par jour (pour l'« écart »).
-  const [metric, setMetric] = useState<"poids" | "calories" | "ecart" | "glycemie">("poids")
+  // G4-a/EVO-1 — métriques superposées sur le 1er graphe + calories brûlées par jour (« écart »).
+  const [selectedMetrics, setSelectedMetrics] = useState<MetricId[]>(["poids"])
   const [periodBurned, setPeriodBurned] = useState<{ date: string; burned: number }[]>([])
+
+  // Restaure le choix de séries (persisté localement) au montage.
+  useEffect(() => {
+    try {
+      const raw = typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null
+      if (raw) {
+        const arr = JSON.parse(raw)
+        const valid = (["poids", "calories", "ecart", "glycemie"] as MetricId[]).filter((m) => arr.includes(m))
+        if (valid.length) setSelectedMetrics(valid)
+      }
+    } catch { /* ignore */ }
+  }, [])
+
+  // Active/désactive une métrique (en garde toujours au moins une).
+  const toggleMetric = (m: MetricId) => {
+    setSelectedMetrics((prev) => {
+      const next = prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]
+      const result = next.length ? next : prev
+      try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(result)) } catch { /* ignore */ }
+      return result
+    })
+    setSelectedPoint(null)
+  }
 
   useEffect(() => {
     const fetchDays = segment === "semaine" ? 7 : segment === "mois" ? 30 : segment === "annee" ? 365 : 7
@@ -145,6 +178,13 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
     : 1
   const weeklyRate = Math.abs(weightDelta) / (weightSpanDays / 7)
   const weightColor = weeklyRate <= 1.0 ? "var(--primary)" : weeklyRate <= 1.5 ? "var(--amber)" : "var(--risk)"
+
+  // BUG-1/2 — cible calorique EFFECTIVE : `targetCalories` si défini, sinon TDEE de maintien
+  // calculé (Mifflin-St Jeor × activité). Évite la cible `undefined` → NaN → barres toutes
+  // colorées pareil + ligne de référence absente.
+  const tdeeMaintain = tdee(currentWeight, user.height, user.age, user.sex, user.activityLevel)
+  const effectiveTarget =
+    user.targetCalories && user.targetCalories > 0 ? user.targetCalories : tdeeMaintain
 
   // Calorie data depuis le journal réel. Année : 12 moyennes MENSUELLES (kcal/jour moyen
   // par mois) pour la lisibilité ; jour/semaine/mois : valeurs par jour. Jamais de données fictives.
@@ -222,45 +262,85 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
   const calTicks = useMemo(() => tickSetFor(calData.map((c) => c.date)), [calData, segment]) // eslint-disable-line react-hooks/exhaustive-deps
   const exactDate = (ds: string) => new Date(ds).toLocaleDateString(dateLocale, { day: "numeric", month: "long", year: "numeric" })
 
-  // G4-a — données du 1er graphe selon la métrique sélectionnée (mêmes dates → mêmes libellés d'axe).
-  const metricSeries = useMemo(() => {
-    if (metric === "calories") {
-      return { data: calData.map((c) => ({ date: c.date, value: c.calories })), unit: "kcal", decimals: 0, color: "var(--amber)", label: t("chartCalories") }
-    }
-    if (metric === "ecart") {
-      const burnedByDate: Record<string, number> = {}
-      for (const b of periodBurned) burnedByDate[b.date] = b.burned
-      const monthAvgBurned = (ym: string) => {
-        const mb = periodBurned.filter((b) => b.date.startsWith(ym))
-        return mb.length ? Math.round(mb.reduce((s, b) => s + b.burned, 0) / mb.length) : 0
-      }
-      const data = calData.map((c) => {
-        const burned = segment === "annee" ? monthAvgBurned(c.date.slice(0, 7)) : (burnedByDate[c.date] || 0)
-        return { date: c.date, value: c.calories - burned }
-      })
-      return { data, unit: "kcal", decimals: 0, color: "var(--primary)", label: t("chartGap") }
-    }
-    if (metric === "glycemie") {
-      const byDay: Record<string, { sum: number; n: number }> = {}
-      for (const r of periodGlucose) {
-        const day = new Date(r.timestamp).toISOString().slice(0, 10)
-        const o = (byDay[day] ||= { sum: 0, n: 0 })
-        o.sum += r.value
-        o.n += 1
-      }
-      const data = Object.keys(byDay).sort().map((date) => ({ date, value: Math.round((byDay[date].sum / byDay[date].n)) / 100 }))
-      return { data, unit: "g/L", decimals: 2, color: "var(--glucose)", label: t("chartGlucose") }
-    }
-    return { data: periodWeight.map((w) => ({ date: w.date, value: w.weight })), unit: "kg", decimals: 1, color: "var(--primary)", label: t("chartWeight") }
-  }, [metric, calData, periodWeight, periodGlucose, periodBurned, segment, t])
+  // EVO-1/2/3 — séries par métrique (mêmes dates), bande poids dynamique, classification glycémie.
+  const chart = useMemo(() => {
+    // Séries individuelles, ne calculant QUE les métriques sélectionnées.
+    const weightPts: DatedValue[] = periodWeight.map((w) => ({ date: w.date, value: w.weight }))
+    const caloriePts: DatedValue[] = calData.map((c) => ({ date: c.date, value: c.calories }))
 
-  const metricTicks = useMemo(() => tickSetFor(metricSeries.data.map((d) => d.date)), [metricSeries, segment]) // eslint-disable-line react-hooks/exhaustive-deps
-  const METRICS: { id: typeof metric; label: string }[] = [
+    const burnedByDate: Record<string, number> = {}
+    for (const b of periodBurned) burnedByDate[b.date] = b.burned
+    const monthAvgBurned = (ym: string) => {
+      const mb = periodBurned.filter((b) => b.date.startsWith(ym))
+      return mb.length ? Math.round(mb.reduce((s, b) => s + b.burned, 0) / mb.length) : 0
+    }
+    // BUG-3 — écart = (TDEE + brûlé) − ingéré (≠ ingéré quand exercice 0).
+    const ecartPts: DatedValue[] = calData.map((c) => {
+      const burned = segment === "annee" ? monthAvgBurned(c.date.slice(0, 7)) : (burnedByDate[c.date] || 0)
+      return { date: c.date, value: computeEcart(c.calories, tdeeMaintain, burned) }
+    })
+
+    const byDay: Record<string, { sum: number; n: number }> = {}
+    for (const r of periodGlucose) {
+      const day = new Date(r.timestamp).toISOString().slice(0, 10)
+      const o = (byDay[day] ||= { sum: 0, n: 0 })
+      o.sum += r.value
+      o.n += 1
+    }
+    const glucosePts: DatedValue[] = Object.keys(byDay).sort()
+      .map((date) => ({ date, value: Math.round(byDay[date].sum / byDay[date].n) / 100 }))
+
+    const all: Record<MetricId, DatedValue[]> = { poids: weightPts, calories: caloriePts, ecart: ecartPts, glycemie: glucosePts }
+    const selected: Partial<Record<MetricId, DatedValue[]>> = {}
+    for (const m of selectedMetrics) selected[m] = all[m]
+
+    // EVO-3 — bande dynamique du poids (uniquement si la série poids est active).
+    const band = selectedMetrics.includes("poids") ? computeWeightBand(weightPts) : []
+    const bandByDate: Record<string, { low: number; high: number; rapid: boolean }> = {}
+    for (const p of band) bandByDate[p.date] = { low: p.low, high: p.high, rapid: p.rapid }
+
+    const rows = mergeSeries(selected).map((row) => {
+      const out: Record<string, number | string | boolean> = { ...row }
+      const b = bandByDate[row.date as string]
+      if (b) { out.poidsLow = b.low; out.poidsHigh = b.high; out.poidsRapid = b.rapid }
+      // EVO-2 — drapeau hors-bande glycémie pour le marqueur du point.
+      if (typeof row.glycemie === "number") out.glycemieOut = classifyGlucose(row.glycemie) !== "in"
+      return out
+    })
+
+    return { rows, axes: axisLayout(selectedMetrics) }
+  }, [selectedMetrics, calData, periodWeight, periodGlucose, periodBurned, segment, tdeeMaintain])
+
+  const metricTicks = useMemo(() => tickSetFor(chart.rows.map((d) => d.date as string)), [chart, segment]) // eslint-disable-line react-hooks/exhaustive-deps
+  const showWeightBand = selectedMetrics.includes("poids")
+  const showGlucoseBand = selectedMetrics.includes("glycemie")
+  const chartTitle = selectedMetrics.length === 1
+    ? t(({ poids: "chartWeight", calories: "chartCalories", ecart: "chartGap", glycemie: "chartGlucose" } as const)[selectedMetrics[0]])
+    : t("stats")
+  const METRICS: { id: MetricId; label: string }[] = [
     { id: "poids", label: t("chartWeight") },
     { id: "calories", label: t("chartCalories") },
     { id: "ecart", label: t("chartGap") },
     { id: "glycemie", label: t("chartGlucose") },
   ]
+  // Marqueur poids : rouge sur les variations rapides (EVO-3), invisible sinon.
+  const renderWeightDot = (p: any) => {
+    const { cx, cy, payload, index } = p
+    if (cx == null || cy == null) return <g key={`wd-${index}`} />
+    if (payload?.poidsRapid)
+      return <circle key={`wd-${index}`} cx={cx} cy={cy} r={4} fill="var(--risk)" stroke="var(--card)" strokeWidth={1} />
+    return <circle key={`wd-${index}`} cx={cx} cy={cy} r={0} fill="none" />
+  }
+  // Marqueur glycémie : rouge hors zone de référence (EVO-2), petit point sinon.
+  const renderGlucoseDot = (p: any) => {
+    const { cx, cy, payload, index } = p
+    if (cx == null || cy == null) return <g key={`gd-${index}`} />
+    if (payload?.glycemieOut)
+      return <circle key={`gd-${index}`} cx={cx} cy={cy} r={4} fill="var(--risk)" stroke="var(--card)" strokeWidth={1} />
+    return <circle key={`gd-${index}`} cx={cx} cy={cy} r={2} fill="var(--glucose)" />
+  }
+  const metricLabel = (m: MetricId) =>
+    t(({ poids: "chartWeight", calories: "chartCalories", ecart: "chartGap", glycemie: "chartGlucose" } as const)[m])
 
   // (S27 — le calcul des suggestions est défini après `radarData`, dont il dépend.)
 
@@ -410,11 +490,11 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
         {/* ─── Dissipation des calories (S13) — visible seulement si excédent du jour ─── */}
         <DissipationCard onOpenSettings={onOpenSettings} />
 
-        {/* ─── 1. Graphe métrique (G4-a) : Poids / Calories / Écart / Glycémie ─── */}
+        {/* ─── 1. Graphe multi-séries (EVO-1/2/3) : Poids / Calories / Écart / Glycémie ─── */}
         <div className="rounded-2xl border border-border bg-card p-4">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-[14px] font-semibold text-foreground">{metricSeries.label}</h3>
-            {metric === "poids" && periodWeight.length > 1 && (
+            <h3 className="text-[14px] font-semibold text-foreground">{chartTitle}</h3>
+            {showWeightBand && periodWeight.length > 1 && (
               <div className="flex items-center gap-1.5">
                 {weightDelta < 0 ? (
                   <TrendingDown className="h-4 w-4" style={{ color: weightColor }} />
@@ -427,33 +507,30 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
               </div>
             )}
           </div>
+          {/* EVO-1 — sélection MULTIPLE : on superpose les séries cochées. */}
           <div className="flex gap-1.5 mb-3">
-            {METRICS.map((mx) => (
-              <button
-                key={mx.id}
-                onClick={() => { setMetric(mx.id); setSelectedPoint(null) }}
-                className={cn(
-                  "flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-colors",
-                  metric === mx.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                )}
-              >
-                {mx.label}
-              </button>
-            ))}
+            {METRICS.map((mx) => {
+              const active = selectedMetrics.includes(mx.id)
+              return (
+                <button
+                  key={mx.id}
+                  onClick={() => toggleMetric(mx.id)}
+                  aria-pressed={active}
+                  className={cn(
+                    "flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-colors border",
+                    active
+                      ? "text-primary-foreground border-transparent"
+                      : "bg-muted text-muted-foreground border-transparent"
+                  )}
+                  style={active ? { backgroundColor: METRIC_COLOR[mx.id] } : undefined}
+                >
+                  {mx.label}
+                </button>
+              )
+            })}
           </div>
-          {selectedPoint?.chart === "weight" && (
-            <p className="text-[12px] text-muted-foreground -mt-1 mb-2">
-              {exactDate(selectedPoint.date)} · <span className="font-semibold text-foreground">{selectedPoint.text}</span>
-            </p>
-          )}
-          <ResponsiveContainer width="100%" height={150}>
-            <LineChart
-              data={metricSeries.data}
-              onClick={(s: any) => {
-                const p = s?.activePayload?.[0]?.payload
-                if (p) setSelectedPoint({ chart: "weight", date: p.date, text: `${Number(p.value).toFixed(metricSeries.decimals)} ${metricSeries.unit}` })
-              }}
-            >
+          <ResponsiveContainer width="100%" height={170}>
+            <LineChart data={chart.rows} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
               <XAxis
                 dataKey="date"
                 axisLine={false}
@@ -463,29 +540,76 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
                 interval={0}
                 minTickGap={0}
               />
-              <YAxis
-                domain={["auto", "auto"]}
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-                width={32}
-              />
+              {chart.axes.map((ax) => (
+                <YAxis
+                  key={ax.unit}
+                  yAxisId={ax.unit}
+                  orientation={ax.orientation}
+                  domain={["auto", "auto"]}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
+                  width={ax.unit === "kcal" ? 38 : 30}
+                />
+              ))}
+              {/* EVO-2 — bande de référence glycémie (fixe). */}
+              {showGlucoseBand && (
+                <ReferenceArea
+                  yAxisId="g/L"
+                  y1={GLUCOSE_BAND.low}
+                  y2={GLUCOSE_BAND.high}
+                  fill="var(--glucose)"
+                  fillOpacity={0.12}
+                  ifOverflow="extendDomain"
+                />
+              )}
               <Tooltip
                 contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "0.75rem", fontSize: "12px" }}
-                formatter={(v: number) => [`${v.toFixed(metricSeries.decimals)} ${metricSeries.unit}`, metricSeries.label]}
+                formatter={(value: number, name: string) => {
+                  const m = name as MetricId
+                  const dec = METRIC_DECIMALS[m] ?? 0
+                  return [`${Number(value).toFixed(dec)} ${metricUnit(m)}`, metricLabel(m)]
+                }}
                 labelFormatter={(v) => new Date(v).toLocaleDateString(dateLocale, { day: "numeric", month: "short" })}
               />
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke={metricSeries.color}
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 4 }}
-                isAnimationActive={false}
-              />
+              {/* EVO-3 — bornes de la bande dynamique du poids (hors tooltip). */}
+              {showWeightBand && (
+                <>
+                  <Line yAxisId="kg" type="monotone" dataKey="poidsHigh" stroke="var(--primary)" strokeOpacity={0.35} strokeWidth={1} strokeDasharray="3 3" dot={false} activeDot={false} connectNulls tooltipType="none" isAnimationActive={false} />
+                  <Line yAxisId="kg" type="monotone" dataKey="poidsLow" stroke="var(--primary)" strokeOpacity={0.35} strokeWidth={1} strokeDasharray="3 3" dot={false} activeDot={false} connectNulls tooltipType="none" isAnimationActive={false} />
+                </>
+              )}
+              {/* Une courbe par métrique sélectionnée (EVO-1). */}
+              {selectedMetrics.map((m) => (
+                <Line
+                  key={m}
+                  yAxisId={metricUnit(m)}
+                  type="monotone"
+                  dataKey={m}
+                  stroke={METRIC_COLOR[m]}
+                  strokeWidth={2}
+                  connectNulls
+                  isAnimationActive={false}
+                  activeDot={{ r: 4 }}
+                  dot={m === "poids" ? renderWeightDot : m === "glycemie" ? renderGlucoseDot : false}
+                />
+              ))}
             </LineChart>
           </ResponsiveContainer>
+          {/* Légende dynamique. */}
+          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+            {selectedMetrics.map((m) => (
+              <span key={m} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: METRIC_COLOR[m] }} />
+                {metricLabel(m)}
+              </span>
+            ))}
+            {showGlucoseBand && (
+              <span className="text-[11px] text-muted-foreground">
+                · {t("chartGlucose")} {GLUCOSE_BAND.low.toFixed(2)}–{GLUCOSE_BAND.high.toFixed(2)} g/L
+              </span>
+            )}
+          </div>
         </div>
 
         {/* ─── 2. Body composition ──────────────────────────────────────────── */}
@@ -543,10 +667,11 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
               />
               <YAxis hide />
               <ReferenceLine
-                y={user.targetCalories}
+                y={effectiveTarget}
                 stroke="var(--primary)"
                 strokeDasharray="3 3"
                 strokeOpacity={0.7}
+                label={{ value: `${t("calorieGoal")} ${effectiveTarget}`, position: "insideTopRight", fontSize: 10, fill: "var(--muted-foreground)" }}
               />
               <Tooltip
                 contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "0.75rem", fontSize: "12px" }}
@@ -555,7 +680,7 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
               />
               <Bar dataKey="calories" radius={[6, 6, 0, 0]} isAnimationActive={false}>
                 {calData.map((entry, idx) => (
-                  <Cell key={idx} fill={getBarFill(entry.calories, user.targetCalories)} />
+                  <Cell key={idx} fill={getBarFill(entry.calories, effectiveTarget)} />
                 ))}
               </Bar>
             </BarChart>

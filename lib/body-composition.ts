@@ -28,3 +28,35 @@ export function bmi(weightKg: number, heightCm: number): number {
   const heightM = heightCm / 100
   return parseFloat((weightKg / (heightM * heightM)).toFixed(1))
 }
+
+/**
+ * Métabolisme de base (Mifflin-St Jeor), kcal/jour.
+ * BMR = 10*kg + 6.25*cm − 5*age + s  (s = +5 homme, −161 femme, −78 autre = moyenne).
+ */
+export function bmr(
+  weightKg: number,
+  heightCm: number,
+  age: number,
+  sex: "male" | "female" | "other"
+): number {
+  const s = sex === "male" ? 5 : sex === "female" ? -161 : -78
+  return Math.round(10 * weightKg + 6.25 * heightCm - 5 * age + s)
+}
+
+/** Facteurs d'activité par niveau (1 sédentaire → 5 très intense). */
+const ACTIVITY_FACTORS = [1.2, 1.375, 1.55, 1.725, 1.9] as const
+
+/**
+ * Dépense énergétique totale (TDEE) de maintien, kcal/jour = BMR × facteur d'activité.
+ * `activityLevel` ∈ 1..5 ; valeurs hors plage repliées sur « sédentaire ».
+ */
+export function tdee(
+  weightKg: number,
+  heightCm: number,
+  age: number,
+  sex: "male" | "female" | "other",
+  activityLevel: number
+): number {
+  const factor = ACTIVITY_FACTORS[Math.min(4, Math.max(0, (activityLevel || 1) - 1))]
+  return Math.round(bmr(weightKg, heightCm, age, sex) * factor)
+}
