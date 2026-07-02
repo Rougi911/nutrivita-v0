@@ -236,6 +236,9 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
   const avgCalories = calData.length
     ? Math.round(calData.reduce((s, d) => s + d.calories, 0) / calData.length)
     : 0
+  // Plafond de l'axe Y des barres calories : englobe la cible pour que la ligne de référence
+  // reste TOUJOURS visible (sinon l'axe se cale sur les barres, souvent sous la cible).
+  const calYMax = Math.max(effectiveTarget, ...calData.map((d) => d.calories), 0) * 1.08
 
   // ── Libellés d'axe adaptés à la période ──────────────────────────────────────
   // semaine/jour : jour de la semaine ; mois : n° de jour (clairsemé) ; année : mois.
@@ -298,11 +301,21 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
     const band = selectedMetrics.includes("poids") ? computeWeightBand(weightPts) : []
     const bandByDate: Record<string, { low: number; high: number; rapid: boolean }> = {}
     for (const p of band) bandByDate[p.date] = { low: p.low, high: p.high, rapid: p.rapid }
+    // Segment rouge : pour chaque transition rapide (i-1 → i), on garde les DEUX extrémités
+    // dans une série dédiée (null ailleurs) → seul ce segment est tracé en rouge.
+    const segValByDate: Record<string, number> = {}
+    band.forEach((p, i) => {
+      if (p.rapid && i > 0) {
+        segValByDate[p.date] = p.value
+        segValByDate[band[i - 1].date] = band[i - 1].value
+      }
+    })
 
     const rows = mergeSeries(selected).map((row) => {
       const out: Record<string, number | string | boolean> = { ...row }
       const b = bandByDate[row.date as string]
       if (b) { out.poidsLow = b.low; out.poidsHigh = b.high; out.poidsRapid = b.rapid }
+      if (segValByDate[row.date as string] != null) out.poidsSeg = segValByDate[row.date as string]
       // EVO-2 — drapeau hors-bande glycémie pour le marqueur du point.
       if (typeof row.glycemie === "number") out.glycemieOut = classifyGlucose(row.glycemie) !== "in"
       return out
@@ -594,6 +607,21 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
                   dot={m === "poids" ? renderWeightDot : m === "glycemie" ? renderGlucoseDot : false}
                 />
               ))}
+              {/* EVO-3 — segment(s) de variation rapide du poids tracé(s) en rouge (par-dessus). */}
+              {showWeightBand && (
+                <Line
+                  yAxisId="kg"
+                  type="monotone"
+                  dataKey="poidsSeg"
+                  stroke="var(--risk)"
+                  strokeWidth={3}
+                  dot={false}
+                  activeDot={false}
+                  connectNulls={false}
+                  tooltipType="none"
+                  isAnimationActive={false}
+                />
+              )}
             </LineChart>
           </ResponsiveContainer>
           {/* Légende dynamique. */}
@@ -665,13 +693,15 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
                 interval={0}
                 minTickGap={0}
               />
-              <YAxis hide />
+              {/* Domaine Y forcé à inclure la cible → la ligne de référence est TOUJOURS visible
+                  (sinon l'axe se cale sur les barres et la cible, plus haute, sort du cadre). */}
+              <YAxis hide domain={[0, calYMax]} />
               <ReferenceLine
                 y={effectiveTarget}
                 stroke="var(--primary)"
-                strokeDasharray="3 3"
-                strokeOpacity={0.7}
-                label={{ value: `${t("calorieGoal")} ${effectiveTarget}`, position: "insideTopRight", fontSize: 10, fill: "var(--muted-foreground)" }}
+                strokeDasharray="4 3"
+                strokeOpacity={0.85}
+                label={{ value: `${t("calorieGoal")} ${effectiveTarget}`, position: "insideTopRight", fontSize: 10, fill: "var(--primary)" }}
               />
               <Tooltip
                 contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "0.75rem", fontSize: "12px" }}
