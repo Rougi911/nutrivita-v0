@@ -259,6 +259,7 @@ export const translations = {
     // Journal / Home
     greeting: "Bonjour",
     streak: "jours de suite",
+    incompleteMacros: "aliment(s) sans macros d\u00e9taill\u00e9es \u2014 totaux prot/gluc/lip sous-estim\u00e9s",
     remaining: "restantes",
     over: "au-dessus",
     carbs: "Glucides",
@@ -723,6 +724,7 @@ export const translations = {
     add: "\u0625\u0636\u0627\u0641\u0629",
     greeting: "\u0645\u0631\u062D\u0628\u0627\u064B",
     streak: "\u0623\u064A\u0627\u0645 \u0645\u062A\u062A\u0627\u0644\u064A\u0629",
+    incompleteMacros: "\u0639\u0646\u0627\u0635\u0631 \u0628\u062F\u0648\u0646 \u062A\u0641\u0627\u0635\u064A\u0644 \u063A\u0630\u0627\u0626\u064A\u0629 \u2014 \u0627\u0644\u0645\u062C\u0627\u0645\u064A\u0639 \u0646\u0627\u0642\u0635\u0629",
     remaining: "\u0645\u062A\u0628\u0642\u064A\u0629",
     over: "\u0641\u0648\u0642 \u0627\u0644\u0647\u062F\u0641",
     carbs: "\u0643\u0631\u0628\u0648\u0647\u064A\u062F\u0631\u0627\u062A",
@@ -1161,6 +1163,7 @@ export const translations = {
     add: "Add",
     greeting: "Hello",
     streak: "day streak",
+    incompleteMacros: "item(s) missing macro details \u2014 protein/carb/fat totals underestimated",
     remaining: "remaining",
     over: "over",
     carbs: "Carbs",

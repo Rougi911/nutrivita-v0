@@ -60,6 +60,7 @@ export function JournalScreen() {
     todayBurnedCalories,
     isLoading,
     addMealEntry,
+    incompleteMacroCount,
   } = useApp()
 
   const [showVoiceInput, setShowVoiceInput] = useState(false)
@@ -223,6 +224,15 @@ export function JournalScreen() {
             burned={todayBurnedCalories}
             size={200}
           />
+          {/* P0-5 — signale les entrées avec kcal mais sans macros (photo IA incomplète) */}
+          {incompleteMacroCount > 0 && (
+            <p
+              className="mt-2 text-[11.5px] text-center px-3 py-1.5 rounded-full"
+              style={{ color: "var(--amber)", backgroundColor: "color-mix(in oklab, var(--amber) 12%, transparent)" }}
+            >
+              ⚠ {incompleteMacroCount} {t("incompleteMacros")}
+            </p>
+          )}
         </div>
 
         {/* Macro Row */}

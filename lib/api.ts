@@ -299,6 +299,22 @@ export async function register(
   })
 }
 
+// P0-3 — profil serveur : prénom, objectif kcal calculé (BMR/TDEE), biométrie.
+// Nécessaire au reload : le token survit dans localStorage mais le nom/objectif
+// n'étaient jamais re-fetchés → « Bonjour, Utilisateur » + objectif par défaut 2100.
+export interface ApiProfile {
+  user?: { id: number | string; email: string; name: string }
+  target_kcal?: number
+  age?: number
+  weight?: number
+  height?: number
+  sexe?: string
+}
+
+export async function getProfile(): Promise<ApiProfile> {
+  return apiFetch<ApiProfile>("/api/profile")
+}
+
 export async function loginApi(email: string, password: string): Promise<AuthResponse> {
   return apiFetch<AuthResponse>("/api/auth/login", {
     method: "POST",

@@ -17,6 +17,8 @@ import { defaultWaterIntake } from "@/lib/mock-data"
 import { getLocalDateStr } from "@/lib/date-utils"
 import {
   getJournal,
+  getJournalRange,
+  getProfile,
   getGlucoseReadings as fetchGlucoseReadings,
   getWeightHistory,
   getActivities,
@@ -102,6 +104,8 @@ interface AppContextType {
   setSelectedMealType: (type: MealEntry["mealType"] | null) => void
   waterIntake: number
   setWaterIntake: (n: number) => void
+  /** P0-5 — nb d'entrées du jour avec kcal > 0 mais aucune macro (photo IA incomplète) */
+  incompleteMacroCount: number
   isLoading: boolean
   isOffline: boolean
   serverWaking: boolean
@@ -159,6 +163,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [showFoodSearch, setShowFoodSearch] = useState(false)
   const [selectedMealType, setSelectedMealType] = useState<MealEntry["mealType"] | null>(null)
   const [waterIntake, setWaterIntake] = useState(defaultWaterIntake)
+  // P0-4 — dates (YYYY-MM-DD) des 60 derniers jours ayant au moins une entrée journal
+  const [journalDates, setJournalDates] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isOffline, setIsOffline] = useState(false)
   const [serverWaking, setServerWaking] = useState(false)
@@ -206,6 +212,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setWeightHistory([])
     setActivities([])
     setScannedProducts([])
+    setJournalDates([])
     setIsOnboarded(false)
   }, [])
 
@@ -287,6 +294,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [currentDate, loadData, isAuthenticated])
 
+  // P0-3 / P0-4 — au login OU au reload avec token existant : hydrate le profil
+  // (prénom réel, objectif kcal serveur) et l'historique 60 j pour le streak.
+  // Best-effort : en cas d'échec réseau on garde les valeurs par défaut, sans bloquer.
+  useEffect(() => {
+    if (!isAuthenticated) return
+    getProfile()
+      .then((p) => {
+        setUser((prev) => ({
+          ...prev,
+          name: p.user?.name?.trim() ? p.user.name : prev.name,
+          targetCalories:
+            typeof p.target_kcal === "number" && p.target_kcal > 0 ? p.target_kcal : prev.targetCalories,
+          age: p.age ?? prev.age,
+          weight: p.weight ?? prev.weight,
+          height: p.height ?? prev.height,
+        }))
+      })
+      .catch((err) => console.error("[getProfile] hydratation profil échouée:", err))
+    getJournalRange(60)
+      .then((entries) => setJournalDates(Array.from(new Set(entries.map((e) => e.date)))))
+      .catch((err) => console.error("[getJournalRange] historique streak échoué:", err))
+  }, [isAuthenticated])
+
   const setLanguage = (lang: Language) => {
     setLanguageState(lang)
     setUser((prev) => ({ ...prev, language: lang }))
@@ -320,6 +350,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     totalCarbs:    Math.round(totalCarbs),
     totalFat:      Math.round(totalFat),
   }
+
+  // P0-5 — entrées suspectes : des kcal mais aucune macro (typiquement une estimation
+  // photo IA incomplète). Exposé à l'UI pour signaler des totaux macros sous-estimés.
+  const incompleteMacroCount = dailyMeals.filter(
+    (m) => m.food.calories > 0 && !m.food.protein && !m.food.carbs && !m.food.fat
+  ).length
+
+  // P0-4 — streak : nb de jours consécutifs avec au moins une entrée journal.
+  // Un jour courant encore vide ne casse pas la série (elle repart d'hier).
+  const streak = (() => {
+    const dates = new Set(journalDates)
+    mealEntries.forEach((m) => dates.add(m.date))
+    if (dates.size === 0) return 0
+    const cursor = new Date()
+    if (!dates.has(getLocalDateStr(cursor))) cursor.setDate(cursor.getDate() - 1)
+    let count = 0
+    while (dates.has(getLocalDateStr(cursor))) {
+      count++
+      cursor.setDate(cursor.getDate() - 1)
+    }
+    return count
+  })()
 
   const addMealEntry = (entry: Omit<MealEntry, "id" | "createdAt">): string => {
     // Use crypto.randomUUID for collision safety (two simultaneous adds on same ms)
@@ -437,7 +489,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isAuthLoading,
         login,
         logout,
-        user,
+        user: { ...user, streak }, // P0-4 — streak dérivé, toujours à jour
         setUser,
         isOnboarded,
         setIsOnboarded,
@@ -484,6 +536,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setSelectedMealType,
         waterIntake,
         setWaterIntake,
+        incompleteMacroCount,
         isLoading,
         isOffline,
         serverWaking,

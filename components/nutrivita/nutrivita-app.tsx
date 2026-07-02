@@ -21,9 +21,16 @@ type AppView = "checking" | "landing" | "onboarding" | "main"
 
 function AppContent() {
   const [appView, setAppView] = useState<AppView>("checking")
-  const { activeTab, setActiveTab, showAddSheet, isAuthenticated, isAuthLoading } = useApp()
+  const { activeTab, setActiveTab, showAddSheet, isAuthenticated, isAuthLoading, serverWaking } = useApp()
 
   const [stackedView, setStackedView] = useState<"glucose" | "settings" | null>(null)
+
+  // P0-1 — reset du scroll à chaque changement de vue (onglet ou vue empilée).
+  // Sans ça, la position de scroll est conservée et l'utilisateur arrive sur un
+  // écran blanc (constat audit L1).
+  useEffect(() => {
+    if (typeof window !== "undefined") window.scrollTo(0, 0)
+  }, [activeTab, stackedView])
 
   // S16 — retour OAuth Strava (`/reglages?strava=ok|error`) : ouvre l'écran Réglages
   // pour que la ligne Strava lise le paramètre et déclenche le sync.
@@ -45,12 +52,23 @@ function AppContent() {
   }, [isAuthenticated, isAuthLoading, appView])
 
   if (appView === "checking" || isAuthLoading) {
+    // P0-6 — splash brandé (au lieu d'un spinner nu) + message d'attente si le
+    // serveur gratuit Render est en train de se réveiller (30-60 s).
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-8">
+        <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground text-2xl font-bold shadow-lg">
+          N
+        </div>
+        <p className="text-[17px] font-semibold text-foreground">NutriVita</p>
         <div
-          className="h-8 w-8 rounded-full border-4 border-t-transparent animate-spin"
+          className="h-7 w-7 rounded-full border-4 border-t-transparent animate-spin"
           style={{ borderColor: "var(--primary)", borderTopColor: "transparent" }}
         />
+        {serverWaking && (
+          <p className="text-[12.5px] text-muted-foreground text-center max-w-[260px]">
+            Le serveur se réveille, cela peut prendre jusqu'à une minute…
+          </p>
+        )}
       </div>
     )
   }
@@ -114,7 +132,7 @@ function AppContent() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
           transition={{ duration: 0.18 }}
-          className="flex-1 pb-20"
+          className="flex-1 pb-20 w-full max-w-lg mx-auto"
         >
           {renderMainScreen()}
         </motion.div>

@@ -84,6 +84,7 @@ export function HomeScreen({ onOpenSettings, onOpenGlucose }: HomeScreenProps) {
     t,
     waterIntake,
     setWaterIntake,
+    incompleteMacroCount,
     isLoading,
   } = useApp()
 
@@ -200,6 +201,15 @@ export function HomeScreen({ onOpenSettings, onOpenGlucose }: HomeScreenProps) {
               />
             </div>
           </div>
+          {/* P0-5 — signale les entrées avec kcal mais sans macros (photo IA incomplète) */}
+          {incompleteMacroCount > 0 && (
+            <p
+              className="mt-3 text-[11.5px] text-center px-3 py-1.5 rounded-full"
+              style={{ color: "var(--amber)", backgroundColor: "color-mix(in oklab, var(--amber) 12%, transparent)" }}
+            >
+              ⚠ {incompleteMacroCount} {t("incompleteMacros")}
+            </p>
+          )}
         </div>
 
         {/* Glucose card + Activity card */}
