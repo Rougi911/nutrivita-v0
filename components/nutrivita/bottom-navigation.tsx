@@ -1,16 +1,18 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { BookOpen, Home, Plus, PackageOpen, TrendingUp } from "lucide-react"
+import { BookOpen, Home, Plus, Droplet, TrendingUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useApp } from "@/lib/app-context"
 
+// P1 — Glycemie promue dans la bottom nav (pilier de la cible metabolique).
+// Courses (groceries) deplace en sous-onglet du Bilan (cf. StatsTab).
 const navItems = [
-  { id: "home",      icon: Home,          labelKey: "home"      as const },
-  { id: "journal",   icon: BookOpen,       labelKey: "journal"   as const },
-  { id: "__add__",   icon: Plus,           labelKey: "add"       as const }, // central + button
-  { id: "stats",     icon: TrendingUp,     labelKey: "stats"     as const },
-  { id: "groceries", icon: PackageOpen,     labelKey: "groceries" as const },
+  { id: "home", icon: Home, labelKey: "home" as const },
+  { id: "journal", icon: BookOpen, labelKey: "journal" as const },
+  { id: "__add__", icon: Plus, labelKey: "add" as const }, // central + button
+  { id: "glucose", icon: Droplet, labelKey: "glucose" as const },
+  { id: "stats", icon: TrendingUp, labelKey: "stats" as const },
 ]
 
 export function BottomNavigation() {
@@ -44,7 +46,7 @@ export function BottomNavigation() {
                 onClick={() => setActiveTab(item.id)}
                 className={cn(
                   "relative flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors min-w-[52px]",
-                  isActive ? "text-primary" : "text-muted-foreground"
+                  isActive ? "text-primary" : "text-muted-foreground",
                 )}
               >
                 {isActive && (
@@ -57,13 +59,13 @@ export function BottomNavigation() {
                 <Icon
                   className={cn(
                     "relative z-10 h-5 w-5",
-                    isActive ? "text-primary" : "text-muted-foreground"
+                    isActive ? "text-primary" : "text-muted-foreground",
                   )}
                 />
                 <span
                   className={cn(
                     "relative z-10 text-[10px] font-medium leading-none",
-                    isActive ? "text-primary" : "text-muted-foreground"
+                    isActive ? "text-primary" : "text-muted-foreground",
                   )}
                 >
                   {t(item.labelKey)}

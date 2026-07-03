@@ -5,13 +5,14 @@ import { AnimatePresence, motion } from "framer-motion"
 import { AppProvider, useApp } from "@/lib/app-context"
 import { JournalScreen } from "./journal-screen"
 import { MealsScreen } from "./meals-screen"
-import { StatsScreen } from "./stats-screen"
 import { GlucoseScreen } from "./glucose-screen"
 import { SettingsScreen } from "./settings-screen"
 import { LandingPage } from "./landing-page"
 import { OnboardingFlow } from "./onboarding-flow"
 import { BottomNavigation } from "./bottom-navigation"
-import { HomeScreen } from "./home-screen"
+import { HomeScreenV2 } from "./home-screen-v2"
+import { StatsTab } from "./stats-tab"
+import { GlucoseTab } from "./glucose-tab"
 import { GroceriesScreen } from "./groceries-screen"
 import { AddSheet } from "./add-sheet"
 import { FoodSearchSheet } from "./food-search-sheet"
@@ -98,24 +99,26 @@ function AppContent() {
     switch (activeTab) {
       case "home":
         return (
-          <HomeScreen
+          <HomeScreenV2
             onOpenSettings={() => setStackedView("settings")}
-            onOpenGlucose={() => setStackedView("glucose")}
+            onOpenGlucose={() => setActiveTab("glucose")}
           />
         )
       case "journal":
         return <JournalScreen />
       case "meals":
         return <MealsScreen />
+      case "glucose":
+        return <GlucoseTab />
       case "stats":
-        return <StatsScreen onOpenSettings={() => setStackedView("settings")} />
+        return <StatsTab onOpenSettings={() => setStackedView("settings")} />
       case "groceries":
         return <GroceriesScreen />
       default:
         return (
-          <HomeScreen
+          <HomeScreenV2
             onOpenSettings={() => setStackedView("settings")}
-            onOpenGlucose={() => setStackedView("glucose")}
+            onOpenGlucose={() => setActiveTab("glucose")}
           />
         )
     }
