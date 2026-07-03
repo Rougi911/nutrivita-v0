@@ -5,12 +5,11 @@
 // produits (25 %), micronutriments vs VNR (20 %), équilibre macros (15 %).
 // Actions chiffrées + évolution 8 semaines. Calcul 100 % client (premier jet).
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { useApp } from "@/lib/app-context"
-import { getJournalRange } from "@/lib/api"
+import { getJournalRange, getHealthScore } from "@/lib/api"
 import { P1 } from "@/lib/p1-i18n"
-import { computeHealthScore, SCORE_ACTION_TEXT } from "@/lib/p1-insights"
-import type { MealEntry } from "@/lib/types"
+import { computeHealthScore, SCORE_ACTION_TEXT, type HealthScore, type ScoreActionKey } from "@/lib/p1-insights"
 
 function ScoreRing({ score, size = 150 }: { score: number; size?: number }) {
   const r = size / 2 - 11
@@ -32,18 +31,36 @@ function ScoreRing({ score, size = 150 }: { score: number; size?: number }) {
 export function HealthScoreScreen() {
   const { user, language, isRTL } = useApp()
   const P = P1[language]
-  const [meals, setMeals] = useState<MealEntry[]>([])
+  const [score, setScore] = useState<HealthScore | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let alive = true
-    getJournalRange(60)
-      .then((rows) => { if (alive) { setMeals(rows); setLoading(false) } })
-      .catch(() => { if (alive) setLoading(false) })
+    // Serveur d'abord (calcul réel additifs EFSA + micronutriments ANSES) ;
+    // repli sur l'heuristique client si l'endpoint n'est pas déployé / hors ligne.
+    getHealthScore()
+      .then((s) => {
+        if (!alive) return
+        setScore({
+          total: s.total,
+          prevTotal: s.prevTotal,
+          components: s.components,
+          history: s.history,
+          actions: s.actions.map((a) => ({ points: a.points, textKey: a.key as ScoreActionKey })),
+        })
+        setLoading(false)
+      })
+      .catch(() => {
+        getJournalRange(60)
+          .then((rows) => { if (alive) { setScore(computeHealthScore(rows, user)); setLoading(false) } })
+          .catch(() => { if (alive) setLoading(false) })
+      })
     return () => { alive = false }
-  }, [])
+  }, [user])
 
-  const score = useMemo(() => computeHealthScore(meals, user), [meals, user])
+  if (!score) {
+    return <div className="px-4 py-16 text-center text-[13px] text-muted-foreground">{loading ? "…" : P.notEnoughData}</div>
+  }
   const delta = score.prevTotal !== null ? score.total - score.prevTotal : null
 
   const components: { key: keyof typeof score.components; label: string; color: string; icon: string }[] = [
