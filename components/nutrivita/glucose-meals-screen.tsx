@@ -5,14 +5,13 @@
 // Timeline de la journée + delta post-prandial par repas + détection de pattern
 // sur 14 j. Disclaimer REG-04 permanent en tête.
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { useApp } from "@/lib/app-context"
-import { getJournalRange } from "@/lib/api"
+import { getJournalRange, getGlucoseMeals } from "@/lib/api"
 import { formatGlucose, toGlucoseUnit } from "@/lib/glucose-units"
 import { getLocalDateStr } from "@/lib/date-utils"
 import { P1 } from "@/lib/p1-i18n"
-import { buildDayTimeline, detectGlucosePattern, type MealType } from "@/lib/p1-insights"
-import type { MealEntry } from "@/lib/types"
+import { buildDayTimeline, detectGlucosePattern, type MealType, type DayTimeline, type GlucosePattern } from "@/lib/p1-insights"
 
 const MEAL_EMOJI: Record<MealType, string> = { breakfast: "☕", lunch: "🍽️", snack: "🍎", dinner: "🌙" }
 const MEAL_NAME: Record<MealType, { fr: string; ar: string; en: string }> = {
@@ -32,20 +31,30 @@ export function GlucoseMealsScreen() {
   const { glucoseReadings, user, language, isRTL } = useApp()
   const P = P1[language]
   const unit = user.units.glucose
-  const [meals, setMeals] = useState<MealEntry[]>([])
+  const today = getLocalDateStr()
+  const [timeline, setTimeline] = useState<DayTimeline>({ points: [], markers: [], tir: null, maxPeakDeltaMgDl: null })
+  const [pattern, setPattern] = useState<GlucosePattern | null>(null)
 
   useEffect(() => {
     let alive = true
-    getJournalRange(14).then((rows) => { if (alive) setMeals(rows) }).catch(() => {})
+    // Serveur d'abord (corrélation calculée côté API) ; repli sur le calcul client.
+    getGlucoseMeals(today)
+      .then((r) => {
+        if (!alive) return
+        setTimeline(r.timeline as unknown as DayTimeline)
+        setPattern(r.pattern)
+      })
+      .catch(() => {
+        getJournalRange(14)
+          .then((rows) => {
+            if (!alive) return
+            setTimeline(buildDayTimeline(today, glucoseReadings, rows, user.glucoseTarget))
+            setPattern(detectGlucosePattern(rows, glucoseReadings))
+          })
+          .catch(() => {})
+      })
     return () => { alive = false }
-  }, [])
-
-  const today = getLocalDateStr()
-  const timeline = useMemo(
-    () => buildDayTimeline(today, glucoseReadings, meals, user.glucoseTarget),
-    [today, glucoseReadings, meals, user.glucoseTarget],
-  )
-  const pattern = useMemo(() => detectGlucosePattern(meals, glucoseReadings), [meals, glucoseReadings])
+  }, [today, glucoseReadings, user.glucoseTarget])
 
   const dateLabel = new Date(today + "T00:00:00").toLocaleDateString(
     { fr: "fr-FR", ar: "ar", en: "en-US" }[language],
