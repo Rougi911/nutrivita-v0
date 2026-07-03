@@ -590,6 +590,50 @@ export async function getJournalRange(days: number): Promise<MealEntry[]> {
   return guardArray<ApiMealEntry>(arr, "/api/journal/range").map(mapMealEntry)
 }
 
+// ─── P1 — Score Santé & Glycémie × Repas (calcul serveur) ───────────────────
+
+export interface HealthScoreResponse {
+  total: number
+  prevTotal: number | null
+  components: { adherence: number; quality: number; micro: number; macro: number }
+  history: { week: string; score: number }[]
+  actions: { points: number; key: string }[]
+  targetKcal: number
+}
+
+/** GET /api/health-score — score hebdo agrégé côté serveur (P1-5). */
+export async function getHealthScore(): Promise<HealthScoreResponse> {
+  return apiFetch<HealthScoreResponse>("/api/health-score", { method: "GET" })
+}
+
+export interface GlucoseMealMarker {
+  minutes: number
+  mealType: string
+  kcal: number
+  carbs: number
+  deltaMgDl: number | null
+  peakMgDl: number | null
+  foodName: string
+}
+
+export interface GlucoseMealsResponse {
+  date: string
+  timeline: {
+    points: { minutes: number; valueMgDl: number }[]
+    markers: GlucoseMealMarker[]
+    tir: number | null
+    maxPeakDeltaMgDl: number | null
+  }
+  pattern: { count: number; total: number; carbThreshold: number; peakThresholdMgDl: number } | null
+  disclaimer: { fr: string; en: string; ar: string }
+}
+
+/** GET /api/glucose-meals — corrélation glycémie × repas côté serveur (P1-4). */
+export async function getGlucoseMeals(date?: string): Promise<GlucoseMealsResponse> {
+  const q = date ? `?date=${encodeURIComponent(date)}` : ""
+  return apiFetch<GlucoseMealsResponse>(`/api/glucose-meals${q}`, { method: "GET" })
+}
+
 export async function addJournalEntry(
   entry: Omit<MealEntry, "id" | "createdAt">,
   parentEntryId?: string
