@@ -25,6 +25,7 @@ import { suggestSeasonalFoods, type NutrientSuggestion } from "@/lib/seasonal-fo
 import { toast } from "sonner"
 import type { ApiDeficiency } from "@/lib/api-types"
 import { AdditivesBars } from "@/components/nutrivita/additives-bars"
+import { LazyMount } from "./lazy-mount" // BUG-3 — différer les charts sous le fold (anti-gel L2)
 import { Skeleton } from "@/components/ui/skeleton"
 import { computeGlucoseMetrics } from "@/lib/glucose-metrics"
 import { deurenbergBodyFat, leanBodyMass, bmi, tdee } from "@/lib/body-composition"
@@ -675,6 +676,7 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
               {exactDate(selectedPoint.date)} · <span className="font-semibold text-foreground">{selectedPoint.text}</span>
             </p>
           )}
+          <LazyMount minHeight={160}>
           <ResponsiveContainer width="100%" height={160}>
             <BarChart
               data={calData}
@@ -715,6 +717,7 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+          </LazyMount>
         </div>
 
         {/* Macro donut (shown in "jour" segment or always) */}
@@ -788,6 +791,7 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
 
                 {/* 7-point mini chart */}
                 {glucoseMiniData.length > 0 && (
+                  <LazyMount minHeight={60}>
                   <ResponsiveContainer width="100%" height={60}>
                     <ScatterChart margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
                       <XAxis type="number" dataKey="x" hide />
@@ -797,6 +801,7 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
                       <Scatter data={glucoseMiniData} fill="var(--glucose)" />
                     </ScatterChart>
                   </ResponsiveContainer>
+                  </LazyMount>
                 )}
               </>
             )}

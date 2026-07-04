@@ -202,6 +202,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setToken(token)
     setIsAuthenticated(true)
     setUser((prev) => ({ ...prev, id: serverUser.id, name: serverUser.name, email: serverUser.email }))
+    // Cold-start (BUG-1) : cache le prénom pour l'afficher instantanément au
+    // prochain reload, sans attendre getProfile (qui peut mettre 60 s au réveil).
+    if (typeof window !== "undefined" && serverUser.name?.trim()) {
+      try { localStorage.setItem("nutrivita-profile-name", serverUser.name) } catch { /* quota */ }
+    }
   }, [])
 
   const logout = useCallback(() => {
@@ -214,6 +219,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setScannedProducts([])
     setJournalDates([])
     setIsOnboarded(false)
+    // RGPD : purge aussi le prénom mis en cache pour le cold-start.
+    if (typeof window !== "undefined") {
+      try { localStorage.removeItem("nutrivita-profile-name") } catch { /* ignore */ }
+    }
   }, [])
 
   const loadData = useCallback(async (date: string) => {
@@ -299,8 +308,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Best-effort : en cas d'échec réseau on garde les valeurs par défaut, sans bloquer.
   useEffect(() => {
     if (!isAuthenticated) return
+    // Cold-start (BUG-1) : hydrate le prénom depuis le cache AVANT que getProfile
+    // ne réponde (jusqu'à 60 s au réveil Render) → supprime le flash « Utilisateur ».
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("nutrivita-profile-name")
+      if (cached?.trim()) setUser((prev) => (prev.name === cached ? prev : { ...prev, name: cached }))
+    }
     getProfile()
       .then((p) => {
+        if (typeof window !== "undefined" && p.user?.name?.trim()) {
+          try { localStorage.setItem("nutrivita-profile-name", p.user.name) } catch { /* quota */ }
+        }
         setUser((prev) => ({
           ...prev,
           name: p.user?.name?.trim() ? p.user.name : prev.name,

@@ -17,6 +17,7 @@ import {
   type AdherenceLevel,
 } from "@/lib/p1-insights"
 import type { MealEntry, WeightEntry } from "@/lib/types"
+import { LazyMount } from "./lazy-mount"
 
 const LEVEL_COLOR: Record<AdherenceLevel, string> = {
   empty: "var(--border)",
@@ -92,7 +93,7 @@ export function TrendsScreen() {
             {P.last7days}
           </span>
         </div>
-        <StackedMacros days={macros} targets={tgt} />
+        <LazyMount minHeight={130}><StackedMacros days={macros} targets={tgt} /></LazyMount>
         <div className="flex justify-between text-[9.5px] text-muted-foreground mt-1 px-1">
           {macros.map((d) => <span key={d.date}>{d.weekdayShort}</span>)}
         </div>
@@ -125,7 +126,7 @@ export function TrendsScreen() {
         </div>
         {weight ? (
           <>
-            <SmoothedWeightChart data={weight} />
+            <LazyMount minHeight={120}><SmoothedWeightChart data={weight} /></LazyMount>
             <div className="flex justify-between text-[9.5px] text-muted-foreground mt-1">
               <span>{weight.points[0].raw} kg</span>
               <span>{P.movingAvg7}</span>

@@ -10,6 +10,7 @@ import { useApp } from "@/lib/app-context"
 import { getJournalRange, getHealthScore } from "@/lib/api"
 import { P1 } from "@/lib/p1-i18n"
 import { computeHealthScore, SCORE_ACTION_TEXT, type HealthScore, type ScoreActionKey } from "@/lib/p1-insights"
+import { LazyMount } from "./lazy-mount"
 
 function ScoreRing({ score, size = 150 }: { score: number; size?: number }) {
   const r = size / 2 - 11
@@ -138,7 +139,7 @@ export function HealthScoreScreen() {
             8 {P.weeksShort}
           </span>
         </div>
-        <ScoreEvolution history={score.history} maxHist={maxHist} />
+        <LazyMount minHeight={90}><ScoreEvolution history={score.history} maxHist={maxHist} /></LazyMount>
       </div>
     </div>
   )

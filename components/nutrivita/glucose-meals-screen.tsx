@@ -12,6 +12,7 @@ import { formatGlucose, toGlucoseUnit } from "@/lib/glucose-units"
 import { getLocalDateStr } from "@/lib/date-utils"
 import { P1 } from "@/lib/p1-i18n"
 import { buildDayTimeline, detectGlucosePattern, type MealType, type DayTimeline, type GlucosePattern } from "@/lib/p1-insights"
+import { LazyMount } from "./lazy-mount"
 
 const MEAL_EMOJI: Record<MealType, string> = { breakfast: "☕", lunch: "🍽️", snack: "🍎", dinner: "🌙" }
 const MEAL_NAME: Record<MealType, { fr: string; ar: string; en: string }> = {
@@ -116,7 +117,7 @@ export function GlucoseMealsScreen() {
           <span className="text-[12px] font-bold text-muted-foreground uppercase tracking-wide">{P.dayOf} {dateLabel}</span>
         </div>
         {hasData ? (
-          <TimelineChart timeline={timeline} target={user.glucoseTarget} unit={unit} />
+          <LazyMount minHeight={150}><TimelineChart timeline={timeline} target={user.glucoseTarget} unit={unit} /></LazyMount>
         ) : (
           <p className="text-[12.5px] text-muted-foreground py-8 text-center">{P.noGlucoseForCorrelation}</p>
         )}
