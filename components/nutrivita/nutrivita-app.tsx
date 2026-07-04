@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { AnimatePresence, motion } from "framer-motion"
 import { AppProvider, useApp } from "@/lib/app-context"
 import { JournalScreen } from "./journal-screen"
 import { MealsScreen } from "./meals-screen"
@@ -141,18 +140,14 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={screenKey}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.18 }}
-          className="flex-1 pb-20 w-full max-w-lg mx-auto"
-        >
-          {renderMainScreen()}
-        </motion.div>
-      </AnimatePresence>
+      {/* Fix BUG-2 (écran blanc au changement d'onglet) : l'ancien AnimatePresence
+          mode="wait" + motion.div restait bloqué à son état initial (opacity:0,
+          translateX 20px) quand la sortie ne se terminait pas → écran invisible.
+          On rend l'écran directement (toujours visible). Le `key` force le remount
+          par onglet (et déclenche le reset de scroll). */}
+      <div key={screenKey} className="flex-1 pb-20 w-full max-w-lg mx-auto">
+        {renderMainScreen()}
+      </div>
 
       {!stackedView && <BottomNavigation />}
       {!showAddSheet && <InstallPrompt />}
