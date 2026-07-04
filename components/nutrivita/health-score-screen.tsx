@@ -56,7 +56,10 @@ export function HealthScoreScreen() {
           .catch(() => { if (alive) setLoading(false) })
       })
     return () => { alive = false }
-  }, [user])
+    // Fix E2E : fetch une seule fois au montage. `[user]` (réf recréée à chaque
+    // render) relançait l'effet en boucle → rafales d'appels + gel du renderer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (!score) {
     return <div className="px-4 py-16 text-center text-[13px] text-muted-foreground">{loading ? "…" : P.notEnoughData}</div>

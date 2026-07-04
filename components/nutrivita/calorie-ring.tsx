@@ -41,12 +41,14 @@ export function CalorieRing({
   }
 
   // Central display value
+  // Fix E2E : sous l'objectif, on affiche le RESTE en positif ("1 619 kcal
+  // restantes"), pas le solde négatif ("-1 619") qui était contre-intuitif.
   const displayValue =
     balance < 0
-      ? balance.toLocaleString()          // ex. "-2200"
+      ? Math.abs(balance).toLocaleString() // ex. "2 200" (restantes)
       : balance === 0
         ? "0"
-        : `+${balance.toLocaleString()}` // ex. "+150"
+        : `+${balance.toLocaleString()}` // ex. "+150" (excès)
 
   // Label under the value
   const displayLabel =

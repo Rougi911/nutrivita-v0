@@ -26,11 +26,24 @@ function AppContent() {
 
   const [stackedView, setStackedView] = useState<"glucose" | "settings" | null>(null)
 
-  // P0-1 — reset du scroll à chaque changement de vue (onglet ou vue empilée).
-  // Sans ça, la position de scroll est conservée et l'utilisateur arrive sur un
-  // écran blanc (constat audit L1).
+  // P0-1 / Fix E2E (L1) — reset du scroll à chaque changement de vue.
+  // Le simple window.scrollTo(0,0) était inefficace : AnimatePresence mode="wait"
+  // monte le nouvel écran APRÈS l'animation de sortie (~180 ms), donc le reset
+  // s'appliquait avant le montage → l'utilisateur arrivait sur un écran blanc.
+  // On rejoue le reset après le paint (rAF) et après l'animation (timeout), sur
+  // window ET les conteneurs de scroll possibles.
   useEffect(() => {
-    if (typeof window !== "undefined") window.scrollTo(0, 0)
+    if (typeof window === "undefined") return
+    const reset = () => {
+      window.scrollTo(0, 0)
+      document.scrollingElement?.scrollTo?.({ top: 0, left: 0 })
+      if (document.documentElement) document.documentElement.scrollTop = 0
+      if (document.body) document.body.scrollTop = 0
+    }
+    reset()
+    const raf = requestAnimationFrame(() => requestAnimationFrame(reset))
+    const timer = setTimeout(reset, 260)
+    return () => { cancelAnimationFrame(raf); clearTimeout(timer) }
   }, [activeTab, stackedView])
 
   // S16 — retour OAuth Strava (`/reglages?strava=ok|error`) : ouvre l'écran Réglages

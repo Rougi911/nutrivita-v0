@@ -37,7 +37,9 @@ export function GlucoseMealsScreen() {
 
   useEffect(() => {
     let alive = true
-    // Serveur d'abord (corrélation calculée côté API) ; repli sur le calcul client.
+    // Fix E2E : dépendance sur `today` UNIQUEMENT. Avant, `glucoseReadings` et
+    // `user.glucoseTarget` (réfs recréées à chaque render) relançaient l'effet en
+    // boucle → rafales d'appels 404 + gel du renderer. On fetch une fois par jour.
     getGlucoseMeals(today)
       .then((r) => {
         if (!alive) return
@@ -54,7 +56,8 @@ export function GlucoseMealsScreen() {
           .catch(() => {})
       })
     return () => { alive = false }
-  }, [today, glucoseReadings, user.glucoseTarget])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [today])
 
   const dateLabel = new Date(today + "T00:00:00").toLocaleDateString(
     { fr: "fr-FR", ar: "ar", en: "en-US" }[language],
