@@ -34,6 +34,7 @@ import {
 } from "@/lib/api"
 import { getToken, setToken, removeToken } from "@/lib/auth"
 import { getStoredLanguage, setStoredLanguage, dirForLanguage } from "@/lib/language"
+import { getStoredChartMode, setStoredChartMode, DEFAULT_ADVANCED_CHARTS } from "@/lib/chart-mode"
 
 interface AppContextType {
   // Auth
@@ -53,6 +54,10 @@ interface AppContextType {
   setLanguage: (lang: Language) => void
   t: (key: TranslationKey) => string
   isRTL: boolean
+
+  // P2 — mode graphiques (Glycémie / Bilan) : simple (barres) ou avancé (courbes/radar)
+  advancedCharts: boolean
+  setAdvancedCharts: (value: boolean) => void
 
   // Daily log
   currentDate: string
@@ -149,6 +154,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User>(defaultUser)
   const [isOnboarded, setIsOnboarded] = useState(false)
   const [language, setLanguageState] = useState<Language>("fr")
+  const [advancedCharts, setAdvancedChartsState] = useState<boolean>(DEFAULT_ADVANCED_CHARTS)
   // "" initially — useEffect sets real date client-side (avoids SSR/client hydration #418)
   const [currentDate, setCurrentDate] = useState("")
   const [mealEntries, setMealEntries] = useState<MealEntry[]>([])
@@ -196,6 +202,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       document.documentElement.dir = dirForLanguage(lang)
       document.documentElement.lang = lang
     }
+  }, [])
+
+  // P2 — Restaure le mode graphiques persisté au montage (sinon reste "simple" par défaut).
+  useEffect(() => {
+    const stored = getStoredChartMode()
+    if (stored !== null) setAdvancedChartsState(stored)
   }, [])
 
   const login = useCallback((token: string, serverUser: { id: string; email: string; name: string }) => {
@@ -350,6 +362,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   const isRTL = language === "ar"
+
+  // P2 — bascule mode graphiques (persistée, survit au reload).
+  const setAdvancedCharts = (value: boolean) => {
+    setAdvancedChartsState(value)
+    setStoredChartMode(value)
+  }
 
   // Daily totals
   const dailyMeals = mealEntries.filter((m) => m.date === currentDate)
@@ -515,6 +533,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setLanguage,
         t,
         isRTL,
+        advancedCharts,
+        setAdvancedCharts,
         currentDate,
         setCurrentDate,
         dailyLog,

@@ -58,6 +58,7 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
   const {
     user, setUser,
     t, language, setLanguage, isRTL,
+    advancedCharts, setAdvancedCharts,
     clearJournal, clearWeight, clearGlucose,
     isDiabetic, setIsDiabetic,
     glucoseTarget, setGlucoseTarget,
@@ -323,6 +324,13 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
               onCheckedChange={(v) => setTheme(v ? "dark" : "light")}
             />
           </SettingsRow>
+          {/* P2 — bascule complexité des graphiques (Glycémie / Bilan) */}
+          <SettingsRow label={t("advancedCharts")} description={t("advancedChartsDesc")}>
+            <Switch
+              checked={advancedCharts}
+              onCheckedChange={(v) => setAdvancedCharts(v)}
+            />
+          </SettingsRow>
           <SettingsRow label={t("language")}>
             <Select value={language} onValueChange={(v) => setLanguage(v as Language)}>
               <SelectTrigger className="w-24 h-9">
@@ -493,19 +501,26 @@ function SettingsGroup({ title, children }: { title: string; children: React.Rea
 
 function SettingsRow({
   label,
+  description,
   children,
   arrow,
   icon,
 }: {
   label: string
+  description?: string
   children?: React.ReactNode
   arrow?: boolean
   icon?: React.ReactNode
 }) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 min-h-[52px]">
-      <span className="text-[14px] font-medium text-foreground">{label}</span>
-      <div className="flex items-center gap-2">
+    <div className="flex items-center justify-between px-4 py-3 min-h-[52px] gap-3">
+      <div className="min-w-0">
+        <span className="text-[14px] font-medium text-foreground">{label}</span>
+        {description && (
+          <p className="text-[11.5px] text-muted-foreground leading-snug mt-0.5">{description}</p>
+        )}
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
         {children}
         {arrow && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
         {icon}
