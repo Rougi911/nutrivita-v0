@@ -1,55 +1,57 @@
 "use client"
 
-// P1 — onglet Bilan avec sous-onglets : Bilan (existant) / Tendances / Score /
-// Courses (déplacé hors de la bottom nav selon la maquette). Coexiste avec tout
-// l'existant : StatsScreen et GroceriesScreen sont réutilisés tels quels.
+// P2 — Bilan fusionné en un seul écran défilant (style Strava/Garmin) : apports,
+// composition corporelle, glycémie, carences, radar micronutriments, additifs,
+// puis tendances/adhérence, score santé, et le résumé produits transformés —
+// remplace l'ancien découpage en 4 sous-onglets (Bilan/Tendances/Score/Courses).
+// Rien n'est retiré : StatsScreen, TrendsScreen, HealthScoreScreen sont réutilisés
+// tels quels (juste allégés de leur propre chrome de page). GroceriesScreen reste
+// accessible en entier via le bouton "Voir mes courses" (scanner/gérer les
+// produits est un usage différent d'une page de bilan passive).
 
-import { useState } from "react"
 import { useApp } from "@/lib/app-context"
-import { P1 } from "@/lib/p1-i18n"
+import { Button } from "@/components/ui/button"
+import { ChevronRight } from "lucide-react"
 import { StatsScreen } from "./stats-screen"
 import { TrendsScreen } from "./trends-screen"
 import { HealthScoreScreen } from "./health-score-screen"
-import { GroceriesScreen } from "./groceries-screen"
+import { GrocerySummaryCard } from "./grocery-summary-card"
 
-type Sub = "report" | "trends" | "score" | "groceries"
-
-export function StatsTab({ onOpenSettings }: { onOpenSettings: () => void }) {
-  const { language, isRTL } = useApp()
-  const P = P1[language]
-  const [sub, setSub] = useState<Sub>("report")
-
-  const tabs: { id: Sub; label: string }[] = [
-    { id: "report", label: P.subReport },
-    { id: "trends", label: P.subTrends },
-    { id: "score", label: P.subScore },
-    { id: "groceries", label: P.subGroceries },
-  ]
+export function StatsTab({
+  onOpenSettings,
+  onOpenGroceries,
+}: {
+  onOpenSettings: () => void
+  onOpenGroceries: () => void
+}) {
+  const { t, isRTL } = useApp()
 
   return (
-    <div className={`bg-background min-h-screen ${isRTL ? "rtl" : ""}`}>
-      <div className="px-4 pt-4">
-        <div className="flex bg-muted rounded-full p-[3px]" role="tablist">
-          {tabs.map((tb) => (
-            <button
-              key={tb.id}
-              role="tab"
-              aria-selected={sub === tb.id}
-              onClick={() => setSub(tb.id)}
-              className={`flex-1 text-[12px] font-semibold rounded-full py-2 transition-colors ${
-                sub === tb.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-              }`}
-            >
-              {tb.label}
-            </button>
-          ))}
-        </div>
-      </div>
+    <div className={isRTL ? "rtl" : ""}>
+      <StatsScreen onOpenSettings={onOpenSettings} />
 
-      {sub === "report" && <StatsScreen onOpenSettings={onOpenSettings} />}
-      {sub === "trends" && <TrendsScreen />}
-      {sub === "score" && <HealthScoreScreen />}
-      {sub === "groceries" && <GroceriesScreen />}
+      <div className="px-4 pb-8 space-y-3 -mt-4">
+        <div className="pt-2 border-t border-border" />
+
+        {/* Tendances : heatmap adhérence, macros empilées, poids lissé */}
+        <TrendsScreen />
+
+        <div className="pt-2 border-t border-border" />
+
+        {/* Score santé : 4 composantes, actions, évolution 8 semaines */}
+        <HealthScoreScreen />
+
+        <div className="pt-2 border-t border-border" />
+
+        {/* Produits transformés : additifs/sel/sucre/graisses saturées vs OMS —
+            visible ici en plus de l'écran Courses complet (retour utilisateur). */}
+        <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">{t("myGroceries")}</p>
+        <GrocerySummaryCard />
+        <Button variant="outline" className="w-full gap-2 rounded-xl" onClick={onOpenGroceries}>
+          {t("openGroceries")}
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   )
 }

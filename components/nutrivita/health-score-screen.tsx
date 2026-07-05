@@ -63,7 +63,7 @@ export function HealthScoreScreen() {
   }, [])
 
   if (!score) {
-    return <div className="px-4 py-16 text-center text-[13px] text-muted-foreground">{loading ? "…" : P.notEnoughData}</div>
+    return <div className="py-16 text-center text-[13px] text-muted-foreground">{loading ? "…" : P.notEnoughData}</div>
   }
   const delta = score.prevTotal !== null ? score.total - score.prevTotal : null
 
@@ -78,8 +78,8 @@ export function HealthScoreScreen() {
   const maxHist = Math.max(1, ...score.history.map((h) => h.score))
 
   return (
-    <div className={`px-4 py-4 space-y-3 ${isRTL ? "rtl" : ""}`}>
-      <h2 className="text-[19px] font-extrabold text-foreground">{P.healthScore}</h2>
+    <div className={`space-y-3 ${isRTL ? "rtl" : ""}`}>
+      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">{P.healthScore}</p>
 
       {/* Score principal */}
       <div className="rounded-2xl bg-card border border-border p-4">

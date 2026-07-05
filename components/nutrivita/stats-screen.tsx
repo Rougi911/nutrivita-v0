@@ -70,7 +70,7 @@ const METRIC_DECIMALS: Record<MetricId, number> = { poids: 1, calories: 0, ecart
 const STORAGE_KEY = "nv.bilan.metrics"
 
 export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } = {}) {
-  const { t, language, dailyLog, mealEntries, user, weightHistory, glucoseReadings, scannedProducts, isRTL } = useApp()
+  const { t, language, dailyLog, mealEntries, user, weightHistory, glucoseReadings, scannedProducts, isRTL, advancedCharts } = useApp()
   // Locale pour les libellés de date des graphes (corrige les axes restés en français sous arabe).
   const dateLocale = language === "ar" ? "ar" : language === "en" ? "en-GB" : "fr-FR"
   const [segment, setSegment] = useState<Segment>("semaine")
@@ -544,86 +544,131 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
             })}
           </div>
           <ResponsiveContainer width="100%" height={170}>
-            <LineChart data={chart.rows} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-              <XAxis
-                dataKey="date"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-                tickFormatter={(v) => (metricTicks.has(v) ? labelText(v) : "")}
-                interval={0}
-                minTickGap={0}
-              />
-              {chart.axes.map((ax) => (
-                <YAxis
-                  key={ax.unit}
-                  yAxisId={ax.unit}
-                  orientation={ax.orientation}
-                  domain={["auto", "auto"]}
+            {advancedCharts ? (
+              <LineChart data={chart.rows} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
+                <XAxis
+                  dataKey="date"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
-                  width={ax.unit === "kcal" ? 38 : 30}
+                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                  tickFormatter={(v) => (metricTicks.has(v) ? labelText(v) : "")}
+                  interval={0}
+                  minTickGap={0}
                 />
-              ))}
-              {/* EVO-2 — bande de référence glycémie (fixe). */}
-              {showGlucoseBand && (
-                <ReferenceArea
-                  yAxisId="g/L"
-                  y1={GLUCOSE_BAND.low}
-                  y2={GLUCOSE_BAND.high}
-                  fill="var(--glucose)"
-                  fillOpacity={0.12}
-                  ifOverflow="extendDomain"
+                {chart.axes.map((ax) => (
+                  <YAxis
+                    key={ax.unit}
+                    yAxisId={ax.unit}
+                    orientation={ax.orientation}
+                    domain={["auto", "auto"]}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
+                    width={ax.unit === "kcal" ? 38 : 30}
+                    label={{ value: ax.unit, angle: -90, position: ax.orientation === "left" ? "insideLeft" : "insideRight", fontSize: 9, fill: "var(--muted-foreground)" }}
+                  />
+                ))}
+                {/* EVO-2 — bande de référence glycémie (fixe). */}
+                {showGlucoseBand && (
+                  <ReferenceArea
+                    yAxisId="g/L"
+                    y1={GLUCOSE_BAND.low}
+                    y2={GLUCOSE_BAND.high}
+                    fill="var(--glucose)"
+                    fillOpacity={0.12}
+                    ifOverflow="extendDomain"
+                  />
+                )}
+                <Tooltip
+                  contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "0.75rem", fontSize: "12px" }}
+                  formatter={(value: number, name: string) => {
+                    const m = name as MetricId
+                    const dec = METRIC_DECIMALS[m] ?? 0
+                    return [`${Number(value).toFixed(dec)} ${metricUnit(m)}`, metricLabel(m)]
+                  }}
+                  labelFormatter={(v) => new Date(v).toLocaleDateString(dateLocale, { day: "numeric", month: "short" })}
                 />
-              )}
-              <Tooltip
-                contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "0.75rem", fontSize: "12px" }}
-                formatter={(value: number, name: string) => {
-                  const m = name as MetricId
-                  const dec = METRIC_DECIMALS[m] ?? 0
-                  return [`${Number(value).toFixed(dec)} ${metricUnit(m)}`, metricLabel(m)]
-                }}
-                labelFormatter={(v) => new Date(v).toLocaleDateString(dateLocale, { day: "numeric", month: "short" })}
-              />
-              {/* EVO-3 — bornes de la bande dynamique du poids (hors tooltip). */}
-              {showWeightBand && (
-                <>
-                  <Line yAxisId="kg" type="monotone" dataKey="poidsHigh" stroke="var(--primary)" strokeOpacity={0.35} strokeWidth={1} strokeDasharray="3 3" dot={false} activeDot={false} connectNulls tooltipType="none" isAnimationActive={false} />
-                  <Line yAxisId="kg" type="monotone" dataKey="poidsLow" stroke="var(--primary)" strokeOpacity={0.35} strokeWidth={1} strokeDasharray="3 3" dot={false} activeDot={false} connectNulls tooltipType="none" isAnimationActive={false} />
-                </>
-              )}
-              {/* Une courbe par métrique sélectionnée (EVO-1). */}
-              {selectedMetrics.map((m) => (
-                <Line
-                  key={m}
-                  yAxisId={metricUnit(m)}
-                  type="monotone"
-                  dataKey={m}
-                  stroke={METRIC_COLOR[m]}
-                  strokeWidth={2}
-                  connectNulls
-                  isAnimationActive={false}
-                  activeDot={{ r: 4 }}
-                  dot={m === "poids" ? renderWeightDot : m === "glycemie" ? renderGlucoseDot : false}
+                {/* EVO-3 — bornes de la bande dynamique du poids (hors tooltip). */}
+                {showWeightBand && (
+                  <>
+                    <Line yAxisId="kg" type="monotone" dataKey="poidsHigh" stroke="var(--primary)" strokeOpacity={0.35} strokeWidth={1} strokeDasharray="3 3" dot={false} activeDot={false} connectNulls tooltipType="none" isAnimationActive={false} />
+                    <Line yAxisId="kg" type="monotone" dataKey="poidsLow" stroke="var(--primary)" strokeOpacity={0.35} strokeWidth={1} strokeDasharray="3 3" dot={false} activeDot={false} connectNulls tooltipType="none" isAnimationActive={false} />
+                  </>
+                )}
+                {/* Une courbe par métrique sélectionnée (EVO-1). */}
+                {selectedMetrics.map((m) => (
+                  <Line
+                    key={m}
+                    yAxisId={metricUnit(m)}
+                    type="monotone"
+                    dataKey={m}
+                    stroke={METRIC_COLOR[m]}
+                    strokeWidth={2}
+                    connectNulls
+                    isAnimationActive={false}
+                    activeDot={{ r: 4 }}
+                    dot={m === "poids" ? renderWeightDot : m === "glycemie" ? renderGlucoseDot : false}
+                  />
+                ))}
+                {/* EVO-3 — segment(s) de variation rapide du poids tracé(s) en rouge (par-dessus). */}
+                {showWeightBand && (
+                  <Line
+                    yAxisId="kg"
+                    type="monotone"
+                    dataKey="poidsSeg"
+                    stroke="var(--risk)"
+                    strokeWidth={3}
+                    dot={false}
+                    activeDot={false}
+                    connectNulls={false}
+                    tooltipType="none"
+                    isAnimationActive={false}
+                  />
+                )}
+              </LineChart>
+            ) : (
+              // P2 — mode simple : mêmes données/axes/unités, en barres (sans les nuances
+              // avancées bande de poids / segment rapide, réservées au mode courbes).
+              <BarChart data={chart.rows} margin={{ top: 4, right: 4, bottom: 0, left: 4 }} barCategoryGap="25%">
+                <XAxis
+                  dataKey="date"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                  tickFormatter={(v) => (metricTicks.has(v) ? labelText(v) : "")}
+                  interval={0}
+                  minTickGap={0}
                 />
-              ))}
-              {/* EVO-3 — segment(s) de variation rapide du poids tracé(s) en rouge (par-dessus). */}
-              {showWeightBand && (
-                <Line
-                  yAxisId="kg"
-                  type="monotone"
-                  dataKey="poidsSeg"
-                  stroke="var(--risk)"
-                  strokeWidth={3}
-                  dot={false}
-                  activeDot={false}
-                  connectNulls={false}
-                  tooltipType="none"
-                  isAnimationActive={false}
+                {chart.axes.map((ax) => (
+                  <YAxis
+                    key={ax.unit}
+                    yAxisId={ax.unit}
+                    orientation={ax.orientation}
+                    domain={["auto", "auto"]}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
+                    width={ax.unit === "kcal" ? 38 : 30}
+                    label={{ value: ax.unit, angle: -90, position: ax.orientation === "left" ? "insideLeft" : "insideRight", fontSize: 9, fill: "var(--muted-foreground)" }}
+                  />
+                ))}
+                {showGlucoseBand && (
+                  <ReferenceArea yAxisId="g/L" y1={GLUCOSE_BAND.low} y2={GLUCOSE_BAND.high} fill="var(--glucose)" fillOpacity={0.12} ifOverflow="extendDomain" />
+                )}
+                <Tooltip
+                  contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "0.75rem", fontSize: "12px" }}
+                  formatter={(value: number, name: string) => {
+                    const m = name as MetricId
+                    const dec = METRIC_DECIMALS[m] ?? 0
+                    return [`${Number(value).toFixed(dec)} ${metricUnit(m)}`, metricLabel(m)]
+                  }}
+                  labelFormatter={(v) => new Date(v).toLocaleDateString(dateLocale, { day: "numeric", month: "short" })}
                 />
-              )}
-            </LineChart>
+                {selectedMetrics.map((m) => (
+                  <Bar key={m} yAxisId={metricUnit(m)} dataKey={m} fill={METRIC_COLOR[m]} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                ))}
+              </BarChart>
+            )}
           </ResponsiveContainer>
           {/* Légende dynamique. */}
           <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
@@ -849,8 +894,28 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
             {t("vitaminMineralRadar")}
           </h3>
 
-          {/* Radar SVG */}
-          <MicronutrientsRadar data={radarData} className="w-full max-w-[320px] mx-auto block" />
+          {/* Radar SVG (avancé) ou barres simples par nutriment (simple) — même donnée radarData. */}
+          {advancedCharts ? (
+            <MicronutrientsRadar data={radarData} className="w-full max-w-[320px] mx-auto block" />
+          ) : (
+            <div className="space-y-2 py-1">
+              {radarData.nutrients.map((n) => {
+                const pct = Math.min(100, n.valuePercent)
+                const color = n.valuePercent < 70 ? "var(--risk)" : n.valuePercent < 90 ? "var(--amber)" : "var(--primary)"
+                return (
+                  <div key={n.key}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[12px] text-foreground">{n.label}</span>
+                      <span className="text-[11px] font-semibold" style={{ color }}>{n.valuePercent}% VNR</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
 
           {/* Axes < 70% VNR */}
           {radarData.nutrients.filter((n) => n.valuePercent < 70).length > 0 && (

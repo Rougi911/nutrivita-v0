@@ -123,9 +123,14 @@ function AppContent() {
       case "glucose":
         return <GlucoseTab />
       case "stats":
-        return <StatsTab onOpenSettings={() => setStackedView("settings")} />
+        return (
+          <StatsTab
+            onOpenSettings={() => setStackedView("settings")}
+            onOpenGroceries={() => setActiveTab("groceries")}
+          />
+        )
       case "groceries":
-        return <GroceriesScreen />
+        return <GroceriesScreen onBack={() => setActiveTab("stats")} />
       default:
         return (
           <HomeScreenV2

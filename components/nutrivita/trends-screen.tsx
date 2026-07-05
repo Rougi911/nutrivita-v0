@@ -51,8 +51,8 @@ export function TrendsScreen() {
   const tgt = macroTargetsG(user)
 
   return (
-    <div className={`px-4 py-4 space-y-3 ${isRTL ? "rtl" : ""}`}>
-      <h2 className="text-[19px] font-extrabold text-foreground">{P.trends}</h2>
+    <div className={`space-y-3 ${isRTL ? "rtl" : ""}`}>
+      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">{P.trends}</p>
 
       {/* Heatmap d'adhérence */}
       <div className="rounded-2xl bg-card border border-border p-4">
