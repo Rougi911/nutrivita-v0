@@ -75,18 +75,15 @@ export function GlucoseMealsScreen() {
     : null
 
   return (
-    <div className={`px-4 py-4 space-y-3 ${isRTL ? "rtl" : ""}`}>
+    <div className={`space-y-3 ${isRTL ? "rtl" : ""}`}>
+      {/* P2 — fusion long-scroll : le H2 + le disclaimer de section sont remontés
+          une seule fois en tête de GlucoseTab. On garde juste le repère temporel. */}
       <div className="flex items-center justify-between">
-        <h2 className="text-[19px] font-extrabold text-foreground">{P.glucoseMeals}</h2>
+        <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">{P.glucoseMeals}</p>
         <span className="text-[11px] font-bold rounded-full px-2.5 py-1 capitalize" style={{ backgroundColor: "color-mix(in oklab, var(--glucose) 14%, transparent)", color: "var(--glucose)" }}>
           {dateLabel}
         </span>
       </div>
-
-      {/* Disclaimer REG-04 permanent */}
-      <p className="text-[11px] text-muted-foreground rounded-xl border border-border px-3 py-2">
-        ⓘ {P.medicalDisclaimer}
-      </p>
 
       {/* Cartes TIR + pic */}
       <div className="grid grid-cols-2 gap-3">

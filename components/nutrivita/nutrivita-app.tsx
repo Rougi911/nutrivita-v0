@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { AppProvider, useApp } from "@/lib/app-context"
 import { JournalScreen } from "./journal-screen"
 import { MealsScreen } from "./meals-screen"
-import { GlucoseScreen } from "./glucose-screen"
 import { SettingsScreen } from "./settings-screen"
 import { LandingPage } from "./landing-page"
 import { OnboardingFlow } from "./onboarding-flow"
@@ -97,7 +96,8 @@ function AppContent() {
   // ─── Main app ───────────────────────────────────────────────────────────────
   const renderMainScreen = () => {
     if (stackedView === "glucose") {
-      return <GlucoseScreen onBack={() => setStackedView(null)} />
+      // P2 — vue empilée depuis Profil : même écran fusionné que l'onglet bottom nav, avec bouton retour.
+      return <GlucoseTab onBack={() => setStackedView(null)} />
     }
     if (stackedView === "settings") {
       return (
