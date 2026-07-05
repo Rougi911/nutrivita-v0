@@ -75,4 +75,4 @@ Pousser sur `main` (= déploiement auto Render) est autorisé pour ces tâches :
 **EXCEPTION — cutover P0-2 (bascule cookies httpOnly dans `lib/api.ts`, withCredentials + X-CSRF-Token + /refresh + /logout)** :
 - NE PAS pousser sur `main`. Créer une branche `feat/jwt-httponly-front`, committer dessus, ouvrir une PR, puis **s'arrêter**. Le merge (= déploiement, déconnexion possible de tous les users en prod) est une décision humaine.
 
-**S'arrêter et demander** aussi si : tâche 🔒, décision produit, ou blocage après 2 essais.
+**Règle d'autonomie (priorité)** : avancer **jusqu'au bout** sans redemander. Ne S'ARRÊTER pour demander QUE sur : (a) **impact fonctionnel** visible (comportement/UX ambigu, options divergentes), (b) **impact réglementaire** (RGPD, REG-05, données de santé), (c) action **🔒** (secrets, cutover prod déconnectant des users, permissions). Pour tout le reste : option par défaut raisonnable, **notée**, et on continue. Blocage technique : 2 essais, puis noter et passer à la suite.
