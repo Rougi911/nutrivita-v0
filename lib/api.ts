@@ -560,7 +560,10 @@ export async function getGrocerySummary(month?: string): Promise<GrocerySummary>
 // G4-a — calories brûlées agrégées par jour (pour la série « écart » du graphe métrique).
 export interface DailyBurned { date: string; burned: number }
 export async function getActivitiesRange(days: number): Promise<DailyBurned[]> {
-  return apiFetch<DailyBurned[]>("/api/activities/range", { method: "POST", body: JSON.stringify({ days }) })
+  // U (ultrareview) : guardArray comme les autres range endpoints — un corps 200 malformé
+  // ({error} au lieu d'un tableau) ne fait plus planter la boucle `for (const b of ...)` du Bilan.
+  const raw = await apiFetch<unknown>("/api/activities/range", { method: "POST", body: JSON.stringify({ days }) })
+  return guardArray<DailyBurned>(raw, "/api/activities/range")
 }
 
 export async function getJournal(date: string): Promise<MealEntry[]> {
