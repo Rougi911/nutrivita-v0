@@ -162,7 +162,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([])
   const [activities, setActivities] = useState<ActivityEntry[]>([])
   const [scannedProducts, setScannedProducts] = useState<ScannedProduct[]>([])
-  const [glucoseTarget, setGlucoseTarget] = useState<{ low: number; high: number }>(defaultUser.glucoseTarget)
+  const [glucoseTarget, setGlucoseTargetState] = useState<{ low: number; high: number }>(defaultUser.glucoseTarget)
   const [isDiabetic, setIsDiabetic] = useState(defaultUser.isDiabetic)
   const [activeTab, setActiveTab] = useState("home")
   const [showAddSheet, setShowAddSheet] = useState(false)
@@ -517,6 +517,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const reloadData = useCallback(() => loadData(currentDate), [loadData, currentDate])
+
+  // Cible glycémique — SOURCE UNIQUE (ultrareview). Certains écrans lisent le state dédié
+  // `glucoseTarget`, d'autres `user.glucoseTarget` ; sans synchronisation, personnaliser la
+  // cible (Réglages) laissait des TIR/répartitions/marqueurs divergents entre écrans (cœur diabète).
+  const setGlucoseTarget = useCallback((target: { low: number; high: number }) => {
+    setGlucoseTargetState(target)
+    setUser((prev) => ({ ...prev, glucoseTarget: target }))
+  }, [])
 
   return (
     <AppContext.Provider

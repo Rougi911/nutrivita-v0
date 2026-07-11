@@ -28,6 +28,7 @@ import { AdditivesBars } from "@/components/nutrivita/additives-bars"
 import { LazyMount } from "./lazy-mount" // BUG-3 — différer les charts sous le fold (anti-gel L2)
 import { Skeleton } from "@/components/ui/skeleton"
 import { computeGlucoseMetrics } from "@/lib/glucose-metrics"
+import { getLocalDateStr } from "@/lib/date-utils"
 import { deurenbergBodyFat, leanBodyMass, bmi, tdee } from "@/lib/body-composition"
 import {
   getBarFill,
@@ -70,7 +71,7 @@ const METRIC_DECIMALS: Record<MetricId, number> = { poids: 1, calories: 0, ecart
 const STORAGE_KEY = "nv.bilan.metrics"
 
 export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } = {}) {
-  const { t, language, dailyLog, mealEntries, user, weightHistory, glucoseReadings, scannedProducts, isRTL, advancedCharts } = useApp()
+  const { t, language, dailyLog, mealEntries, user, weightHistory, glucoseReadings, scannedProducts, isRTL, advancedCharts, glucoseTarget } = useApp()
   // Locale pour les libellés de date des graphes (corrige les axes restés en français sous arabe).
   const dateLocale = language === "ar" ? "ar" : language === "en" ? "en-GB" : "fr-FR"
   const [segment, setSegment] = useState<Segment>("semaine")
@@ -286,7 +287,7 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
 
     const byDay: Record<string, { sum: number; n: number }> = {}
     for (const r of periodGlucose) {
-      const day = new Date(r.timestamp).toISOString().slice(0, 10)
+      const day = getLocalDateStr(new Date(r.timestamp)) // date LOCALE (cohérent avec calData ; plus d'UTC)
       const o = (byDay[day] ||= { sum: 0, n: 0 })
       o.sum += r.value
       o.n += 1
@@ -375,8 +376,9 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
   }, [periodGlucose, segment])
 
   const glucoseMetrics = useMemo(
-    () => computeGlucoseMetrics(weekGlucose, 70, 180),
-    [weekGlucose]
+    // Cible utilisateur (ultrareview) — plus de 70/180 figé : TIR cohérent avec l'écran Glycémie.
+    () => computeGlucoseMetrics(weekGlucose, glucoseTarget.low, glucoseTarget.high),
+    [weekGlucose, glucoseTarget]
   )
 
   // Mini glucose scatter (7 pts sampled evenly for the stats card)

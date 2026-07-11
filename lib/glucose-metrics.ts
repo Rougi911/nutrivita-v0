@@ -64,9 +64,13 @@ export function computeGlucoseMetrics(
 
   const cv = avg > 0 ? Math.round((std / avg) * 100) : 0
 
+  // Tranches contiguës avec la cible (ultrareview) : les bornes low/high s'alignent sur
+  // targetLow/targetHigh au lieu de 70/180 figés — sinon, avec une cible personnalisée,
+  // des valeurs tombaient dans AUCUNE tranche et la répartition ne totalisait plus 100 %.
+  // veryLow (<54) et veryHigh (>250) restent les seuils cliniques AGP standard.
   const veryLowCount = valuesMgDl.filter((v) => v < 54).length
-  const lowCount = valuesMgDl.filter((v) => v >= 54 && v < 70).length
-  const highCount = valuesMgDl.filter((v) => v > 180 && v <= 250).length
+  const lowCount = valuesMgDl.filter((v) => v >= 54 && v < targetLow).length
+  const highCount = valuesMgDl.filter((v) => v > targetHigh && v <= 250).length
   const veryHighCount = valuesMgDl.filter((v) => v > 250).length
 
   return {
