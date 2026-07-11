@@ -490,6 +490,7 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
           <button
             key={seg.id}
             onClick={() => setSegment(seg.id)}
+            aria-pressed={segment === seg.id}
             className={cn(
               "flex-1 py-2 rounded-xl text-[13px] font-medium transition-colors",
               segment === seg.id

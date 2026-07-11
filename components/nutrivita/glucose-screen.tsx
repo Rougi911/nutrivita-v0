@@ -180,6 +180,7 @@ export function GlucoseScreen({ period, onPeriodChange }: GlucoseScreenProps) {
               <button
                 key={p}
                 onClick={() => onPeriodChange(p)}
+                aria-pressed={period === p}
                 className={cn(
                   "flex-1 py-2 rounded-xl text-sm font-medium transition-colors",
                   period === p
