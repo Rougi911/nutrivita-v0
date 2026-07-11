@@ -236,8 +236,11 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
     return result
   }, [periodMeals, segment])
 
-  const avgCalories = calData.length
-    ? Math.round(calData.reduce((s, d) => s + d.calories, 0) / calData.length)
+  // U2 (ultrareview) : moyenne sur les jours RÉELLEMENT journalisés (calories > 0) ;
+  // inclure les jours à 0 sous-estimait la moyenne quotidienne.
+  const loggedCalDays = calData.filter((d) => d.calories > 0)
+  const avgCalories = loggedCalDays.length
+    ? Math.round(loggedCalDays.reduce((s, d) => s + d.calories, 0) / loggedCalDays.length)
     : 0
   // Plafond de l'axe Y des barres calories : englobe la cible pour que la ligne de référence
   // reste TOUJOURS visible (sinon l'axe se cale sur les barres, souvent sous la cible).

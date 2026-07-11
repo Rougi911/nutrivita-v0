@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from "react"
 import {
   type Language,
   type User,
@@ -409,6 +409,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return count
   })()
 
+  // U3 (ultrareview) : objet `user` augmenté du streak MÉMOÏSÉ → référence stable tant que
+  // user/streak ne changent pas. Sans ça, `{...user, streak}` était recréé à chaque rendu et
+  // cassait les useMemo des écrans (Bilan/Tendances/Score) qui dépendent de `user`.
+  const userWithStreak = useMemo(() => ({ ...user, streak }), [user, streak])
+
   const addMealEntry = (entry: Omit<MealEntry, "id" | "createdAt">): string => {
     // Use crypto.randomUUID for collision safety (two simultaneous adds on same ms)
     const id = `meal-${typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`}`
@@ -533,7 +538,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isAuthLoading,
         login,
         logout,
-        user: { ...user, streak }, // P0-4 — streak dérivé, toujours à jour
+        user: userWithStreak, // P0-4 — streak dérivé (mémoïsé, U3)
         setUser,
         isOnboarded,
         setIsOnboarded,
