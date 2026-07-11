@@ -477,7 +477,7 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
       <div className="px-4 pt-5 pb-3 flex items-center justify-between">
         <div>
           <h1 className="text-[18px] font-semibold text-foreground">{t("stats")}</h1>
-          <p className="text-[13px] text-muted-foreground mt-0.5">Analysez vos progrès</p>
+          <p className="text-[13px] text-muted-foreground mt-0.5">{t("statsSubtitle")}</p>
         </div>
         <button onClick={handleExport} className="w-8 h-8 rounded-full bg-muted flex items-center justify-center" aria-label={t("export")}>
           <FileText className="h-4 w-4 text-muted-foreground" />
@@ -695,15 +695,15 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
           <div className="grid grid-cols-3 gap-3 mb-3">
             <div className="text-center">
               <p className="text-[22px] font-semibold text-foreground">{bfPct.toFixed(1)}</p>
-              <p className="text-[11px] text-muted-foreground">% graisse</p>
+              <p className="text-[11px] text-muted-foreground">{t("fatPercent")}</p>
             </div>
             <div className="text-center">
               <p className="text-[22px] font-semibold text-foreground">{lbm.toFixed(1)}</p>
-              <p className="text-[11px] text-muted-foreground">kg maigre</p>
+              <p className="text-[11px] text-muted-foreground">{t("leanMass")}</p>
             </div>
             <div className="text-center">
               <p className="text-[22px] font-semibold text-foreground">{bmiVal.toFixed(1)}</p>
-              <p className="text-[11px] text-muted-foreground">IMC</p>
+              <p className="text-[11px] text-muted-foreground">{t("bmiLabel")}</p>
             </div>
           </div>
           {/* Forbes disclaimer REG-04 */}

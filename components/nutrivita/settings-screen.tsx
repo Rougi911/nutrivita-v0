@@ -212,7 +212,7 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
               onChange={(v) => handleUnitChange("glucose", v as GlucoseUnit)}
             />
           </SettingsRow>
-          <SettingsRow label="Énergie">
+          <SettingsRow label={t("energyLabel")}>
             <UnitToggle value={user.units.energy} options={["kcal", "kJ"]} onChange={(v) => handleUnitChange("energy", v)} />
           </SettingsRow>
         </SettingsGroup>

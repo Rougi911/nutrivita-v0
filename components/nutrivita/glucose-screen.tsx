@@ -57,12 +57,15 @@ function getPointColor(value: number, targetLow: number, targetHigh: number): st
 export function GlucoseScreen({ period, onPeriodChange }: GlucoseScreenProps) {
   const {
     t,
+    language,
     glucoseReadings,
     addGlucoseReading,
     isRTL,
     user,
     glucoseTarget,
   } = useApp()
+  // Locale des libellés de date (corrige le tooltip resté en fr-FR sous arabe/anglais).
+  const dateLocale = language === "ar" ? "ar" : language === "en" ? "en-GB" : "fr-FR"
 
   const [showAddModal, setShowAddModal] = useState(false)
 
@@ -310,7 +313,7 @@ export function GlucoseScreen({ period, onPeriodChange }: GlucoseScreenProps) {
                       `${displayUnit === "g/L" ? value.toFixed(2) : Math.round(value)} ${displayUnit}`,
                       t("glucoseTracking"),
                     ]}
-                    labelFormatter={(label) => new Date(label).toLocaleString("fr-FR")}
+                    labelFormatter={(label) => new Date(label).toLocaleString(dateLocale)}
                   />
 
                   <Scatter data={chartData} fill="var(--glucose)">
@@ -327,7 +330,7 @@ export function GlucoseScreen({ period, onPeriodChange }: GlucoseScreenProps) {
 
             {/* Distribution bar */}
             <div className="rounded-2xl border border-border bg-card p-4">
-              <h3 className="text-[14px] font-semibold text-foreground mb-3">Répartition</h3>
+              <h3 className="text-[14px] font-semibold text-foreground mb-3">{t("distribution")}</h3>
               <div className="h-5 flex rounded-lg overflow-hidden mb-3">
                 {[
                   { key: "veryLow",  color: "var(--risk)" },
