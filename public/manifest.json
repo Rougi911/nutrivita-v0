@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "NutriVita",
-  "short_name": "NutriVita",
+  "name": "NutraLance",
+  "short_name": "NutraLance",
   "description": "Votre compagnon nutrition intelligent - Suivi des calories, macros, glycémie et composition corporelle.",
   "start_url": "/",
   "scope": "/",

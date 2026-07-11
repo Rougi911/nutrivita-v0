@@ -71,7 +71,7 @@ function AppContent() {
         <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground text-2xl font-bold shadow-lg">
           N
         </div>
-        <p className="text-[17px] font-semibold text-foreground">NutriVita</p>
+        <p className="text-[17px] font-semibold text-foreground">NutraLance</p>
         <div
           className="h-7 w-7 rounded-full border-4 border-t-transparent animate-spin"
           style={{ borderColor: "var(--primary)", borderTopColor: "transparent" }}

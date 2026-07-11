@@ -1,7 +1,7 @@
 "use client"
 
 // P1-5 — Score Santé hebdomadaire (maquette 4). Agrège en un chiffre les
-// richesses déjà calculées par NutriVita : adhérence calorique (40 %), qualité
+// richesses déjà calculées par NutraLance : adhérence calorique (40 %), qualité
 // produits (25 %), micronutriments vs VNR (20 %), équilibre macros (15 %).
 // Actions chiffrées + évolution 8 semaines. Calcul 100 % client (premier jet).
 

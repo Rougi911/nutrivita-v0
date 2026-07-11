@@ -1,4 +1,4 @@
-// Types for NutriVita app
+// Types for NutraLance app
 
 import type { GlucoseUnit } from "@/lib/glucose-units"
 
@@ -428,7 +428,7 @@ export const translations = {
     stravaDisconnected: "Strava déconnecté",
     stravaDisconnectConfirm: "Déconnecter Strava ? Vos jetons d'accès seront supprimés.",
     stravaConsentTitle: "Connecter Strava",
-    stravaConsentDesc: "En connectant Strava, vos activités (type, durée, distance, calories) seront importées dans NutriVita pour ajuster vos calories. Vous pouvez vous déconnecter à tout moment.",
+    stravaConsentDesc: "En connectant Strava, vos activités (type, durée, distance, calories) seront importées dans NutraLance pour ajuster vos calories. Vous pouvez vous déconnecter à tout moment.",
     stravaConsentConfirm: "Autoriser et connecter",
     stravaDisconnectError: "Échec de la déconnexion Strava",
     about: "À propos",
@@ -463,7 +463,7 @@ export const translations = {
     loadingData: "Chargement...",
     retryLoad: "Réessayer",
     // PWA install (S18)
-    installTitle: "Installer NutriVita",
+    installTitle: "Installer NutraLance",
     installBody: "Ajoutez l'app à votre écran d'accueil pour un accès rapide, même hors ligne.",
     installAction: "Installer",
     installDismiss: "Plus tard",
@@ -510,7 +510,7 @@ export const translations = {
     alternativesEmpty: "Aucune alternative trouvée pour cette catégorie",
 
     // Onboarding
-    welcome: "Bienvenue sur NutriVita",
+    welcome: "Bienvenue sur NutraLance",
     tagline: "Votre compagnon nutrition intelligent",
     getStarted: "Commencer",
     tellUs: "Parlez-nous de vous",
@@ -885,7 +885,7 @@ export const translations = {
     stravaDisconnected: "\u062a\u0645 \u0641\u0635\u0644 Strava",
     stravaDisconnectConfirm: "\u0647\u0644 \u062a\u0631\u064a\u062f \u0641\u0635\u0644 Strava\u061f \u0633\u064a\u062a\u0645 \u062d\u0630\u0641 \u0631\u0645\u0648\u0632 \u0627\u0644\u0648\u0635\u0648\u0644.",
     stravaConsentTitle: "\u0631\u0628\u0637 Strava",
-    stravaConsentDesc: "\u0628\u0631\u0628\u0637 Strava\u060c \u0633\u064a\u062a\u0645 \u0627\u0633\u062a\u064a\u0631\u0627\u062f \u0623\u0646\u0634\u0637\u062a\u0643 (\u0627\u0644\u0646\u0648\u0639\u060c \u0627\u0644\u0645\u062f\u0629\u060c \u0627\u0644\u0645\u0633\u0627\u0641\u0629\u060c \u0627\u0644\u0633\u0639\u0631\u0627\u062a) \u0625\u0644\u0649 NutriVita \u0644\u062a\u0639\u062f\u064a\u0644 \u0633\u0639\u0631\u0627\u062a\u0643. \u064a\u0645\u0643\u0646\u0643 \u0627\u0644\u0641\u0635\u0644 \u0641\u064a \u0623\u064a \u0648\u0642\u062a.",
+    stravaConsentDesc: "\u0628\u0631\u0628\u0637 Strava\u060c \u0633\u064a\u062a\u0645 \u0627\u0633\u062a\u064a\u0631\u0627\u062f \u0623\u0646\u0634\u0637\u062a\u0643 (\u0627\u0644\u0646\u0648\u0639\u060c \u0627\u0644\u0645\u062f\u0629\u060c \u0627\u0644\u0645\u0633\u0627\u0641\u0629\u060c \u0627\u0644\u0633\u0639\u0631\u0627\u062a) \u0625\u0644\u0649 NutraLance \u0644\u062a\u0639\u062f\u064a\u0644 \u0633\u0639\u0631\u0627\u062a\u0643. \u064a\u0645\u0643\u0646\u0643 \u0627\u0644\u0641\u0635\u0644 \u0641\u064a \u0623\u064a \u0648\u0642\u062a.",
     stravaConsentConfirm: "\u0627\u0644\u0645\u0648\u0627\u0641\u0642\u0629 \u0648\u0627\u0644\u0631\u0628\u0637",
     stravaDisconnectError: "\u0641\u0634\u0644 \u0641\u0635\u0644 Strava",
     about: "\u062D\u0648\u0644",
@@ -916,7 +916,7 @@ export const translations = {
     loadingData: "\u062C\u0627\u0631\u064A \u0627\u0644\u062A\u062D\u0645\u064A\u0644...",
     retryLoad: "\u0625\u0639\u0627\u062F\u0629 \u0627\u0644\u0645\u062D\u0627\u0648\u0644\u0629",
     // PWA install (S18)
-    installTitle: "\u062A\u062B\u0628\u064A\u062A NutriVita",
+    installTitle: "\u062A\u062B\u0628\u064A\u062A NutraLance",
     installBody: "\u0623\u0636\u0641 \u0627\u0644\u062A\u0637\u0628\u064A\u0642 \u0625\u0644\u0649 \u0627\u0644\u0634\u0627\u0634\u0629 \u0627\u0644\u0631\u0626\u064A\u0633\u064A\u0629 \u0644\u0644\u0648\u0635\u0648\u0644 \u0627\u0644\u0633\u0631\u064A\u0639\u060C \u062D\u062A\u0649 \u062F\u0648\u0646 \u0627\u062A\u0635\u0627\u0644.",
     installAction: "\u062A\u062B\u0628\u064A\u062A",
     installDismiss: "\u0644\u0627\u062D\u0642\u064B\u0627",
@@ -957,7 +957,7 @@ export const translations = {
     notRatedHint: "\u0628\u064A\u0627\u0646\u0627\u062A \u063A\u0630\u0627\u0626\u064A\u0629 \u063A\u064A\u0631 \u0643\u0627\u0641\u064A\u0629",
     alternativesTitle: "\u0628\u062F\u0627\u0626\u0644 \u0623\u0635\u062D",
     alternativesEmpty: "\u0644\u0645 \u064A\u062A\u0645 \u0627\u0644\u0639\u062B\u0648\u0631 \u0639\u0644\u0649 \u0628\u062F\u0627\u0626\u0644 \u0644\u0647\u0630\u0647 \u0627\u0644\u0641\u0626\u0629",
-    welcome: "\u0645\u0631\u062D\u0628\u0627\u064B \u0628\u0643 \u0641\u064A NutriVita",
+    welcome: "\u0645\u0631\u062D\u0628\u0627\u064B \u0628\u0643 \u0641\u064A NutraLance",
     tagline: "\u0631\u0641\u064A\u0642\u0643 \u0627\u0644\u0630\u0643\u064A \u0644\u0644\u062A\u063A\u0630\u064A\u0629",
     getStarted: "\u0627\u0628\u062F\u0623",
     tellUs: "\u0623\u062E\u0628\u0631\u0646\u0627 \u0639\u0646 \u0646\u0641\u0633\u0643",
@@ -1330,7 +1330,7 @@ export const translations = {
     stravaDisconnected: "Strava disconnected",
     stravaDisconnectConfirm: "Disconnect Strava? Your access tokens will be deleted.",
     stravaConsentTitle: "Connect Strava",
-    stravaConsentDesc: "By connecting Strava, your activities (type, duration, distance, calories) will be imported into NutriVita to adjust your calories. You can disconnect at any time.",
+    stravaConsentDesc: "By connecting Strava, your activities (type, duration, distance, calories) will be imported into NutraLance to adjust your calories. You can disconnect at any time.",
     stravaConsentConfirm: "Authorize and connect",
     stravaDisconnectError: "Strava disconnect failed",
     about: "About",
@@ -1361,7 +1361,7 @@ export const translations = {
     loadingData: "Loading...",
     retryLoad: "Retry",
     // PWA install (S18)
-    installTitle: "Install NutriVita",
+    installTitle: "Install NutraLance",
     installBody: "Add the app to your home screen for quick access, even offline.",
     installAction: "Install",
     installDismiss: "Later",
@@ -1402,7 +1402,7 @@ export const translations = {
     notRatedHint: "Insufficient nutritional data",
     alternativesTitle: "Healthier alternatives",
     alternativesEmpty: "No alternatives found for this category",
-    welcome: "Welcome to NutriVita",
+    welcome: "Welcome to NutraLance",
     tagline: "Your smart nutrition companion",
     getStarted: "Get started",
     tellUs: "Tell us about yourself",

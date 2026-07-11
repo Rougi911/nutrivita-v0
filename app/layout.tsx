@@ -17,7 +17,7 @@ const notoArabic = Noto_Sans_Arabic({
 })
 
 export const metadata: Metadata = {
-  title: "NutriVita - Votre compagnon nutrition intelligent",
+  title: "NutraLance - Votre compagnon nutrition intelligent",
   description:
     "Application de suivi nutritionnel premium pour la France et l'Algérie. Suivi des calories, macros, glycémie et composition corporelle.",
   generator: "v0.app",
@@ -32,8 +32,8 @@ export const metadata: Metadata = {
     "poids",
     "macros",
   ],
-  authors: [{ name: "NutriVita" }],
-  creator: "NutriVita",
+  authors: [{ name: "NutraLance" }],
+  creator: "NutraLance",
   icons: {
     icon: [
       {
@@ -54,15 +54,15 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "NutriVita",
+    title: "NutraLance",
   },
   formatDetection: {
     telephone: false,
   },
   openGraph: {
     type: "website",
-    siteName: "NutriVita",
-    title: "NutriVita - Votre compagnon nutrition intelligent",
+    siteName: "NutraLance",
+    title: "NutraLance - Votre compagnon nutrition intelligent",
     description:
       "Application de suivi nutritionnel premium pour la France et l'Algérie.",
   },

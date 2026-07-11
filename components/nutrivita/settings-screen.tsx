@@ -394,7 +394,7 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
 
         {/* About */}
         <SettingsGroup title={t("about")}>
-          <div className="px-4 py-2 text-[12px] text-muted-foreground">NutriVita v1.0.0 · nutrivita.fr</div>
+          <div className="px-4 py-2 text-[12px] text-muted-foreground">NutraLance v1.0.0 · nutrivita.fr</div>
           {/* Politique de confidentialité + Mentions légales conservées (points
               d'accès RGPD obligatoires) — contenu réel à brancher ultérieurement.
               P1-6 : « Évaluer l'app » retiré (aucun lien store disponible). */}

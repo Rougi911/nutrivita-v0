@@ -1,5 +1,5 @@
 /**
- * Stable mock data for NutriVita — NO Math.random() allowed here.
+ * Stable mock data for NutraLance — NO Math.random() allowed here.
  * All glucose values stored in mg/dL (AL-04).
  */
 
