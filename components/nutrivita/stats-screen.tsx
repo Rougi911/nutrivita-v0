@@ -28,6 +28,7 @@ import { AdditivesBars } from "@/components/nutrivita/additives-bars"
 import { LazyMount } from "./lazy-mount" // BUG-3 — différer les charts sous le fold (anti-gel L2)
 import { Skeleton } from "@/components/ui/skeleton"
 import { computeGlucoseMetrics } from "@/lib/glucose-metrics"
+import { toWeightUnit } from "@/lib/units"
 import { getLocalDateStr } from "@/lib/date-utils"
 import { deurenbergBodyFat, leanBodyMass, bmi, tdee } from "@/lib/body-composition"
 import {
@@ -518,7 +519,7 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
                   <TrendingUp className="h-4 w-4" style={{ color: weightColor }} />
                 )}
                 <span className="text-[13px] font-semibold" style={{ color: weightColor }}>
-                  {weightDelta > 0 ? "+" : ""}{weightDelta.toFixed(1)} kg
+                  {weightDelta > 0 ? "+" : ""}{toWeightUnit(weightDelta, user.units.weight).toFixed(1)} {user.units.weight}
                 </span>
               </div>
             )}

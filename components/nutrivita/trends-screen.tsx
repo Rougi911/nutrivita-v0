@@ -6,6 +6,7 @@
 // Données réelles via getJournalRange / getWeightHistory.
 
 import { useEffect, useMemo, useState } from "react"
+import { formatWeight, toWeightUnit } from "@/lib/units"
 import { useApp } from "@/lib/app-context"
 import { getJournalRange, getWeightHistory } from "@/lib/api"
 import { P1 } from "@/lib/p1-i18n"
@@ -120,7 +121,7 @@ export function TrendsScreen() {
                 color: `var(--${weight.slopePerMonth <= 0 ? "primary" : "amber"})`,
               }}
             >
-              {weight.slopePerMonth > 0 ? "▴ +" : "▾ "}{weight.slopePerMonth} kg {P.perMonth}
+              {weight.slopePerMonth > 0 ? "▴ +" : "▾ "}{toWeightUnit(weight.slopePerMonth, user.units.weight)} {user.units.weight} {P.perMonth}
             </span>
           )}
         </div>
@@ -128,9 +129,9 @@ export function TrendsScreen() {
           <>
             <LazyMount minHeight={120}><SmoothedWeightChart data={weight} /></LazyMount>
             <div className="flex justify-between text-[9.5px] text-muted-foreground mt-1">
-              <span>{weight.points[0].raw} kg</span>
+              <span>{formatWeight(weight.points[0].raw, user.units.weight)}</span>
               <span>{P.movingAvg7}</span>
-              <span>{weight.points[weight.points.length - 1].smoothed} kg</span>
+              <span>{formatWeight(weight.points[weight.points.length - 1].smoothed, user.units.weight)}</span>
             </div>
           </>
         ) : (
