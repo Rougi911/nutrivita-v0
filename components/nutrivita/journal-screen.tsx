@@ -27,6 +27,7 @@ import {
   Check,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
+import { formatWeight } from "@/lib/units"
 import { useApp } from "@/lib/app-context"
 import { getLocalDateStr } from "@/lib/date-utils"
 import { interpretMedia, getJournal } from "@/lib/api"
@@ -292,7 +293,7 @@ export function JournalScreen() {
             </div>
             <div className="flex items-center gap-3">
               <span className="text-lg font-semibold text-foreground">
-                {dailyLog.weight.toFixed(1)} kg
+                {formatWeight(dailyLog.weight, user.units.weight)}
               </span>
               {weightChange !== null && (
                 <span

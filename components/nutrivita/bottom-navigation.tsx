@@ -44,6 +44,7 @@ export function BottomNavigation() {
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "relative flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors min-w-[52px]",
                   isActive ? "text-primary" : "text-muted-foreground",

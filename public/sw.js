@@ -1,5 +1,5 @@
 /**
- * NutriVita — Service Worker (S18, PWA installable)
+ * NutraLance — Service Worker (S18, PWA installable)
  *
  * Stratégie :
  *  - Navigations (mode "navigate") : network-first → cache → coquille hors-ligne.
@@ -107,7 +107,7 @@ self.addEventListener("fetch", (event) => {
 self.addEventListener("push", (event) => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch (_) { data = { body: event.data && event.data.text() }; }
-  const title = data.title || "NutriVita";
+  const title = data.title || "NutraLance";
   const options = {
     body: data.body || "",
     icon: "/icon-192.png",

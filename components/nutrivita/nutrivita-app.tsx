@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { AppProvider, useApp } from "@/lib/app-context"
 import { JournalScreen } from "./journal-screen"
 import { MealsScreen } from "./meals-screen"
-import { GlucoseScreen } from "./glucose-screen"
 import { SettingsScreen } from "./settings-screen"
 import { LandingPage } from "./landing-page"
 import { OnboardingFlow } from "./onboarding-flow"
@@ -72,7 +71,7 @@ function AppContent() {
         <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground text-2xl font-bold shadow-lg">
           N
         </div>
-        <p className="text-[17px] font-semibold text-foreground">NutriVita</p>
+        <p className="text-[17px] font-semibold text-foreground">NutraLance</p>
         <div
           className="h-7 w-7 rounded-full border-4 border-t-transparent animate-spin"
           style={{ borderColor: "var(--primary)", borderTopColor: "transparent" }}
@@ -97,7 +96,8 @@ function AppContent() {
   // ─── Main app ───────────────────────────────────────────────────────────────
   const renderMainScreen = () => {
     if (stackedView === "glucose") {
-      return <GlucoseScreen onBack={() => setStackedView(null)} />
+      // P2 — vue empilée depuis Profil : même écran fusionné que l'onglet bottom nav, avec bouton retour.
+      return <GlucoseTab onBack={() => setStackedView(null)} />
     }
     if (stackedView === "settings") {
       return (
@@ -123,9 +123,14 @@ function AppContent() {
       case "glucose":
         return <GlucoseTab />
       case "stats":
-        return <StatsTab onOpenSettings={() => setStackedView("settings")} />
+        return (
+          <StatsTab
+            onOpenSettings={() => setStackedView("settings")}
+            onOpenGroceries={() => setActiveTab("groceries")}
+          />
+        )
       case "groceries":
-        return <GroceriesScreen />
+        return <GroceriesScreen onBack={() => setActiveTab("stats")} />
       default:
         return (
           <HomeScreenV2

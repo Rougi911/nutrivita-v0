@@ -16,6 +16,7 @@ import { useTheme } from "next-themes"
 import { AnimatePresence, motion } from "framer-motion"
 import { useApp } from "@/lib/app-context"
 import { adjustMacros } from "@/lib/macros"
+import { formatWeight, formatHeight, formatEnergy, toWeightUnit, fromWeightUnit } from "@/lib/units"
 import { enablePush, pushSupported } from "@/lib/push"
 import { getNotificationPrefs, updateNotificationPrefs, type NotificationPrefs } from "@/lib/api"
 import { Button } from "@/components/ui/button"
@@ -58,6 +59,7 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
   const {
     user, setUser,
     t, language, setLanguage, isRTL,
+    advancedCharts, setAdvancedCharts,
     clearJournal, clearWeight, clearGlucose,
     isDiabetic, setIsDiabetic,
     glucoseTarget, setGlucoseTarget,
@@ -71,7 +73,8 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
   const [showProfileEdit, setShowProfileEdit] = useState(false)
   const [editName,   setEditName]   = useState(user.name)
   const [editAge,    setEditAge]    = useState(user.age.toString())
-  const [editWeight, setEditWeight] = useState(user.weight.toString())
+  // U1 — saisie du poids dans l'unité choisie ; conversion → kg au stockage.
+  const [editWeight, setEditWeight] = useState(toWeightUnit(user.weight, user.units.weight).toString())
 
   // S26 — préférences de rappels (chargées depuis le backend).
   const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs | null>(null)
@@ -110,7 +113,7 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
       ...user,
       name: editName.trim() || user.name,
       age: parseInt(editAge) || user.age,
-      weight: parseFloat(editWeight) || user.weight,
+      weight: editWeight ? fromWeightUnit(parseFloat(editWeight), user.units.weight) : user.weight,
     })
     setShowProfileEdit(false)
   }
@@ -174,14 +177,20 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
           <div className="flex-1 min-w-0">
             <p className="text-[16px] font-semibold text-foreground">{user.name}</p>
             <p className="text-[13px] text-muted-foreground mt-0.5">
-              {user.age} ans · {user.height} cm · {user.weight} kg
+              {user.age} ans · {formatHeight(user.height, user.units.height)} · {formatWeight(user.weight, user.units.weight)}
             </p>
             <p className="text-[12px] text-muted-foreground mt-0.5">
-              {user.goals.map((g) => goalLabels[g] ?? g).join(" · ")} · {user.targetCalories} kcal/j
+              {user.goals.map((g) => goalLabels[g] ?? g).join(" · ")} · {formatEnergy(user.targetCalories, user.units.energy)}/j
             </p>
           </div>
           <button
-            onClick={() => setShowProfileEdit(true)}
+            onClick={() => {
+              // Réinitialise les champs dans les bonnes unités à l'ouverture (U1).
+              setEditName(user.name)
+              setEditAge(user.age.toString())
+              setEditWeight(toWeightUnit(user.weight, user.units.weight).toString())
+              setShowProfileEdit(true)
+            }}
             className="px-3 py-1.5 rounded-xl border border-border text-[13px] font-medium text-foreground bg-muted shrink-0"
           >
             {t("edit")}
@@ -203,7 +212,7 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
               onChange={(v) => handleUnitChange("glucose", v as GlucoseUnit)}
             />
           </SettingsRow>
-          <SettingsRow label="Énergie">
+          <SettingsRow label={t("energyLabel")}>
             <UnitToggle value={user.units.energy} options={["kcal", "kJ"]} onChange={(v) => handleUnitChange("energy", v)} />
           </SettingsRow>
         </SettingsGroup>
@@ -323,6 +332,13 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
               onCheckedChange={(v) => setTheme(v ? "dark" : "light")}
             />
           </SettingsRow>
+          {/* P2 — bascule complexité des graphiques (Glycémie / Bilan) */}
+          <SettingsRow label={t("advancedCharts")} description={t("advancedChartsDesc")}>
+            <Switch
+              checked={advancedCharts}
+              onCheckedChange={(v) => setAdvancedCharts(v)}
+            />
+          </SettingsRow>
           <SettingsRow label={t("language")}>
             <Select value={language} onValueChange={(v) => setLanguage(v as Language)}>
               <SelectTrigger className="w-24 h-9">
@@ -386,7 +402,7 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
 
         {/* About */}
         <SettingsGroup title={t("about")}>
-          <div className="px-4 py-2 text-[12px] text-muted-foreground">NutriVita v1.0.0 · nutrivita.fr</div>
+          <div className="px-4 py-2 text-[12px] text-muted-foreground">NutraLance v1.0.0 · nutrivita.fr</div>
           {/* Politique de confidentialité + Mentions légales conservées (points
               d'accès RGPD obligatoires) — contenu réel à brancher ultérieurement.
               P1-6 : « Évaluer l'app » retiré (aucun lien store disponible). */}
@@ -460,7 +476,7 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
                     <Input type="number" value={editAge} onChange={(e) => setEditAge(e.target.value)} className="h-11" />
                   </div>
                   <div>
-                    <label className="text-[12px] text-muted-foreground mb-1 block">{t("weight")} (kg)</label>
+                    <label className="text-[12px] text-muted-foreground mb-1 block">{t("weight")} ({user.units.weight})</label>
                     <Input type="number" step="0.1" value={editWeight} onChange={(e) => setEditWeight(e.target.value)} className="h-11" />
                   </div>
                 </div>
@@ -493,19 +509,26 @@ function SettingsGroup({ title, children }: { title: string; children: React.Rea
 
 function SettingsRow({
   label,
+  description,
   children,
   arrow,
   icon,
 }: {
   label: string
+  description?: string
   children?: React.ReactNode
   arrow?: boolean
   icon?: React.ReactNode
 }) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 min-h-[52px]">
-      <span className="text-[14px] font-medium text-foreground">{label}</span>
-      <div className="flex items-center gap-2">
+    <div className="flex items-center justify-between px-4 py-3 min-h-[52px] gap-3">
+      <div className="min-w-0">
+        <span className="text-[14px] font-medium text-foreground">{label}</span>
+        {description && (
+          <p className="text-[11.5px] text-muted-foreground leading-snug mt-0.5">{description}</p>
+        )}
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
         {children}
         {arrow && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
         {icon}

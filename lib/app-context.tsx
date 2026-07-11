@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from "react"
 import {
   type Language,
   type User,
@@ -34,6 +34,7 @@ import {
 } from "@/lib/api"
 import { getToken, setToken, removeToken } from "@/lib/auth"
 import { getStoredLanguage, setStoredLanguage, dirForLanguage } from "@/lib/language"
+import { getStoredChartMode, setStoredChartMode, DEFAULT_ADVANCED_CHARTS } from "@/lib/chart-mode"
 
 interface AppContextType {
   // Auth
@@ -53,6 +54,10 @@ interface AppContextType {
   setLanguage: (lang: Language) => void
   t: (key: TranslationKey) => string
   isRTL: boolean
+
+  // P2 — mode graphiques (Glycémie / Bilan) : simple (barres) ou avancé (courbes/radar)
+  advancedCharts: boolean
+  setAdvancedCharts: (value: boolean) => void
 
   // Daily log
   currentDate: string
@@ -149,6 +154,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User>(defaultUser)
   const [isOnboarded, setIsOnboarded] = useState(false)
   const [language, setLanguageState] = useState<Language>("fr")
+  const [advancedCharts, setAdvancedChartsState] = useState<boolean>(DEFAULT_ADVANCED_CHARTS)
   // "" initially — useEffect sets real date client-side (avoids SSR/client hydration #418)
   const [currentDate, setCurrentDate] = useState("")
   const [mealEntries, setMealEntries] = useState<MealEntry[]>([])
@@ -156,7 +162,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([])
   const [activities, setActivities] = useState<ActivityEntry[]>([])
   const [scannedProducts, setScannedProducts] = useState<ScannedProduct[]>([])
-  const [glucoseTarget, setGlucoseTarget] = useState<{ low: number; high: number }>(defaultUser.glucoseTarget)
+  const [glucoseTarget, setGlucoseTargetState] = useState<{ low: number; high: number }>(defaultUser.glucoseTarget)
   const [isDiabetic, setIsDiabetic] = useState(defaultUser.isDiabetic)
   const [activeTab, setActiveTab] = useState("home")
   const [showAddSheet, setShowAddSheet] = useState(false)
@@ -196,6 +202,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       document.documentElement.dir = dirForLanguage(lang)
       document.documentElement.lang = lang
     }
+  }, [])
+
+  // P2 — Restaure le mode graphiques persisté au montage (sinon reste "simple" par défaut).
+  useEffect(() => {
+    const stored = getStoredChartMode()
+    if (stored !== null) setAdvancedChartsState(stored)
   }, [])
 
   const login = useCallback((token: string, serverUser: { id: string; email: string; name: string }) => {
@@ -351,6 +363,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const isRTL = language === "ar"
 
+  // P2 — bascule mode graphiques (persistée, survit au reload).
+  const setAdvancedCharts = (value: boolean) => {
+    setAdvancedChartsState(value)
+    setStoredChartMode(value)
+  }
+
   // Daily totals
   const dailyMeals = mealEntries.filter((m) => m.date === currentDate)
   const totalCalories = dailyMeals.reduce((sum, m) => sum + (m.food.calories * m.amount) / 100, 0)
@@ -390,6 +408,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     return count
   })()
+
+  // U3 (ultrareview) : objet `user` augmenté du streak MÉMOÏSÉ → référence stable tant que
+  // user/streak ne changent pas. Sans ça, `{...user, streak}` était recréé à chaque rendu et
+  // cassait les useMemo des écrans (Bilan/Tendances/Score) qui dépendent de `user`.
+  const userWithStreak = useMemo(() => ({ ...user, streak }), [user, streak])
 
   const addMealEntry = (entry: Omit<MealEntry, "id" | "createdAt">): string => {
     // Use crypto.randomUUID for collision safety (two simultaneous adds on same ms)
@@ -500,6 +523,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const reloadData = useCallback(() => loadData(currentDate), [loadData, currentDate])
 
+  // Cible glycémique — SOURCE UNIQUE (ultrareview). Certains écrans lisent le state dédié
+  // `glucoseTarget`, d'autres `user.glucoseTarget` ; sans synchronisation, personnaliser la
+  // cible (Réglages) laissait des TIR/répartitions/marqueurs divergents entre écrans (cœur diabète).
+  const setGlucoseTarget = useCallback((target: { low: number; high: number }) => {
+    setGlucoseTargetState(target)
+    setUser((prev) => ({ ...prev, glucoseTarget: target }))
+  }, [])
+
   return (
     <AppContext.Provider
       value={{
@@ -507,7 +538,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isAuthLoading,
         login,
         logout,
-        user: { ...user, streak }, // P0-4 — streak dérivé, toujours à jour
+        user: userWithStreak, // P0-4 — streak dérivé (mémoïsé, U3)
         setUser,
         isOnboarded,
         setIsOnboarded,
@@ -515,6 +546,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setLanguage,
         t,
         isRTL,
+        advancedCharts,
+        setAdvancedCharts,
         currentDate,
         setCurrentDate,
         dailyLog,

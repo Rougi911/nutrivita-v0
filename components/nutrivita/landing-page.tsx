@@ -75,7 +75,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
             >
               N
             </div>
-            <span className="text-[16px] font-semibold text-foreground">NutriVita</span>
+            <span className="text-[16px] font-semibold text-foreground">NutraLance</span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -402,14 +402,14 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
             >
               N
             </div>
-            <span className="font-semibold text-foreground">NutriVita</span>
+            <span className="font-semibold text-foreground">NutraLance</span>
           </div>
           <div className="flex gap-5">
             <a href="#" className="hover:text-foreground transition-colors">{t("privacyPolicy")}</a>
             <a href="#" className="hover:text-foreground transition-colors">{t("legalNotice")}</a>
             <a href="#" className="hover:text-foreground transition-colors">{t("contact")}</a>
           </div>
-          <p>© 2026 NutriVita</p>
+          <p>© 2026 NutraLance</p>
         </div>
       </footer>
     </div>

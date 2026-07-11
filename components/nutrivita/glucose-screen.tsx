@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { AlertTriangle, ArrowLeft, Mic, Plus } from "lucide-react"
+import { AlertTriangle, Mic, Plus } from "lucide-react"
 import {
   ScatterChart,
   Scatter,
@@ -29,11 +29,13 @@ import {
 import { cn } from "@/lib/utils"
 import type { GlucoseUnit } from "@/lib/types"
 
-type GlucosePeriod = "7d" | "14d" | "30d"
+export type GlucosePeriod = "7d" | "14d" | "30d"
 type MeasurementType = "fasting" | "pre-meal" | "post-meal" | "pontuelle"
 
 interface GlucoseScreenProps {
-  onBack?: () => void
+  /** P2 — période levée au niveau de GlucoseTab pour piloter aussi le graphe de corrélation. */
+  period: GlucosePeriod
+  onPeriodChange: (period: GlucosePeriod) => void
 }
 
 const ZONE_COLORS = {
@@ -52,17 +54,19 @@ function getPointColor(value: number, targetLow: number, targetHigh: number): st
   return "var(--risk)"
 }
 
-export function GlucoseScreen({ onBack }: GlucoseScreenProps) {
+export function GlucoseScreen({ period, onPeriodChange }: GlucoseScreenProps) {
   const {
     t,
+    language,
     glucoseReadings,
     addGlucoseReading,
     isRTL,
     user,
     glucoseTarget,
   } = useApp()
+  // Locale des libellés de date (corrige le tooltip resté en fr-FR sous arabe/anglais).
+  const dateLocale = language === "ar" ? "ar" : language === "en" ? "en-GB" : "fr-FR"
 
-  const [period, setPeriod] = useState<GlucosePeriod>("14d")
   const [showAddModal, setShowAddModal] = useState(false)
 
   const displayUnit = user.units.glucose
@@ -136,43 +140,25 @@ export function GlucoseScreen({ onBack }: GlucoseScreenProps) {
   }
 
   return (
-    <div className={cn("flex flex-col min-h-screen bg-background pb-8", isRTL && "rtl")}>
-      {/* Flat header */}
-      <div className="px-4 pt-5 pb-3 flex items-center gap-3">
-        {onBack && (
-          <button
-            onClick={onBack}
-            className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0"
-            aria-label="Retour"
-          >
-            <ArrowLeft className="h-4 w-4 text-foreground" />
-          </button>
-        )}
-        <div className="flex-1">
-          <h1 className="text-[18px] font-semibold text-foreground">{t("glucoseTracking")}</h1>
-          <p className="text-[13px] text-muted-foreground mt-0.5">{periodLabel}</p>
-        </div>
-        <div className="flex gap-2">
+    <div className={cn(isRTL && "rtl")}>
+      <div className="space-y-4">
+        {/* P2 — repère de section (le H1/disclaimer de page vivent une seule fois en tête de GlucoseTab) */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">{t("glucoseTracking")}</p>
+            <p className="text-[12px] text-muted-foreground mt-0.5">{periodLabel}</p>
+          </div>
           <Button
             size="sm"
             variant="outline"
-            className="gap-1.5 rounded-xl text-[13px]"
+            className="gap-1.5 rounded-xl text-[13px] h-8"
             onClick={() => setShowAddModal(true)}
           >
             <Plus className="h-3.5 w-3.5" />
             {t("addReading")}
           </Button>
         </div>
-      </div>
 
-      {/* REG-04 disclaimer — permanent, non-dismissable */}
-      <div className="mx-4 mb-3 px-3 py-2 rounded-xl border border-border bg-muted/40">
-        <p className="text-[11px] text-muted-foreground leading-snug">
-          {t("glucoseDisclaimer")}
-        </p>
-      </div>
-
-      <div className="px-4 space-y-4">
         {/* Hypo alert card (c) — neutral text, no therapeutic advice (REG-05) */}
         {hypoCount > 0 && (
           <div
@@ -186,14 +172,15 @@ export function GlucoseScreen({ onBack }: GlucoseScreenProps) {
           </div>
         )}
 
-        {/* Period selector */}
+        {/* Period selector — partagé avec le graphe de corrélation (P2) */}
         <div className="flex gap-2">
           {(["7d", "14d", "30d"] as GlucosePeriod[]).map((p) => {
             const labels: Record<GlucosePeriod, string> = { "7d": "7j", "14d": "14j", "30d": "30j" }
             return (
               <button
                 key={p}
-                onClick={() => setPeriod(p)}
+                onClick={() => onPeriodChange(p)}
+                aria-pressed={period === p}
                 className={cn(
                   "flex-1 py-2 rounded-xl text-sm font-medium transition-colors",
                   period === p
@@ -327,7 +314,7 @@ export function GlucoseScreen({ onBack }: GlucoseScreenProps) {
                       `${displayUnit === "g/L" ? value.toFixed(2) : Math.round(value)} ${displayUnit}`,
                       t("glucoseTracking"),
                     ]}
-                    labelFormatter={(label) => new Date(label).toLocaleString("fr-FR")}
+                    labelFormatter={(label) => new Date(label).toLocaleString(dateLocale)}
                   />
 
                   <Scatter data={chartData} fill="var(--glucose)">
@@ -344,7 +331,7 @@ export function GlucoseScreen({ onBack }: GlucoseScreenProps) {
 
             {/* Distribution bar */}
             <div className="rounded-2xl border border-border bg-card p-4">
-              <h3 className="text-[14px] font-semibold text-foreground mb-3">Répartition</h3>
+              <h3 className="text-[14px] font-semibold text-foreground mb-3">{t("distribution")}</h3>
               <div className="h-5 flex rounded-lg overflow-hidden mb-3">
                 {[
                   { key: "veryLow",  color: "var(--risk)" },
