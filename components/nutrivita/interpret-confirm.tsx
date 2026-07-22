@@ -129,8 +129,8 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <div className="flex items-center gap-3 px-4 pt-5 pb-3">
+    <div className="h-full bg-background flex flex-col">
+      <div className="flex items-center gap-3 px-4 pt-5 pb-3 shrink-0">
         <button
           onClick={onBack}
           className="w-8 h-8 rounded-full bg-muted flex items-center justify-center"
@@ -141,7 +141,7 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
         <h1 className="text-[18px] font-semibold text-foreground">{t("detectedFoods")}</h1>
       </div>
 
-      <div className="flex-1 px-4 pb-6 space-y-3 overflow-y-auto">
+      <div className="flex-1 min-h-0 px-4 pb-6 space-y-3 overflow-y-auto overscroll-contain">
         {result.intents.map((intent, i) => (
           <div key={i} className="space-y-2">
             <button
@@ -202,7 +202,7 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
         ))}
       </div>
 
-      <div className="px-4 pt-3 border-t border-border bg-background" style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom))" }}>
+      <div className="shrink-0 px-4 pt-3 border-t border-border bg-background" style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom))" }}>
         {confirmError && (
           <p className="text-[12px] text-center mb-2" style={{ color: "var(--risk)" }}>
             {confirmError}
