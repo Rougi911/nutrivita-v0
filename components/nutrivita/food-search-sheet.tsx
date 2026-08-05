@@ -312,12 +312,13 @@ export function FoodSearchSheet() {
               exit={{ opacity: 0 }}
             >
               <motion.div
-                className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl p-6 safe-bottom"
+                className="absolute bottom-0 left-0 right-0 max-h-[90vh] flex flex-col overflow-hidden bg-card rounded-t-3xl"
                 initial={{ y: "100%" }}
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 25 }}
               >
+              <div className="p-6 safe-bottom overflow-y-auto min-h-0 flex-1">
                 {/* Food header */}
                 <div className="flex items-center gap-4 mb-6">
                   <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center text-[22px] font-semibold text-muted-foreground shrink-0">
@@ -448,6 +449,7 @@ export function FoodSearchSheet() {
                     {t("addToMeal")} {mealLabel} • {calories} kcal
                   </Button>
                 </div>
+              </div>
               </motion.div>
             </motion.div>
           )}

@@ -443,11 +443,12 @@ function VoiceModal({
       exit={{ opacity: 0 }}
     >
       <motion.div
-        className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl p-6 safe-bottom"
+        className="absolute bottom-0 left-0 right-0 max-h-[85vh] flex flex-col overflow-hidden bg-card rounded-t-3xl"
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         transition={{ type: "spring", damping: 25 }}
       >
+      <div className="p-6 safe-bottom overflow-y-auto min-h-0 flex-1">
         {state === "listening" && (
           <div className="flex flex-col items-center gap-6 py-8">
             <div className="flex items-center gap-1 h-16">
@@ -517,6 +518,7 @@ function VoiceModal({
             </Button>
           </div>
         )}
+      </div>
 
         <button
           onClick={onClose}

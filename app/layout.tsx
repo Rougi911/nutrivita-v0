@@ -78,6 +78,14 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
+  // Sans ce réglage, Android redimensionne la vue "visuelle" mais pas la vue
+  // "layout" quand le clavier virtuel s'ouvre : les feuilles ancrées en
+  // position:fixed/absolute + bottom:0 (confirmation d'activité, saisie
+  // manuelle, etc.) restent calculées sur la hauteur PLEIN ÉCRAN et leur
+  // bouton d'action se retrouve masqué sous le clavier. "resizes-content"
+  // force le viewport à rétrécir réellement, donc ces feuilles se replacent
+  // au-dessus du clavier comme sur iOS.
+  interactiveWidget: "resizes-content",
 }
 
 export default function RootLayout({
