@@ -479,7 +479,7 @@ function AddGlucoseModal({
     >
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <motion.div
-        className="relative w-full max-w-md mx-auto bg-background rounded-t-3xl border-t border-border p-6"
+        className="relative w-full max-w-md mx-auto bg-background rounded-t-3xl border-t border-border p-6 max-h-[90vh] overflow-y-auto safe-bottom"
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         exit={{ y: "100%" }}

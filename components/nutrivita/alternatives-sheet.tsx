@@ -75,17 +75,17 @@ export function AlternativesSheet({ barcode, productName, onClose }: Alternative
         <motion.div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
         <motion.div
-          className="relative w-full max-w-md mx-auto bg-background rounded-t-3xl border-t border-border overflow-hidden"
+          className="relative w-full max-w-md mx-auto bg-background rounded-t-3xl border-t border-border overflow-hidden flex flex-col max-h-[85vh]"
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
           transition={{ type: "spring", damping: 28, stiffness: 280 }}
         >
-          <div className="flex justify-center pt-3 pb-1">
+          <div className="flex justify-center pt-3 pb-1 shrink-0">
             <div className="w-9 h-1 rounded-full bg-muted-foreground/25" />
           </div>
 
-          <div className="px-4 pb-8 pt-2">
+          <div className="px-4 pb-8 pt-2 flex-1 min-h-0 overflow-y-auto overscroll-contain">
             <div className="flex items-start justify-between mb-3">
               <div className="min-w-0 pr-2">
                 <h2 className="text-[17px] font-semibold text-foreground">{t("alternativesTitle")}</h2>

@@ -494,7 +494,7 @@ export function JournalScreen() {
 
       {copyConfirm && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setCopyConfirm(null)}>
-          <div className="bg-background rounded-t-2xl p-6 w-full max-w-sm space-y-4" onClick={e => e.stopPropagation()}>
+          <div className="bg-background rounded-t-2xl p-6 w-full max-w-sm space-y-4 max-h-[85vh] overflow-y-auto safe-bottom" onClick={e => e.stopPropagation()}>
             <p className="text-sm font-semibold">{`Copier ${copyConfirm.count} repas d'hier ?`}</p>
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1" onClick={() => setCopyConfirm(null)}>{t("cancel")}</Button>
@@ -633,11 +633,12 @@ function ActivityVoiceModal({
       animate={{ opacity: 1 }}
     >
       <motion.div
-        className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl p-6 safe-bottom"
+        className="absolute bottom-0 left-0 right-0 max-h-[85vh] flex flex-col overflow-hidden bg-card rounded-t-3xl"
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         transition={{ type: "spring", damping: 25 }}
       >
+      <div className="p-6 safe-bottom overflow-y-auto min-h-0 flex-1">
         {state === "listening" && (
           <div className="flex flex-col items-center gap-6 py-8">
             <div className="flex items-center gap-1 h-16">
@@ -727,6 +728,7 @@ function ActivityVoiceModal({
             </div>
           </div>
         )}
+      </div>
 
         <button
           onClick={onClose}
@@ -792,11 +794,12 @@ function ActivityManualModal({
       animate={{ opacity: 1 }}
     >
       <motion.div
-        className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl p-6 safe-bottom"
+        className="absolute bottom-0 left-0 right-0 max-h-[85vh] flex flex-col overflow-hidden bg-card rounded-t-3xl"
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         transition={{ type: "spring", damping: 25 }}
       >
+      <div className="p-6 safe-bottom overflow-y-auto min-h-0 flex-1">
         <h3 className="text-lg font-semibold mb-4">{t("addActivity")}</h3>
 
         {/* Activity type chips */}
@@ -854,6 +857,7 @@ function ActivityManualModal({
             {t("add")}
           </Button>
         </div>
+      </div>
 
         <button
           onClick={onClose}
@@ -944,11 +948,12 @@ function VoiceInputModal({
       exit={{ opacity: 0 }}
     >
       <motion.div
-        className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl p-6 safe-bottom"
+        className="absolute bottom-0 left-0 right-0 max-h-[85vh] flex flex-col overflow-hidden bg-card rounded-t-3xl"
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         transition={{ type: "spring", damping: 25 }}
       >
+      <div className="p-6 safe-bottom overflow-y-auto min-h-0 flex-1">
         {state === "listening" && (
           <div className="flex flex-col items-center gap-6 py-8">
             <div className="flex items-center gap-1 h-16">
@@ -988,6 +993,7 @@ function VoiceInputModal({
             <Button variant="outline" onClick={onClose}>{t("cancel")}</Button>
           </div>
         )}
+      </div>
 
         <Button variant="ghost" className="absolute top-4 right-4" onClick={onClose}>
           {t("cancel")}
