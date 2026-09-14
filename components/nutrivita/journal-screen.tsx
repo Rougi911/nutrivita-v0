@@ -454,7 +454,7 @@ export function JournalScreen() {
 
       {/* InterpretConfirm affiché quand le vocal a produit un résultat (food + activity + glucose) */}
       {voiceInterpResult && (
-        <div className="fixed inset-0 z-50 bg-background">
+        <div className="fixed inset-0 z-[60] bg-background">
           <InterpretConfirm
             result={voiceInterpResult}
             onBack={() => setVoiceInterpResult(null)}
@@ -493,7 +493,7 @@ export function JournalScreen() {
       )}
 
       {copyConfirm && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setCopyConfirm(null)}>
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40" onClick={() => setCopyConfirm(null)}>
           <div className="bg-background rounded-t-2xl p-6 w-full max-w-sm space-y-4 max-h-[85vh] overflow-y-auto safe-bottom" onClick={e => e.stopPropagation()}>
             <p className="text-sm font-semibold">{`Copier ${copyConfirm.count} repas d'hier ?`}</p>
             <div className="flex gap-3">
@@ -628,7 +628,7 @@ function ActivityVoiceModal({
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] bg-background/80 backdrop-blur-sm"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
@@ -789,7 +789,7 @@ function ActivityManualModal({
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] bg-background/80 backdrop-blur-sm"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
@@ -799,7 +799,7 @@ function ActivityManualModal({
         animate={{ y: 0 }}
         transition={{ type: "spring", damping: 25 }}
       >
-      <div className="p-6 safe-bottom overflow-y-auto min-h-0 flex-1">
+      <div className="px-6 pt-6 pb-3 overflow-y-auto min-h-0 flex-1">
         <h3 className="text-lg font-semibold mb-4">{t("addActivity")}</h3>
 
         {/* Activity type chips */}
@@ -846,18 +846,21 @@ function ActivityManualModal({
           </div>
         </div>
 
-        <div className="flex gap-3 pt-2">
+      </div>
+
+        {/* Barre d'action collante : hors de la zone scrollable pour rester
+            visible quand le clavier virtuel réduit le viewport (Android/iOS). */}
+        <div
+          className="shrink-0 px-6 pt-3 border-t border-border bg-card flex gap-3"
+          style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}
+        >
           <Button variant="outline" className="flex-1" onClick={onClose}>
             {t("cancel")}
           </Button>
-          <Button
-            className="flex-1"
-            onClick={handleSubmit}
-          >
+          <Button className="flex-1" onClick={handleSubmit}>
             {t("add")}
           </Button>
         </div>
-      </div>
 
         <button
           onClick={onClose}
@@ -942,7 +945,7 @@ function VoiceInputModal({
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] bg-background/80 backdrop-blur-sm"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
