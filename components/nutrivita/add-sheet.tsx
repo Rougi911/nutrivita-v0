@@ -55,7 +55,7 @@ const quickActions = [
 ] as const
 
 export function AddSheet() {
-  const { setShowAddSheet, t, setShowFoodSearch, language, addMealEntry, updateMealEntryId, currentDate, addScannedProduct } = useApp()
+  const { setShowAddSheet, t, setShowFoodSearch, language, addMealEntry, updateMealEntryId, currentDate, addScannedProduct, selectedMealType } = useApp()
 
   const [interpResult, setInterpResult] = useState<ApiInterpretResponse | null>(null)
   const [interpreting, setInterpreting] = useState(false)
@@ -63,7 +63,9 @@ export function AddSheet() {
   const [showScanner, setShowScanner] = useState(false)
   const [showVoiceModal, setShowVoiceModal] = useState(false)
   const [pendingRelogFood, setPendingRelogFood] = useState<(typeof SAMPLE_FOODS)[number] | null>(null)
-  const [pendingMealType, setPendingMealType] = useState<MealType>(inferMealTypeFromTime())
+  // P0 — le repas depuis lequel la feuille a ete ouverte prime sur la deduction
+  // horaire : « Ajouter » dans Dejeuner ouvrait le formulaire sur Collation.
+  const [pendingMealType, setPendingMealType] = useState<MealType>(selectedMealType ?? inferMealTypeFromTime())
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const recentFoods = recentFoodIds
@@ -71,7 +73,7 @@ export function AddSheet() {
     .filter(Boolean)
 
   const handleRelogFood = (food: (typeof SAMPLE_FOODS)[number]) => {
-    setPendingMealType(inferMealTypeFromTime())
+    setPendingMealType(selectedMealType ?? inferMealTypeFromTime())
     setPendingRelogFood(food)
   }
 
@@ -575,7 +577,7 @@ function ScannerModal({
   onClose: () => void
   onScanned: (product: import("@/lib/types").ScannedProduct) => void
 }) {
-  const { t, addMealEntry, updateMealEntryId, currentDate } = useApp()
+  const { t, addMealEntry, updateMealEntryId, currentDate, selectedMealType } = useApp()
   const [step, setStep] = useState<ScanStep>("camera")
   const [manualBarcode, setManualBarcode] = useState("")
   const [scanning, setScanning] = useState(false)
@@ -688,7 +690,7 @@ function ScannerModal({
       sugar: sucres ?? undefined,
       source: "estimated" as const,
     }
-    const entry = { foodId, food, amount: 100, mealType: inferMealTypeFromTime(), date: currentDate }
+    const entry = { foodId, food, amount: 100, mealType: selectedMealType ?? inferMealTypeFromTime(), date: currentDate }
     const localId = addMealEntry(entry)
     // Sync to backend — estimated foods may not be in products DB yet; error is non-blocking
     addJournalEntry(entry)

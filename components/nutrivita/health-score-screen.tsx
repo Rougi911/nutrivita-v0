@@ -45,6 +45,8 @@ export function HealthScoreScreen() {
         setScore({
           total: s.total,
           prevTotal: s.prevTotal,
+          daysLogged: s.daysLogged ?? 0,
+          daysInPeriod: s.daysInPeriod ?? 7,
           components: s.components,
           history: s.history,
           actions: s.actions.map((a) => ({ points: a.points, textKey: a.key as ScoreActionKey })),
@@ -65,6 +67,30 @@ export function HealthScoreScreen() {
   if (!score) {
     return <div className="py-16 text-center text-[13px] text-muted-foreground">{loading ? "…" : P.notEnoughData}</div>
   }
+
+  // P0 — pas assez de jours renseignés : on explique ce qui manque au lieu
+  // d'afficher 0/100, « semaine difficile » et des conseils fondés sur du vide.
+  if (score.total === null) {
+    return (
+      <div className={`space-y-3 ${isRTL ? "rtl" : ""}`}>
+        <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">{P.healthScore}</p>
+        <div
+          className="rounded-2xl border p-5 text-center"
+          style={{
+            borderColor: "color-mix(in oklab, var(--amber) 35%, transparent)",
+            backgroundColor: "color-mix(in oklab, var(--amber) 10%, transparent)",
+          }}
+        >
+          <b className="text-[15px] text-foreground block">{P.scoreBuilding}</b>
+          <p className="text-[12.5px] text-muted-foreground mt-1.5 leading-snug">{P.scoreBuildingHint}</p>
+          <p className="text-[12px] font-semibold mt-3" style={{ color: "var(--amber)" }}>
+            {score.daysLogged} / {score.daysInPeriod} {P.daysLoggedShort}
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   const delta = score.prevTotal !== null ? score.total - score.prevTotal : null
 
   const components: { key: keyof typeof score.components; label: string; color: string; icon: string }[] = [

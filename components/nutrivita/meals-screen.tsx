@@ -76,7 +76,7 @@ export function MealsScreen() {
           <Button
             variant="outline"
             className="flex-1 gap-2 rounded-xl h-11"
-            onClick={() => setShowAddSheet(true)}
+            onClick={() => { setSelectedMealType(null); setShowAddSheet(true) }}
           >
             <Camera className="h-4 w-4" />
             {t("photo")}
@@ -84,7 +84,7 @@ export function MealsScreen() {
           <Button
             variant="outline"
             className="flex-1 gap-2 rounded-xl h-11"
-            onClick={() => setShowAddSheet(true)}
+            onClick={() => { setSelectedMealType(null); setShowAddSheet(true) }}
           >
             <ScanBarcode className="h-4 w-4" />
             {t("scanner")}

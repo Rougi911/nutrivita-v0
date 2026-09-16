@@ -464,8 +464,11 @@ export interface ScoreComponents {
 }
 
 export interface HealthScore {
-  total: number
+  /** null = pas assez de jours renseignes pour publier un score (P0). */
+  total: number | null
   prevTotal: number | null
+  daysLogged: number
+  daysInPeriod: number
   components: ScoreComponents
   history: { week: string; score: number }[]
   actions: { points: number; textKey: ScoreActionKey }[]
@@ -542,17 +545,23 @@ function weightedTotal(c: ScoreComponents): number {
 }
 
 /** Score Santé hebdo agrégé + 8 semaines d'historique + actions chiffrées. */
+/** P0 — jours renseignés minimum sur 7 avant de publier un score (cf. backend). */
+export const MIN_DAYS_FOR_SCORE = 1
+
 export function computeHealthScore(historyMeals: MealEntry[], user: User): HealthScore {
   const thisWeek = lastNDates(7)
   const components = scoreForRange(historyMeals, user, thisWeek)
-  const total = weightedTotal(components)
+  // « Non renseigné » ≠ « mesuré à zéro » : sans jour renseigné les composantes
+  // valent 0 par construction, on ne publie donc pas de total.
+  const daysLogged = thisWeek.filter((d) => historyMeals.some((m) => m.date === d)).length
+  const total = daysLogged >= MIN_DAYS_FOR_SCORE ? weightedTotal(components) : null
 
   const prevWeekEnd = new Date()
   prevWeekEnd.setDate(prevWeekEnd.getDate() - 7)
   const prevWeek = lastNDates(7, prevWeekEnd)
   const prevComponents = scoreForRange(historyMeals, user, prevWeek)
-  const prevHasData = prevWeek.some((d) => historyMeals.some((m) => m.date === d))
-  const prevTotal = prevHasData ? weightedTotal(prevComponents) : null
+  const prevDaysLogged = prevWeek.filter((d) => historyMeals.some((m) => m.date === d)).length
+  const prevTotal = prevDaysLogged >= MIN_DAYS_FOR_SCORE ? weightedTotal(prevComponents) : null
 
   // Historique 8 semaines.
   const history: { week: string; score: number }[] = []
@@ -565,12 +574,13 @@ export function computeHealthScore(historyMeals: MealEntry[], user: User): Healt
     history.push({ week: `S${isoWeek(end)}`, score: sc })
   }
 
-  // Actions : dérivées des composantes les plus faibles.
+  // Actions : dérivées des composantes les plus faibles. Aucune sans score :
+  // conseiller sur un journal vide revient à interpréter des données absentes.
   const actions: { points: number; textKey: ScoreActionKey }[] = []
   const ranked = (Object.entries(components) as [keyof ScoreComponents, number][]).sort(
     (a, b) => a[1] - b[1],
   )
-  for (const [key] of ranked) {
+  for (const [key] of total === null ? [] : ranked) {
     if (actions.length >= 3) break
     if (key === "quality") actions.push({ points: 6, textKey: "reduceUltraProcessed" })
     else if (key === "micro") actions.push({ points: 4, textKey: "addLegumes" })
@@ -578,7 +588,7 @@ export function computeHealthScore(historyMeals: MealEntry[], user: User): Healt
     else if (key === "macro") actions.push({ points: 3, textKey: "moreProtein" })
   }
 
-  return { total, prevTotal, components, history, actions }
+  return { total, prevTotal, components, history, actions, daysLogged, daysInPeriod: 7 }
 }
 
 function isoWeek(d: Date): number {

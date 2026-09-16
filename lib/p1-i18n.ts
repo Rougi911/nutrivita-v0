@@ -39,6 +39,9 @@ export interface P1Strings {
   weightTrend: string
   movingAvg7: string
   notEnoughData: string
+  scoreBuilding: string
+  scoreBuildingHint: string
+  daysLoggedShort: string
   // Glycémie × Repas
   glucoseMeals: string
   tir: string
@@ -105,6 +108,9 @@ const fr: P1Strings = {
   weightTrend: "Poids — tendance lissée",
   movingAvg7: "moyenne mobile 7 j",
   notEnoughData: "Données insuffisantes pour cette période.",
+  scoreBuilding: "Votre bilan se construit",
+  scoreBuildingHint: "Renseignez un repas : votre score apparaîtra ici. Aucun score n'est calculé tant qu'il n'y a pas de donnée.",
+  daysLoggedShort: "jours renseignés",
   glucoseMeals: "Glycémie × Repas",
   tir: "TIR",
   postprandialPeak: "Pic post-prandial",
@@ -167,6 +173,9 @@ const ar: P1Strings = {
   weightTrend: "الوزن — اتجاه ممهّد",
   movingAvg7: "متوسط متحرك ٧ أيام",
   notEnoughData: "بيانات غير كافية لهذه الفترة.",
+  scoreBuilding: "\u062a\u0642\u0631\u064a\u0631\u0643 \u0642\u064a\u062f \u0627\u0644\u0625\u0646\u0634\u0627\u0621",
+  scoreBuildingHint: "\u0633\u062c\u0651\u0644 \u0648\u062c\u0628\u0629 \u0648\u0633\u064a\u0638\u0647\u0631 \u0645\u0624\u0634\u0631\u0643 \u0647\u0646\u0627. \u0644\u0627 \u064a\u064f\u062d\u062a\u0633\u0628 \u0623\u064a \u0645\u0624\u0634\u0631 \u062f\u0648\u0646 \u0628\u064a\u0627\u0646\u0627\u062a.",
+  daysLoggedShort: "\u0623\u064a\u0627\u0645 \u0645\u0633\u062c\u0651\u0644\u0629",
   glucoseMeals: "سكر الدم × الوجبات",
   tir: "الوقت ضمن النطاق",
   postprandialPeak: "ذروة بعد الأكل",
@@ -229,6 +238,9 @@ const en: P1Strings = {
   weightTrend: "Weight — smoothed trend",
   movingAvg7: "7-day moving average",
   notEnoughData: "Not enough data for this period.",
+  scoreBuilding: "Your report is building up",
+  scoreBuildingHint: "Log a meal and your score will appear here. No score is computed while there is no data.",
+  daysLoggedShort: "days logged",
   glucoseMeals: "Glucose × Meals",
   tir: "TIR",
   postprandialPeak: "Post-meal peak",

@@ -596,8 +596,11 @@ export async function getJournalRange(days: number): Promise<MealEntry[]> {
 // ─── P1 — Score Santé & Glycémie × Repas (calcul serveur) ───────────────────
 
 export interface HealthScoreResponse {
-  total: number
+  /** null = moins de MIN_DAYS_FOR_SCORE jours renseignes (P0). */
+  total: number | null
   prevTotal: number | null
+  daysLogged?: number
+  daysInPeriod?: number
   components: { adherence: number; quality: number; micro: number; macro: number }
   history: { week: string; score: number }[]
   actions: { points: number; key: string }[]

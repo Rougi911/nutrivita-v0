@@ -16,7 +16,7 @@ const navItems = [
 ]
 
 export function BottomNavigation() {
-  const { activeTab, setActiveTab, setShowAddSheet, t } = useApp()
+  const { activeTab, setActiveTab, setShowAddSheet, setSelectedMealType, t } = useApp()
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 pb-safe">
@@ -31,7 +31,9 @@ export function BottomNavigation() {
               return (
                 <button
                   key={item.id}
-                  onClick={() => setShowAddSheet(true)}
+                  // P0 — ouverture generique : on repart de la deduction horaire,
+                  // sinon le repas d'un onglet precedemment ouvert resterait colle.
+                  onClick={() => { setSelectedMealType(null); setShowAddSheet(true) }}
                   className="relative -mt-5 flex items-center justify-center w-14 h-14 rounded-full bg-primary shadow-lg active:scale-95 transition-transform"
                   aria-label={t("add")}
                 >

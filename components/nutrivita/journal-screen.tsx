@@ -156,8 +156,8 @@ export function JournalScreen() {
 
   const quickActions = [
     { icon: Mic,        label: t("voice"),        onClick: () => setShowVoiceInput(true) },
-    { icon: Camera,     label: t("photo"),         onClick: () => setShowAddSheet(true) },
-    { icon: ScanBarcode,label: t("scanner"),       onClick: () => setShowAddSheet(true) },
+    { icon: Camera,     label: t("photo"),         onClick: () => { setSelectedMealType(null); setShowAddSheet(true) } },
+    { icon: ScanBarcode,label: t("scanner"),       onClick: () => { setSelectedMealType(null); setShowAddSheet(true) } },
     { icon: Star,       label: t("favorites"),     onClick: () => { setSelectedMealType(null); setShowFoodSearch(true) } },
     { icon: Copy,       label: t("copyYesterday"), onClick: handleCopyYesterday },
   ]

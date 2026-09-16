@@ -143,6 +143,9 @@ export function HomeScreenV2({ onOpenSettings, onOpenGlucose }: Props) {
     getHealthScore()
       .then((s) => {
         if (!alive) return
+        // P0 — total null = pas assez de jours renseignés : aucune tuile plutôt
+        // qu'un « Score 0 » qui présenterait l'absence de donnée comme un échec.
+        if (s.total === null) { setWeeklyScore(null); return }
         setWeeklyScore({ total: s.total, delta: s.prevTotal !== null ? s.total - s.prevTotal : null })
       })
       .catch(() => { /* endpoint absent ou hors ligne : tuile masquée */ })

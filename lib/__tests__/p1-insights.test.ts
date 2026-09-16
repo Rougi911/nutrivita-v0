@@ -125,9 +125,17 @@ describe("Score Santé", () => {
       expect(v).toBeLessThanOrEqual(100)
     }
   })
-  it("aucune donnée => total 0, prevTotal null", () => {
+  it("aucune donnée => total null (non renseigné ≠ zéro), prevTotal null, aucune action", () => {
     const r = computeHealthScore([], user)
-    expect(r.total).toBe(0)
+    expect(r.total).toBeNull()
     expect(r.prevTotal).toBeNull()
+    expect(r.daysLogged).toBe(0)
+    expect(r.actions).toHaveLength(0)
+  })
+  it("un seul jour renseigné suffit à publier un score", () => {
+    const r = computeHealthScore([meal({ cal: 2000, prot: 100, carb: 225, fat: 67, date: today(0) })], user)
+    expect(r.daysLogged).toBe(1)
+    expect(typeof r.total).toBe("number")
+    expect(r.total as number).toBeGreaterThanOrEqual(0)
   })
 })
