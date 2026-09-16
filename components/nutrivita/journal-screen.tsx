@@ -73,6 +73,8 @@ export function JournalScreen() {
   // S25 — édition inline de la durée d'une activité.
   const [editingActId, setEditingActId] = useState<string | null>(null)
   const [editDur, setEditDur] = useState("")
+  // S25b — sport en cours d'édition (recalcul kcal serveur via la table MET).
+  const [editType, setEditType] = useState("course")
 
   const todayActivities = activities.filter((a) => a.date === currentDate)
 
@@ -354,11 +356,16 @@ export function JournalScreen() {
           {todayActivities.length > 0 ? (
             <div className="border-t border-border divide-y divide-border">
               {todayActivities.map((act) => (
-                <div key={act.id} className="flex items-center justify-between px-4 py-2.5">
+                <div key={act.id} className="px-4 py-2.5">
+                  <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    {(() => { const Icon = activityIcon(act.type); return <Icon className="h-4 w-4 text-primary" /> })()}
+                    {(() => {
+                      const shown = editingActId === act.id ? editType : act.type
+                      const Icon = activityIcon(shown)
+                      return <Icon className="h-4 w-4 text-primary" />
+                    })()}
                     <span className="text-sm font-medium text-foreground">
-                      {activityLabel(act.type)}
+                      {activityLabel(editingActId === act.id ? editType : act.type)}
                     </span>
                     {editingActId === act.id ? (
                       <span className="flex items-center gap-1">
@@ -392,7 +399,8 @@ export function JournalScreen() {
                           className="h-6 w-6 text-muted-foreground hover:text-primary"
                           onClick={() => {
                             const d = parseInt(editDur, 10)
-                            if (d > 0) updateActivity(act.id, { duration_min: d })
+                            // S25b — sport ET durée : le serveur recalcule les kcal (table MET).
+                            if (d > 0) updateActivity(act.id, { type: editType, duration_min: d })
                             setEditingActId(null)
                           }}
                         >
@@ -403,7 +411,7 @@ export function JournalScreen() {
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6 text-muted-foreground hover:text-primary"
-                          onClick={() => { setEditingActId(act.id); setEditDur(String(act.duration)) }}
+                          onClick={() => { setEditingActId(act.id); setEditDur(String(act.duration)); setEditType(act.type) }}
                         >
                           <Pencil className="h-3 w-3" />
                         </Button>
@@ -418,6 +426,28 @@ export function JournalScreen() {
                       <X className="h-3 w-3" />
                     </Button>
                   </div>
+                  </div>
+
+                  {/* S25b — choix du sport pendant l'édition : change le MET, donc les kcal. */}
+                  {editingActId === act.id && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {ACTIVITY_TYPES.map((a) => (
+                        <button
+                          key={a.key}
+                          onClick={() => setEditType(a.key)}
+                          className={cn(
+                            "flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors",
+                            editType === a.key
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-muted text-foreground border-border",
+                          )}
+                        >
+                          <a.icon className="h-3 w-3" />
+                          {a.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

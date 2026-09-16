@@ -8,7 +8,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { Settings, ChevronRight } from "lucide-react"
 import { useApp } from "@/lib/app-context"
-import { getJournalRange } from "@/lib/api"
+import { getJournalRange, getHealthScore } from "@/lib/api"
 import { formatGlucose } from "@/lib/glucose-units"
 import { P1 } from "@/lib/p1-i18n"
 import {
@@ -66,6 +66,33 @@ function RemainingRing({ consumed, target, size = 132 }: { consumed: number; tar
   )
 }
 
+// P1-5b — anneau compact du Score Santé hebdomadaire, pour la tuile d'accueil.
+function MiniScoreRing({ score, size = 44 }: { score: number; size?: number }) {
+  const r = size / 2 - 4
+  const c = 2 * Math.PI * r
+  const dash = (Math.max(0, Math.min(100, score)) / 100) * c
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--border)" strokeWidth={5} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke="var(--primary)"
+          strokeWidth={5}
+          strokeLinecap="round"
+          strokeDasharray={`${dash} ${c}`}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <b className="text-[14px] font-extrabold leading-none text-foreground">{score}</b>
+      </div>
+    </div>
+  )
+}
+
 function MacroBar({ label, consumed, target, color }: { label: string; consumed: number; target: number; color: string }) {
   const pct = target > 0 ? Math.min(100, (consumed / target) * 100) : 0
   return (
@@ -106,6 +133,21 @@ export function HomeScreenV2({ onOpenSettings, onOpenGlucose }: Props) {
       .catch(() => { /* premier jet : silencieux, l'écran reste utilisable sans historique */ })
     return () => { alive = false }
   }, [currentDate])
+
+  // P1-5b — Score Santé hebdo affiché en accueil (tuile compacte → onglet Bilan).
+  // Serveur uniquement : pas de repli client ici, on ne va pas tirer 60 jours de
+  // journal au montage de l'accueil. Si l'appel échoue, la tuile reste masquée.
+  const [weeklyScore, setWeeklyScore] = useState<{ total: number; delta: number | null } | null>(null)
+  useEffect(() => {
+    let alive = true
+    getHealthScore()
+      .then((s) => {
+        if (!alive) return
+        setWeeklyScore({ total: s.total, delta: s.prevTotal !== null ? s.total - s.prevTotal : null })
+      })
+      .catch(() => { /* endpoint absent ou hors ligne : tuile masquée */ })
+    return () => { alive = false }
+  }, [])
 
   const targets = macroTargetsG(user)
   const insight = useMemo(
@@ -255,6 +297,35 @@ export function HomeScreenV2({ onOpenSettings, onOpenGlucose }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Score Santé hebdo — tuile compacte, tap → onglet Bilan */}
+      {weeklyScore && (
+        <button
+          onClick={() => setActiveTab("stats")}
+          className="w-full flex items-center gap-3 rounded-2xl bg-card border border-border p-3 mt-3 text-left active:scale-[0.98] transition-transform"
+        >
+          <MiniScoreRing score={weeklyScore.total} />
+          <div className="min-w-0">
+            <b className="text-[13.5px] text-foreground block">{P.healthScore}</b>
+            <span
+              className="text-[11.5px] block truncate"
+              style={{
+                color:
+                  weeklyScore.delta === null
+                    ? "var(--muted-foreground)"
+                    : weeklyScore.delta >= 0
+                      ? "var(--primary)"
+                      : "var(--risk)",
+              }}
+            >
+              {weeklyScore.delta === null
+                ? P.outOf
+                : `${weeklyScore.delta >= 0 ? "+" : ""}${weeklyScore.delta} ${P.vsLastWeek}`}
+            </span>
+          </div>
+          <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground shrink-0" />
+        </button>
+      )}
 
       {/* Repas du jour */}
       <div className="rounded-2xl bg-card border border-border p-4 mt-3">
