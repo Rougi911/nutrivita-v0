@@ -139,3 +139,16 @@ describe("Score Santé", () => {
     expect(r.total as number).toBeGreaterThanOrEqual(0)
   })
 })
+
+// ─── Lot 1 — contrat de couverture des micronutriments ───────────────────────
+describe("Radar micronutriments — couverture", () => {
+  it("journal vide => aucun axe estimable, rien a conseiller", async () => {
+    const { calcRadarData } = await import("../micronutrients-radar")
+    const r = calcRadarData([], "male")
+    expect(r.estimable).toBe(false)
+    expect(r.entriesCount).toBe(0)
+    expect(r.nutrients.every((n) => n.estimable === false)).toBe(true)
+    // le filtre d'affichage « apports a ameliorer » ne doit rien retenir
+    expect(r.nutrients.filter((n) => n.estimable && n.valuePercent < 70)).toHaveLength(0)
+  })
+})

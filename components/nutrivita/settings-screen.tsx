@@ -355,12 +355,11 @@ export function SettingsScreen({ onBack, onOpenGlucose }: SettingsScreenProps) {
 
         {/* (f) Data — clearX handlers wired */}
         <SettingsGroup title={t("data")}>
-          <SettingsRow label={t("databaseSize")}>
-            <span className="text-[13px] text-muted-foreground">2.4 MB</span>
-          </SettingsRow>
-          <SettingsRow label={t("lastSync")}>
-            <span className="text-[13px] text-muted-foreground">Il y a 2h</span>
-          </SettingsRow>
+          {/* P0 — « 2.4 MB » et « Il y a 2h » etaient des valeurs codees en dur :
+              l'audit les a lues comme un etat de connexion Strava, alors que le
+              bouton propose « Connecter ». Un etat affiche doit venir d'un
+              evenement reel — la vraie ligne Strava (statut + derniere sync)
+              est rendue par la ligne Strava dediee, plus bas. */}
           <div className="px-4 pb-3 pt-2 space-y-2">
             <ConfirmButton label={t("clearJournal")}    onConfirm={clearJournal}    t={t} />
             <ConfirmButton label={t("clearWeight")}     onConfirm={clearWeight}     t={t} />

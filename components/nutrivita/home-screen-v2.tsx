@@ -122,6 +122,7 @@ export function HomeScreenV2({ onOpenSettings, onOpenGlucose }: Props) {
     language,
     isRTL,
     setActiveTab,
+    t,
   } = useApp()
   const P = P1[language]
 
@@ -199,7 +200,7 @@ export function HomeScreenV2({ onOpenSettings, onOpenGlucose }: Props) {
           >
             🔥 {user.streak}
           </span>
-          <button onClick={onOpenSettings} className="w-8 h-8 rounded-full bg-muted flex items-center justify-center" aria-label="settings">
+          <button onClick={onOpenSettings} className="w-8 h-8 rounded-full bg-muted flex items-center justify-center" aria-label={t("settings")}>
             <Settings className="h-4 w-4 text-muted-foreground" />
           </button>
         </div>

@@ -10,7 +10,7 @@ import { SAMPLE_FOODS, type FoodItem } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 export function MealsScreen() {
-  const { t, isRTL, setShowFoodSearch, setSelectedMealType, setShowAddSheet } = useApp()
+  const { t, isRTL, setShowFoodSearch, setSelectedMealType, setShowAddSheet, setAddSheetMode } = useApp()
   const [searchQuery, setSearchQuery] = useState("")
   const [activeFilter, setActiveFilter] = useState("all")
 
@@ -76,7 +76,7 @@ export function MealsScreen() {
           <Button
             variant="outline"
             className="flex-1 gap-2 rounded-xl h-11"
-            onClick={() => { setSelectedMealType(null); setShowAddSheet(true) }}
+            onClick={() => { setSelectedMealType(null); setAddSheetMode("photo"); setShowAddSheet(true) }}
           >
             <Camera className="h-4 w-4" />
             {t("photo")}
@@ -84,7 +84,7 @@ export function MealsScreen() {
           <Button
             variant="outline"
             className="flex-1 gap-2 rounded-xl h-11"
-            onClick={() => { setSelectedMealType(null); setShowAddSheet(true) }}
+            onClick={() => { setSelectedMealType(null); setAddSheetMode("scanner"); setShowAddSheet(true) }}
           >
             <ScanBarcode className="h-4 w-4" />
             {t("scanner")}

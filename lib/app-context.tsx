@@ -106,6 +106,13 @@ interface AppContextType {
   showFoodSearch: boolean
   setShowFoodSearch: (show: boolean) => void
   selectedMealType: MealEntry["mealType"] | null
+  /**
+   * P1 — methode de saisie demandee a l'ouverture de la feuille d'ajout.
+   * "menu" = choix des quatre methodes ; sinon on ouvre directement la methode
+   * annoncee par le raccourci (l'audit relevait un detour par le menu generique).
+   */
+  addSheetMode: "menu" | "photo" | "voice" | "scanner"
+  setAddSheetMode: (mode: "menu" | "photo" | "voice" | "scanner") => void
   setSelectedMealType: (type: MealEntry["mealType"] | null) => void
   waterIntake: number
   setWaterIntake: (n: number) => void
@@ -168,6 +175,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [showAddSheet, setShowAddSheet] = useState(false)
   const [showFoodSearch, setShowFoodSearch] = useState(false)
   const [selectedMealType, setSelectedMealType] = useState<MealEntry["mealType"] | null>(null)
+  const [addSheetMode, setAddSheetMode] = useState<"menu" | "photo" | "voice" | "scanner">("menu")
   const [waterIntake, setWaterIntake] = useState(defaultWaterIntake)
   // P0-4 — dates (YYYY-MM-DD) des 60 derniers jours ayant au moins une entrée journal
   const [journalDates, setJournalDates] = useState<string[]>([])
@@ -584,6 +592,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         showFoodSearch,
         setShowFoodSearch,
         selectedMealType,
+        addSheetMode,
+        setAddSheetMode,
         setSelectedMealType,
         waterIntake,
         setWaterIntake,

@@ -55,7 +55,7 @@ const quickActions = [
 ] as const
 
 export function AddSheet() {
-  const { setShowAddSheet, t, setShowFoodSearch, language, addMealEntry, updateMealEntryId, currentDate, addScannedProduct, selectedMealType } = useApp()
+  const { setShowAddSheet, t, setShowFoodSearch, language, addMealEntry, updateMealEntryId, currentDate, addScannedProduct, selectedMealType, addSheetMode, setAddSheetMode } = useApp()
 
   const [interpResult, setInterpResult] = useState<ApiInterpretResponse | null>(null)
   const [interpreting, setInterpreting] = useState(false)
@@ -67,6 +67,17 @@ export function AddSheet() {
   // horaire : « Ajouter » dans Dejeuner ouvrait le formulaire sur Collation.
   const [pendingMealType, setPendingMealType] = useState<MealType>(selectedMealType ?? inferMealTypeFromTime())
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // P1 — un raccourci Photo / Vocal / Scanner ouvre directement sa methode,
+  // sans detour par le menu generique. Le mode est consomme une seule fois.
+  useEffect(() => {
+    if (addSheetMode === "menu") return
+    if (addSheetMode === "scanner") setShowScanner(true)
+    else if (addSheetMode === "voice") setShowVoiceModal(true)
+    else if (addSheetMode === "photo") fileInputRef.current?.click()
+    setAddSheetMode("menu")
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addSheetMode])
 
   const recentFoods = recentFoodIds
     .map((id) => SAMPLE_FOODS.find((f) => f.id === id))

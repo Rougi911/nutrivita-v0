@@ -26,11 +26,21 @@ export type RadarNutrient = {
   label: string
   valuePercent: number   // apport moyen / VNR * 100, plafonné à 120
   completeness: number   // 0..100 : % des aliments ayant la donnée
+  /**
+   * P0 — contrat de couverture : false = aucun aliment renseigné ne porte cette
+   * donnée. `valuePercent` vaut alors 0 par construction et ne doit JAMAIS être
+   * lu comme un apport nul ni déclencher un conseil.
+   */
+  estimable: boolean
 }
 
 export type RadarResult = {
   nutrients: RadarNutrient[]
   overallCompleteness: number  // moyenne des complétudes des 8 axes
+  /** true dès qu'au moins un axe est estimable. */
+  estimable: boolean
+  /** Nombre d'aliments pris en compte sur la période. */
+  entriesCount: number
 }
 
 // ─── VNR ANSES (valeurs par défaut intégrées) ─────────────────────────────────
@@ -115,6 +125,7 @@ export function calcRadarData(
         label: NUTRIENT_LABELS[key],
         valuePercent: 0,
         completeness: 0,
+        estimable: false,
       }
     }
 
@@ -141,6 +152,7 @@ export function calcRadarData(
         label: NUTRIENT_LABELS[key],
         valuePercent: 0,
         completeness: 0,
+        estimable: false,
       }
     }
 
@@ -161,6 +173,7 @@ export function calcRadarData(
       label: NUTRIENT_LABELS[key],
       valuePercent,
       completeness,
+      estimable: true,
     }
   })
 
@@ -171,5 +184,10 @@ export function calcRadarData(
         )
       : 0
 
-  return { nutrients, overallCompleteness }
+  return {
+    nutrients,
+    overallCompleteness,
+    estimable: nutrients.some((n) => n.estimable),
+    entriesCount: totalEntries,
+  }
 }

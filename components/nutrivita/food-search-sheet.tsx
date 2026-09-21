@@ -27,6 +27,7 @@ export function FoodSearchSheet() {
     showFoodSearch,
     setShowFoodSearch,
     setShowAddSheet,
+    setAddSheetMode,
     selectedMealType,
     t,
     addMealEntry,
@@ -187,9 +188,9 @@ export function FoodSearchSheet() {
             <div className="flex gap-2">
               {[
                 { icon: Search, label: t("search"), onClick: undefined },
-                { icon: ScanBarcode, label: t("scanner"), onClick: () => { setShowFoodSearch(false); setShowAddSheet(true) } },
-                { icon: Camera, label: t("photo"), onClick: () => { setShowFoodSearch(false); setShowAddSheet(true) } },
-                { icon: Mic, label: t("voice"), onClick: () => { setShowFoodSearch(false); setShowAddSheet(true) } },
+                { icon: ScanBarcode, label: t("scanner"), onClick: () => { setShowFoodSearch(false); setAddSheetMode("scanner"); setShowAddSheet(true) } },
+                { icon: Camera, label: t("photo"), onClick: () => { setShowFoodSearch(false); setAddSheetMode("photo"); setShowAddSheet(true) } },
+                { icon: Mic, label: t("voice"), onClick: () => { setShowFoodSearch(false); setAddSheetMode("voice"); setShowAddSheet(true) } },
               ].map((mode, i) => (
                 <Button
                   key={i}

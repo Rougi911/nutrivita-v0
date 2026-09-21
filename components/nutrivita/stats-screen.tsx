@@ -901,19 +901,38 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
             {t("vitaminMineralRadar")}
           </h3>
 
+          {/* P0 — contrat de couverture : sans aucun aliment porteur de données
+              micronutriments, on affiche « Non estimable » au lieu de 0 % VNR
+              suivi de « apports à améliorer », qui transformait une donnée
+              absente en carence. */}
+          {!radarData.estimable ? (
+            <div
+              className="rounded-xl p-3 mt-1"
+              style={{ backgroundColor: "color-mix(in oklab, var(--amber) 10%, transparent)" }}
+            >
+              <b className="text-[13px] text-foreground block">{t("notEstimable")}</b>
+              <p className="text-[12px] text-muted-foreground mt-1 leading-snug">{t("notEstimableHint")}</p>
+            </div>
+          ) : (
+          <>
           {/* Radar SVG (avancé) ou barres simples par nutriment (simple) — même donnée radarData. */}
           {advancedCharts ? (
             <MicronutrientsRadar data={radarData} className="w-full max-w-[320px] mx-auto block" />
           ) : (
             <div className="space-y-2 py-1">
               {radarData.nutrients.map((n) => {
-                const pct = Math.min(100, n.valuePercent)
-                const color = n.valuePercent < 70 ? "var(--risk)" : n.valuePercent < 90 ? "var(--amber)" : "var(--primary)"
+                const pct = n.estimable ? Math.min(100, n.valuePercent) : 0
+                const color = !n.estimable
+                  ? "var(--muted-foreground)"
+                  : n.valuePercent < 70 ? "var(--risk)" : n.valuePercent < 90 ? "var(--amber)" : "var(--primary)"
                 return (
                   <div key={n.key}>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[12px] text-foreground">{n.label}</span>
-                      <span className="text-[11px] font-semibold" style={{ color }}>{n.valuePercent}% VNR</span>
+                      {/* P0 — « — » : donnée absente, pas un apport mesuré à zéro. */}
+                      <span className="text-[11px] font-semibold" style={{ color }}>
+                        {n.estimable ? `${n.valuePercent}% VNR` : "—"}
+                      </span>
                     </div>
                     <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                       <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
@@ -925,14 +944,14 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
           )}
 
           {/* Axes < 70% VNR */}
-          {radarData.nutrients.filter((n) => n.valuePercent < 70).length > 0 && (
+          {radarData.nutrients.filter((n) => n.estimable && n.valuePercent < 70).length > 0 && (
             <div className="mt-3">
               <p className="text-[12px] font-semibold text-foreground mb-1.5">
                 {t("improveIntake")}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {radarData.nutrients
-                  .filter((n) => n.valuePercent < 70)
+                  .filter((n) => n.estimable && n.valuePercent < 70)
                   .map((n) => (
                     <span
                       key={n.key}
@@ -944,6 +963,9 @@ export function StatsScreen({ onOpenSettings }: { onOpenSettings?: () => void } 
                   ))}
               </div>
             </div>
+          )}
+
+          </>
           )}
 
           {/* Indicateur de complétude */}

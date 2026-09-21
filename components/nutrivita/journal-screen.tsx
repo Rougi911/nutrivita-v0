@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { motion } from "framer-motion"
 import {
   ChevronLeft,
@@ -54,6 +54,7 @@ export function JournalScreen() {
     setShowFoodSearch,
     setSelectedMealType,
     setShowAddSheet,
+    setAddSheetMode,
     activities,
     addActivity,
     removeActivity,
@@ -156,8 +157,8 @@ export function JournalScreen() {
 
   const quickActions = [
     { icon: Mic,        label: t("voice"),        onClick: () => setShowVoiceInput(true) },
-    { icon: Camera,     label: t("photo"),         onClick: () => { setSelectedMealType(null); setShowAddSheet(true) } },
-    { icon: ScanBarcode,label: t("scanner"),       onClick: () => { setSelectedMealType(null); setShowAddSheet(true) } },
+    { icon: Camera,     label: t("photo"),         onClick: () => { setSelectedMealType(null); setAddSheetMode("photo"); setShowAddSheet(true) } },
+    { icon: ScanBarcode,label: t("scanner"),       onClick: () => { setSelectedMealType(null); setAddSheetMode("scanner"); setShowAddSheet(true) } },
     { icon: Star,       label: t("favorites"),     onClick: () => { setSelectedMealType(null); setShowFoodSearch(true) } },
     { icon: Copy,       label: t("copyYesterday"), onClick: handleCopyYesterday },
   ]
@@ -181,6 +182,7 @@ export function JournalScreen() {
             size="icon"
             className="h-10 w-10 rounded-full"
             onClick={() => navigateDate(-1)}
+            aria-label={t("previousDay")}
           >
             <ChevronLeft className="h-5 w-5" />
           </Button>
@@ -198,6 +200,7 @@ export function JournalScreen() {
             className="h-10 w-10 rounded-full"
             onClick={() => navigateDate(1)}
             disabled={isToday}
+            aria-label={t("nextDay")}
           >
             <ChevronRight className="h-5 w-5" />
           </Button>
@@ -397,6 +400,7 @@ export function JournalScreen() {
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6 text-muted-foreground hover:text-primary"
+                          aria-label={t("save")}
                           onClick={() => {
                             const d = parseInt(editDur, 10)
                             // S25b — sport ET durée : le serveur recalcule les kcal (table MET).
@@ -411,6 +415,7 @@ export function JournalScreen() {
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6 text-muted-foreground hover:text-primary"
+                          aria-label={t("edit")}
                           onClick={() => { setEditingActId(act.id); setEditDur(String(act.duration)); setEditType(act.type) }}
                         >
                           <Pencil className="h-3 w-3" />
@@ -421,6 +426,7 @@ export function JournalScreen() {
                       variant="ghost"
                       size="icon"
                       className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                      aria-label={t("deleteItem")}
                       onClick={() => removeActivity(act.id)}
                     >
                       <X className="h-3 w-3" />
@@ -614,6 +620,22 @@ function ActivityVoiceModal({
   const [detected, setDetected] = useState<{ type: string; duration: number; caloriesBurned: number } | null>(null)
   const [textInput, setTextInput] = useState("")
   const { t } = useApp()
+  // P0 — fermeture garantie + arret de l'ecoute (croix, Echap, fond).
+  const recognitionRef = useRef<{ stop: () => void; abort?: () => void } | null>(null)
+  const stopAndClose = useCallback(() => {
+    const rec = recognitionRef.current
+    recognitionRef.current = null
+    if (rec) {
+      try { rec.abort ? rec.abort() : rec.stop() } catch { /* deja arrete */ }
+    }
+    onClose()
+  }, [onClose])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") stopAndClose() }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [stopAndClose])
 
   const processTranscript = (text: string) => {
     setState("processing")
@@ -631,6 +653,7 @@ function ActivityVoiceModal({
       onerror: (() => void) | null
       start: () => void
       stop: () => void
+      abort?: () => void
     }
     type SpeechRecognitionCtor = new () => AnySpeechRecognition
     const SRC =
@@ -651,8 +674,12 @@ function ActivityVoiceModal({
       processTranscript(event.results[0][0].transcript)
     }
     recognition.onerror = () => { setState("text-input") }
+    recognitionRef.current = recognition
     recognition.start()
-    return () => { try { recognition.stop() } catch { /* ignore on unmount */ } }
+    return () => {
+      recognitionRef.current = null
+      try { recognition.abort ? recognition.abort() : recognition.stop() } catch { /* ignore on unmount */ }
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -661,12 +688,14 @@ function ActivityVoiceModal({
       className="fixed inset-0 z-[60] bg-background/80 backdrop-blur-sm"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
+      onClick={stopAndClose}
     >
       <motion.div
         className="absolute bottom-0 left-0 right-0 max-h-[85vh] flex flex-col overflow-hidden bg-card rounded-t-3xl"
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         transition={{ type: "spring", damping: 25 }}
+        onClick={(e) => e.stopPropagation()}
       >
       <div className="p-6 safe-bottom overflow-y-auto min-h-0 flex-1">
         {state === "listening" && (
@@ -744,7 +773,7 @@ function ActivityVoiceModal({
               </span>
             </div>
             <div className="flex gap-3 pt-2">
-              <Button variant="outline" className="flex-1" onClick={onClose}>
+              <Button variant="outline" className="flex-1" onClick={stopAndClose}>
                 {t("cancel")}
               </Button>
               <Button
@@ -761,7 +790,7 @@ function ActivityVoiceModal({
       </div>
 
         <button
-          onClick={onClose}
+          onClick={stopAndClose}
           className="absolute top-4 right-4 w-8 h-8 rounded-full bg-muted flex items-center justify-center"
           aria-label={t("cancel")}
         >
@@ -918,6 +947,23 @@ function VoiceInputModal({
   const [state, setState] = useState<"listening" | "processing" | "error">("listening")
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const { t } = useApp()
+  // P0 — la fermeture doit TOUJOURS aboutir et couper l'ecoute : l'audit a
+  // constate un panneau vocal qui restait ouvert (rechargement necessaire).
+  const recognitionRef = useRef<{ stop: () => void; abort?: () => void } | null>(null)
+  const stopAndClose = useCallback(() => {
+    const rec = recognitionRef.current
+    recognitionRef.current = null
+    if (rec) {
+      try { rec.abort ? rec.abort() : rec.stop() } catch { /* deja arrete */ }
+    }
+    onClose()
+  }, [onClose])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") stopAndClose() }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [stopAndClose])
 
   useEffect(() => {
     type AnySpeechRecognition = {
@@ -928,6 +974,7 @@ function VoiceInputModal({
       onerror: (() => void) | null
       start: () => void
       stop: () => void
+      abort?: () => void
     }
     type SpeechRecognitionCtor = new () => AnySpeechRecognition
 
@@ -968,8 +1015,12 @@ function VoiceInputModal({
       setState("error")
     }
 
+    recognitionRef.current = recognition
     recognition.start()
-    return () => { try { recognition.stop() } catch { /* ignore */ } }
+    return () => {
+      recognitionRef.current = null
+      try { recognition.abort ? recognition.abort() : recognition.stop() } catch { /* ignore */ }
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -979,12 +1030,14 @@ function VoiceInputModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      onClick={stopAndClose}
     >
       <motion.div
         className="absolute bottom-0 left-0 right-0 max-h-[85vh] flex flex-col overflow-hidden bg-card rounded-t-3xl"
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         transition={{ type: "spring", damping: 25 }}
+        onClick={(e) => e.stopPropagation()}
       >
       <div className="p-6 safe-bottom overflow-y-auto min-h-0 flex-1">
         {state === "listening" && (
@@ -1028,7 +1081,12 @@ function VoiceInputModal({
         )}
       </div>
 
-        <Button variant="ghost" className="absolute top-4 right-4" onClick={onClose}>
+        <Button
+          variant="ghost"
+          className="absolute top-4 right-4"
+          onClick={stopAndClose}
+          aria-label={t("cancel")}
+        >
           {t("cancel")}
         </Button>
       </motion.div>
