@@ -197,6 +197,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setCurrentDate(getLocalDateStr())
   }, [])
 
+  // Deep-link depuis une notification push (S26) — cette app est une SPA sans routes Next.js
+  // réelles (tout vit sous "/", navigation interne = état `activeTab`). Le service worker
+  // ouvre "/?tab=journal" (voir public/sw.js + pushSender.js côté backend) ; on lit ce
+  // paramètre au montage pour ouvrir directement le bon onglet, puis on nettoie l'URL.
+  useEffect(() => {
+    const VALID_TABS = new Set(["home", "journal", "glucose", "stats"])
+    const applyTab = (url: string) => {
+      try {
+        const tab = new URL(url, window.location.origin).searchParams.get("tab")
+        if (tab && VALID_TABS.has(tab)) setActiveTab(tab)
+      } catch (_) {
+        // URL malformée — ignorer silencieusement
+      }
+    }
+
+    applyTab(window.location.href)
+    if (window.location.search) {
+      window.history.replaceState(null, "", window.location.pathname)
+    }
+
+    // Notif cliquée pendant que l'app est déjà ouverte : le SW ne re-navigue pas la fenêtre
+    // (ça perdrait l'état React), il poste l'onglet cible ici à la place.
+    const onMessage = (event: MessageEvent) => {
+      if (event.data?.type === "notification-navigate" && typeof event.data.url === "string") {
+        applyTab(event.data.url)
+      }
+    }
+    navigator.serviceWorker?.addEventListener?.("message", onMessage)
+    return () => navigator.serviceWorker?.removeEventListener?.("message", onMessage)
+  }, [])
+
   // P1-5 — Restaure la langue persistée au montage (sinon reset FR au reload) et
   // applique le sens d'écriture (RTL pour l'arabe) sur <html>.
   useEffect(() => {

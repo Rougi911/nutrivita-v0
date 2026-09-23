@@ -316,6 +316,8 @@ export const translations = {
 
     // Stats
     today: "Aujourd'hui",
+    yesterday: "Hier",
+    dayBeforeYesterday: "Avant-hier",
     days7: "7 jours",
     days30: "30 jours",
     year: "Année",
@@ -788,6 +790,8 @@ export const translations = {
     portion: "\u0627\u0644\u062D\u0635\u0629",
     customize: "\u062A\u062E\u0635\u064A\u0635",
     today: "\u0627\u0644\u064A\u0648\u0645",
+    yesterday: "\u0623\u0645\u0633",
+    dayBeforeYesterday: "\u0623\u0648\u0644 \u0623\u0645\u0633",
     days7: "7 \u0623\u064A\u0627\u0645",
     days30: "30 \u064A\u0648\u0645",
     year: "\u0633\u0646\u0629",
@@ -1244,6 +1248,8 @@ export const translations = {
     portion: "Portion",
     customize: "Customize",
     today: "Today",
+    yesterday: "Yesterday",
+    dayBeforeYesterday: "Day before yesterday",
     days7: "7 days",
     days30: "30 days",
     year: "Year",

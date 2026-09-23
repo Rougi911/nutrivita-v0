@@ -647,6 +647,11 @@ export async function addJournalEntry(
   // POST /api/journal returns a raw DB row (no nested food object) — don't call mapMealEntry.
   // Build MealEntry from the input data + backend UUID so callers can propagate the real id.
   // parent_entry_id (S15) lie une sauce/condiment à l'aliment parent.
+  // Aliment "estimated" (photo IA / vocal — id synthétique "ai-...", pas de product_id
+  // numérique réel côté backend) : on envoie nom + macros en repli. Le backend crée/retrouve
+  // un produit à partir de ça. Sans ça le POST échouait en 400 et l'entrée restait locale
+  // (jamais liée à un id backend) → perdue à la reconnexion et non éditable.
+  const isEstimated = entry.food.source === "estimated"
   const raw = await apiFetch<{ id: string }>("/api/journal", {
     method: "POST",
     body: JSON.stringify({
@@ -655,6 +660,14 @@ export async function addJournalEntry(
       meal_type: entry.mealType,
       date: entry.date,
       ...(parentEntryId ? { parent_entry_id: parentEntryId } : {}),
+      ...(isEstimated ? {
+        name: entry.food.name,
+        kcal_per100: entry.food.calories,
+        glucides: entry.food.carbs,
+        proteines: entry.food.protein,
+        lipides: entry.food.fat,
+        fibres: entry.food.fiber ?? 0,
+      } : {}),
     }),
   })
   if (!raw.id || typeof raw.id !== "string") {

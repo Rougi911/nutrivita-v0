@@ -122,9 +122,18 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const target = (event.notification.data && event.notification.data.url) || "/";
   event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
-      const focused = clients.find((c) => "focus" in c);
-      if (focused) return focused.focus();
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      // App déjà ouverte : on ne fait PAS de navigation dure (ça perdrait l'état React de la
+      // SPA) — on poste l'onglet cible à la page, qui l'applique via app-context.tsx, et on
+      // met la fenêtre au premier plan. Avant ce fix : le focus() ignorait totalement `target`.
+      const client = clientList.find((c) => "focus" in c);
+      if (client) {
+        client.postMessage({ type: "notification-navigate", url: target });
+        return client.focus();
+      }
+      // Aucune fenêtre ouverte : navigation neuve. `target` doit pointer vers une vraie route
+      // ("/" + ?tab=... — cette SPA n'a pas de route Next.js réelle pour /journal, /bilan etc.,
+      // ce qui provoquait un 404 sur ce chemin).
       return self.clients.openWindow(target);
     })
   );
