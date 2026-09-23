@@ -29,6 +29,9 @@ export interface ApiIntent {
   // weight
   weight_kg?: number
   // common
+  // Évolution vocal — offset en jours par rapport à aujourd'hui (0=aujourd'hui, -1=hier,
+  // -2=avant-hier), déduit par Gemini depuis des expressions comme "hier" / "ce matin".
+  date_offset_days?: number | null
   confidence: number
   needs_confirmation: boolean
 }

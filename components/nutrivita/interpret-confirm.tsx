@@ -51,12 +51,42 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
       return inferMealTypeFromTime()
     })
   )
+  // Évolution vocal — "hier", "avant-hier" : Gemini déduit un offset (0/-1/-2, voir
+  // routes/interpret.js), affiché ici et modifiable avant confirmation (garde-fou : une
+  // mauvaise interprétation ne doit pas logguer silencieusement sur le mauvais jour).
+  const [dateOffsets, setDateOffsets] = useState<number[]>(
+    result.intents.map((intent) => {
+      const o = intent.date_offset_days
+      return Number.isInteger(o) ? Math.max(-2, Math.min(0, o as number)) : 0
+    })
+  )
 
   const toggle = (i: number) =>
     setSelected((prev) => prev.map((v, idx) => (idx === i ? !v : v)))
 
   const updateMealType = (i: number, mt: MealType) =>
     setMealTypes((prev) => prev.map((v, idx) => (idx === i ? mt : v)))
+
+  const updateDateOffset = (i: number, offset: number) =>
+    setDateOffsets((prev) => prev.map((v, idx) => (idx === i ? offset : v)))
+
+  // Convertit un offset (0/-1/-2) + une date locale "YYYY-MM-DD" en date locale décalée,
+  // sans passer par toISOString() (UTC) pour éviter tout décalage de jour.
+  const offsetToDate = (offset: number, base: string): string => {
+    if (!offset) return base
+    const [y, m, d] = base.split("-").map(Number)
+    const dt = new Date(y, (m ?? 1) - 1, (d ?? 1) + offset)
+    const yy = dt.getFullYear()
+    const mm = String(dt.getMonth() + 1).padStart(2, "0")
+    const dd = String(dt.getDate()).padStart(2, "0")
+    return `${yy}-${mm}-${dd}`
+  }
+
+  const DAY_OPTIONS: { offset: number; key: "dayBeforeYesterday" | "yesterday" | "today" }[] = [
+    { offset: -2, key: "dayBeforeYesterday" },
+    { offset: -1, key: "yesterday" },
+    { offset: 0, key: "today" },
+  ]
 
   const handleConfirm = () => {
     setConfirmError(null)
@@ -88,7 +118,7 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
             fat: per100g(n?.lipides, 5),
             source: "estimated" as const,
           }
-        const entry = { foodId: food.id, food, amount: qg, mealType: mealTypes[i], date: currentDate }
+        const entry = { foodId: food.id, food, amount: qg, mealType: mealTypes[i], date: offsetToDate(dateOffsets[i], currentDate) }
         const localId = addMealEntry(entry)
         // Sync to backend — estimated foods may fail; error is non-blocking
         addJournalEntry(entry)
@@ -102,7 +132,7 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
           type: intent.sport,
           duration: intent.duration_min,
           caloriesBurned: Math.round(9.0 * (user.weight ?? 80) * (intent.duration_min / 60)),
-          date: currentDate,
+          date: offsetToDate(dateOffsets[i], currentDate),
           source: "voice",
         })
         processed++
@@ -194,6 +224,27 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
                     style={mealTypes[i] === m.type ? { backgroundColor: "var(--primary)" } : {}}
                   >
                     {t(m.type)}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Sélecteur de jour — food + activity, pour corriger/valider "hier", "avant-hier" */}
+            {(intent.type === "food" || intent.type === "activity") && selected[i] && (
+              <div className="flex gap-1.5">
+                {DAY_OPTIONS.map((d) => (
+                  <button
+                    key={d.key}
+                    onClick={() => updateDateOffset(i, d.offset)}
+                    className={cn(
+                      "flex-1 text-[11px] font-medium rounded-xl py-1.5 border transition-colors",
+                      dateOffsets[i] === d.offset
+                        ? "border-[var(--amber)] text-white"
+                        : "bg-card text-muted-foreground border-border"
+                    )}
+                    style={dateOffsets[i] === d.offset ? { backgroundColor: "var(--amber)" } : {}}
+                  >
+                    {t(d.key)}
                   </button>
                 ))}
               </div>
