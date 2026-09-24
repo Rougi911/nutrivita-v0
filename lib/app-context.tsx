@@ -6,6 +6,7 @@ import {
   type User,
   type DailyLog,
   type MealEntry,
+  type FoodItem,
   type GlucoseReading,
   type WeightEntry,
   type ActivityEntry,
@@ -67,6 +68,8 @@ interface AppContextType {
   addMealEntry: (entry: Omit<MealEntry, "id" | "createdAt">) => string
   updateMealEntryId: (localId: string, backendId: string) => void
   updateMealEntryAmount: (id: string, amount: number) => void
+  /** Correction manuelle des macros : remplace l'aliment (valeurs /100 g) de l'entrée. */
+  updateMealEntryFood: (id: string, food: FoodItem) => void
   removeMealEntry: (id: string) => void
   clearJournal: () => void
 
@@ -470,7 +473,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setMealEntries((prev) => prev.map((m) => m.id === id ? { ...m, amount } : m))
   }
 
-  const removeMealEntry = (id: string) => setMealEntries((prev) => prev.filter((m) => m.id !== id))
+  const updateMealEntryFood = (id: string, food: FoodItem) => {
+    setMealEntries((prev) => prev.map((m) => m.id === id ? { ...m, food } : m))
+  }
+
+  // Supprime aussi les sauces/huiles rattachées (même règle côté backend).
+  const removeMealEntry = (id: string) =>
+    setMealEntries((prev) => prev.filter((m) => m.id !== id && m.parentId !== id))
 
   const clearJournal = () => setMealEntries([])
 
@@ -594,6 +603,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addMealEntry,
         updateMealEntryId,
         updateMealEntryAmount,
+        updateMealEntryFood,
         removeMealEntry,
         clearJournal,
         glucoseReadings,

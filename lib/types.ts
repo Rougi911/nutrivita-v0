@@ -644,8 +644,14 @@ export const translations = {
 
     // ─── Édition repas + sauces (S15) ──────────────────────────────────────
     quantityG: "Quantité (g)",
-    addSauce: "Ajouter une sauce",
-    condimentSearch: "Rechercher une sauce ou un condiment",
+    addSauce: "Ajouter sauce, huile ou aliment",
+    condimentSearch: "Rechercher une sauce, une huile ou un aliment",
+    editFoodTitle: "Modifier l'aliment",
+    portionMacros: "Valeurs pour cette portion",
+    macrosHint: "Corrigez si l'estimation vous semble fausse (plat maison, restaurant…).",
+    addOnsTitle: "Sauces, huiles et ajouts",
+    noAddOns: "Aucun ajout pour cet aliment.",
+    macrosCorrected: "Valeurs corrigées",
     save: "Enregistrer",
     commonCondiments: "Condiments courants",
 
@@ -1102,7 +1108,13 @@ export const translations = {
 
     // \u2500\u2500\u2500 \u00c9dition repas + sauces (S15) \u2500\u2500\u2500
     quantityG: "\u0627\u0644\u0643\u0645\u064a\u0629 (\u063a)",
-    addSauce: "\u0625\u0636\u0627\u0641\u0629 \u0635\u0644\u0635\u0629",
+    addSauce: "إضافة صلصة أو زيت أو طعام",
+    editFoodTitle: "تعديل الطعام",
+    portionMacros: "القيم لهذه الحصة",
+    macrosHint: "صحّح القيم إذا بدا التقدير خاطئًا (طبق منزلي، مطعم…).",
+    addOnsTitle: "الصلصات والزيوت والإضافات",
+    noAddOns: "لا توجد إضافات لهذا الطعام.",
+    macrosCorrected: "قيم مصحّحة",
     condimentSearch: "\u0627\u0628\u062d\u062b \u0639\u0646 \u0635\u0644\u0635\u0629 \u0623\u0648 \u0645\u064f\u062a\u0628\u0651\u0644",
     save: "\u062d\u0641\u0638",
     commonCondiments: "\u0645\u062a\u0628\u0651\u0644\u0627\u062a \u0634\u0627\u0626\u0639\u0629",
@@ -1560,8 +1572,14 @@ export const translations = {
 
     // ─── Meal editing + sauces (S15) ───────────────────────────────────────
     quantityG: "Quantity (g)",
-    addSauce: "Add a sauce",
-    condimentSearch: "Search a sauce or condiment",
+    addSauce: "Add sauce, oil or food",
+    condimentSearch: "Search a sauce, oil or food",
+    editFoodTitle: "Edit food",
+    portionMacros: "Values for this portion",
+    macrosHint: "Correct them if the estimate looks wrong (home-made, restaurant…).",
+    addOnsTitle: "Sauces, oils and add-ons",
+    noAddOns: "No add-ons for this food.",
+    macrosCorrected: "Corrected values",
     save: "Save",
     commonCondiments: "Common condiments",
 

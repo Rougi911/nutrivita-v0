@@ -1,18 +1,16 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Coffee, Utensils, Cookie, Moon, Plus, Trash2, Pencil, Check, X } from "lucide-react"
+import { Coffee, Utensils, Cookie, Moon, Plus, Trash2, Pencil } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useApp } from "@/lib/app-context"
-import { MEALS, type MealEntry, type FoodItem } from "@/lib/types"
+import { MEALS, type MealEntry } from "@/lib/types"
 import type { MealType } from "@/lib/meal-utils"
 import { inferMealTypeFromTime } from "@/lib/meal-utils"
 import { computeMealTotals } from "@/lib/meal-macros"
-import { deleteJournalEntry, updateJournalEntry, addJournalEntry } from "@/lib/api"
-import { defaultPortionG } from "@/lib/condiments"
+import { deleteJournalEntry } from "@/lib/api"
 import { MacroRing, MACRO_COLORS } from "@/components/nutrivita/macro-ring"
-import { CondimentSheet } from "@/components/nutrivita/condiment-sheet"
-import { Input } from "@/components/ui/input"
+import { EntryEditSheet } from "@/components/nutrivita/entry-edit-sheet"
 
 const MEAL_ICONS: Record<MealType, typeof Coffee> = {
   breakfast: Coffee,
@@ -25,57 +23,14 @@ const MEAL_ICONS: Record<MealType, typeof Coffee> = {
 export function MealTabsCard() {
   const {
     t, dailyLog, removeMealEntry, setSelectedMealType, setShowAddSheet,
-    addMealEntry, updateMealEntryId, updateMealEntryAmount, currentDate,
   } = useApp()
   const [activeMeal, setActiveMeal] = useState<MealType>(() => inferMealTypeFromTime())
   // confirmKey = createdAt de l'entrée en attente de suppression (stable malgré le swap d'id)
   const [confirmKey, setConfirmKey] = useState<string | null>(null)
-  // S15 — édition inline : createdAt de l'entrée éditée + valeur quantité saisie
-  const [editKey, setEditKey] = useState<string | null>(null)
-  const [editAmount, setEditAmount] = useState("")
-  // S15 — entrée parente pour laquelle on ajoute une sauce (ouvre le sélecteur)
-  const [sauceParent, setSauceParent] = useState<MealEntry | null>(null)
+  // Aliment ouvert dans la feuille d'édition (quantité, macros, sauces/huiles/ajouts).
+  const [editing, setEditing] = useState<MealEntry | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
-
-  const isBackendId = (id: string) => !/^(meal-|label-|act-)/.test(id)
-
-  const startEdit = (entry: MealEntry) => {
-    setConfirmKey(null)
-    setEditKey(entry.createdAt)
-    setEditAmount(String(entry.amount))
-  }
-
-  const handleSaveEdit = (entry: MealEntry) => {
-    const amount = parseInt(editAmount, 10)
-    if (!Number.isFinite(amount) || amount <= 0) return
-    updateMealEntryAmount(entry.id, amount) // optimiste
-    if (isBackendId(entry.id)) {
-      updateJournalEntry(entry.id, amount).catch((err) => {
-        console.error("[MealTabsCard] updateJournalEntry failed:", err)
-      })
-    }
-    setEditKey(null)
-  }
-
-  const handlePickSauce = (food: FoodItem) => {
-    const parent = sauceParent
-    setSauceParent(null)
-    if (!parent) return
-    const portion = defaultPortionG(food.name)
-    const entry = {
-      foodId: food.id,
-      food,
-      amount: portion,
-      mealType: parent.mealType,
-      date: currentDate,
-      parentId: parent.id,
-    }
-    const localId = addMealEntry(entry) // optimiste → anneau/totaux recalculés
-    addJournalEntry(entry, isBackendId(parent.id) ? parent.id : undefined)
-      .then((backendEntry) => { updateMealEntryId(localId, backendEntry.id) })
-      .catch((err) => { console.error("[MealTabsCard] addJournalEntry (sauce) failed:", err) })
-  }
 
   const entries = dailyLog.meals.filter((m) => m.mealType === activeMeal)
   const totals = computeMealTotals(entries)
@@ -141,56 +96,7 @@ export function MealTabsCard() {
           ) : (
             entries.map((entry) => {
               const isPending = confirmKey === entry.createdAt
-              const isEditing = editKey === entry.createdAt
               const kcal = Math.round((entry.food.calories * entry.amount) / 100)
-
-              // S15 — éditeur inline : quantité + ajouter une sauce
-              if (isEditing) {
-                return (
-                  <div key={entry.id} className={cn("space-y-2", entry.parentId && "pl-3 border-l border-border")}>
-                    <p className="text-[13px] font-medium text-foreground truncate">{entry.food.name}</p>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="text"
-                        inputMode="numeric"
-                        value={editAmount}
-                        onChange={(e) => setEditAmount(e.target.value)}
-                        aria-label={t("quantityG")}
-                        className="h-9 w-20 rounded-lg text-right text-[13px]"
-                        autoFocus
-                      />
-                      <span className="text-[12px] text-muted-foreground">g</span>
-                      <button
-                        type="button"
-                        onClick={() => handleSaveEdit(entry)}
-                        className="w-7 h-7 rounded-full flex items-center justify-center text-white shrink-0"
-                        style={{ backgroundColor: "var(--primary)" }}
-                        aria-label={t("save")}
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditKey(null)}
-                        className="w-7 h-7 rounded-full flex items-center justify-center bg-muted text-muted-foreground shrink-0"
-                        aria-label={t("cancel")}
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => { setSauceParent(entry); setEditKey(null) }}
-                      className="flex items-center gap-1.5 text-[12px] font-medium"
-                      style={{ color: "var(--primary)" }}
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      {t("addSauce")}
-                    </button>
-                  </div>
-                )
-              }
-
               return (
                 <div
                   key={entry.id}
@@ -199,10 +105,14 @@ export function MealTabsCard() {
                     entry.parentId && "pl-3 border-l border-border"
                   )}
                 >
-                  <span className="text-foreground truncate min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => { setConfirmKey(null); setEditing(entry) }}
+                    className="text-foreground truncate min-w-0 text-left"
+                  >
                     {entry.food.name}{" "}
                     <span className="text-muted-foreground">{entry.amount}g</span>
-                  </span>
+                  </button>
                   {isPending ? (
                     <div className="flex items-center gap-1.5 shrink-0">
                       <span className="text-[12px] text-muted-foreground">{t("confirmDelete")}</span>
@@ -229,7 +139,7 @@ export function MealTabsCard() {
                       <span className="text-muted-foreground whitespace-nowrap">{kcal} kcal</span>
                       <button
                         type="button"
-                        onClick={() => startEdit(entry)}
+                        onClick={() => { setConfirmKey(null); setEditing(entry) }}
                         className="w-6 h-6 rounded-full flex items-center justify-center text-muted-foreground hover:text-[var(--primary)] transition-colors"
                         aria-label={t("edit")}
                       >
@@ -282,10 +192,8 @@ export function MealTabsCard() {
         </button>
       </div>
 
-      {/* S15 — sélecteur de sauces/condiments */}
-      {sauceParent && (
-        <CondimentSheet onPick={handlePickSauce} onClose={() => setSauceParent(null)} />
-      )}
+      {/* Feuille d'édition : quantité, correction des macros, sauces/huiles/ajouts */}
+      {editing && <EntryEditSheet entry={editing} onClose={() => setEditing(null)} />}
     </div>
   )
 }
