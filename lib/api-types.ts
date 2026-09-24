@@ -103,6 +103,8 @@ export interface ApiDeficienciesResponse {
 export interface ApiMealEntry {
   id: string
   food_id: string
+  /** S15 — id de l'aliment parent si cette entrée est une sauce/huile/ajout rattaché. */
+  parent_entry_id?: string | null
   food: {
     id: string
     name: string

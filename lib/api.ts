@@ -199,6 +199,7 @@ function mapMealEntry(raw: ApiMealEntry): MealEntry {
     mealType: raw.meal_type,
     date: raw.date,
     createdAt: raw.created_at,
+    ...(raw.parent_entry_id ? { parentId: raw.parent_entry_id } : {}),
   }
 }
 
@@ -699,11 +700,27 @@ export interface JournalPatchResult {
   fibres: number
 }
 
-/** PATCH /api/journal/:id (S15) — modifie la quantité ; le backend recalcule kcal/macros proportionnellement. */
-export async function updateJournalEntry(id: string, amount: number): Promise<JournalPatchResult> {
+/** Correction manuelle des macros d'une entrée (valeurs /100 g). */
+export interface MacroOverridePer100 {
+  kcal_per100: number
+  proteines: number
+  glucides: number
+  lipides: number
+}
+
+/**
+ * PATCH /api/journal/:id (S15) — modifie la quantité ; le backend recalcule kcal/macros.
+ * `macros` (optionnel, valeurs /100 g) : correction manuelle — le backend crée une copie
+ * "user_custom" du produit pour cette entrée (le produit partagé n'est jamais modifié).
+ */
+export async function updateJournalEntry(
+  id: string,
+  amount: number,
+  macros?: MacroOverridePer100
+): Promise<JournalPatchResult> {
   return apiFetch<JournalPatchResult>(`/api/journal/${encodeURIComponent(id)}`, {
     method: "PATCH",
-    body: JSON.stringify({ amount }),
+    body: JSON.stringify({ amount, ...(macros ?? {}) }),
   })
 }
 

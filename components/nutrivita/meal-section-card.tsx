@@ -1,12 +1,13 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { ChevronDown, ChevronUp, Plus, Utensils, Trash2 } from "lucide-react"
+import { ChevronDown, ChevronUp, Plus, Utensils, Trash2, Pencil } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useApp } from "@/lib/app-context"
 import type { MealEntry } from "@/lib/types"
 import { deleteJournalEntry } from "@/lib/api"
+import { EntryEditSheet, isBackendId } from "@/components/nutrivita/entry-edit-sheet"
 
 interface MealSectionCardProps {
   icon?: React.ReactNode
@@ -29,24 +30,26 @@ export function MealSectionCard({
   const [expanded, setExpanded] = useState(false)
   // confirmKey = entry.createdAt of the entry pending deletion (stable across id updates)
   const [confirmKey, setConfirmKey] = useState<string | null>(null)
+  // Aliment ouvert dans la feuille d'édition (quantité, macros, sauces/huiles/ajouts).
+  const [editing, setEditing] = useState<MealEntry | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
 
   const handleRequestDelete = (entry: MealEntry) => {
-    console.log("[MealSectionCard] handleRequestDelete — entry.id:", entry.id, "food:", entry.food.name)
     setConfirmKey(entry.createdAt)
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => setConfirmKey(null), 4000)
   }
 
   const handleConfirmDelete = (entry: MealEntry) => {
-    console.log("[MealSectionCard] handleConfirmDelete — entry.id:", entry.id)
     if (timerRef.current) clearTimeout(timerRef.current)
     removeMealEntry(entry.id)
     setConfirmKey(null)
-    deleteJournalEntry(entry.id).catch((err) => {
-      console.error("[MealSectionCard] deleteJournalEntry failed:", err)
-    })
+    if (isBackendId(entry.id)) {
+      deleteJournalEntry(entry.id).catch((err) => {
+        console.error("[MealSectionCard] deleteJournalEntry failed:", err)
+      })
+    }
   }
 
   const handleCancelDelete = () => {
@@ -92,12 +95,19 @@ export function MealSectionCard({
               return (
                 <div
                   key={entry.id}
-                  className="flex items-center justify-between text-sm min-h-[28px]"
+                  className={cn(
+                    "flex items-center justify-between text-sm min-h-[28px]",
+                    entry.parentId && "pl-3 border-l border-border"
+                  )}
                 >
-                  <span className="text-foreground truncate">
+                  <button
+                    type="button"
+                    onClick={() => setEditing(entry)}
+                    className="text-foreground truncate text-left min-w-0"
+                  >
                     {entry.food.name}{" "}
                     <span className="text-muted-foreground">{entry.amount}g</span>
-                  </span>
+                  </button>
 
                   {isPending ? (
                     // Single-click confirmation row — shown after first Trash2 click
@@ -126,6 +136,15 @@ export function MealSectionCard({
                       <span className="text-muted-foreground">
                         {Math.round((entry.food.calories * entry.amount) / 100)} kcal
                       </span>
+                      <button
+                        type="button"
+                        onClick={() => setEditing(entry)}
+                        className="w-6 h-6 rounded-full flex items-center justify-center transition-colors text-muted-foreground hover:text-[var(--primary)]"
+                        aria-label={t("edit")}
+                        title={t("edit")}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => handleRequestDelete(entry)}
@@ -180,6 +199,8 @@ export function MealSectionCard({
           </Button>
         </div>
       )}
+
+      {editing && <EntryEditSheet entry={editing} onClose={() => setEditing(null)} />}
     </div>
   )
 }
