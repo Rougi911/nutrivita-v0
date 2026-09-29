@@ -1,0 +1,14 @@
+{
+  "date": "2026-09-29T06:12:32.845Z",
+  "scope": "Chromium, demo fixtures; no production backend",
+  "errors": [],
+  "realApiRequests": [],
+  "checks": [
+    "summary/details persistence",
+    "portion change 300g to100g:420 to140 kcal",
+    "navigation journal/bilan/glucose/profile/settings",
+    "mobile390 desktop1440 nooverflow",
+    "dark ArabicRTL English",
+    "no real API requests"
+  ]
+}

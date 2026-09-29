@@ -8,7 +8,9 @@ import { SettingsScreen } from "./settings-screen"
 import { LandingPage } from "./landing-page"
 import { OnboardingFlow } from "./onboarding-flow"
 import { BottomNavigation } from "./bottom-navigation"
-import { HomeScreenV2 } from "./home-screen-v2"
+import { HomeScreen as HomeScreenV2 } from "./redesign/home-screen"
+import { ProfileScreen } from "./redesign/profile-screen"
+import { ViewPreferences } from "./redesign/view-preferences"
 import { StatsTab } from "./stats-tab"
 import { GlucoseTab } from "./glucose-tab"
 import { GroceriesScreen } from "./groceries-screen"
@@ -20,7 +22,7 @@ type AppView = "checking" | "landing" | "onboarding" | "main"
 
 function AppContent() {
   const [appView, setAppView] = useState<AppView>("checking")
-  const { activeTab, setActiveTab, showAddSheet, isAuthenticated, isAuthLoading, serverWaking } = useApp()
+  const { activeTab, setActiveTab, showAddSheet, isAuthenticated, isAuthLoading, serverWaking, language } = useApp()
 
   const [stackedView, setStackedView] = useState<"glucose" | "settings" | null>(null)
 
@@ -112,10 +114,12 @@ function AppContent() {
       case "home":
         return (
           <HomeScreenV2
-            onOpenSettings={() => setStackedView("settings")}
+            onOpenSettings={() => setActiveTab("profile")}
             onOpenGlucose={() => setActiveTab("glucose")}
           />
         )
+      case "profile":
+        return <ProfileScreen onSettings={() => setStackedView("settings")} />
       case "journal":
         return <JournalScreen />
       case "meals":
@@ -125,7 +129,7 @@ function AppContent() {
       case "stats":
         return (
           <StatsTab
-            onOpenSettings={() => setStackedView("settings")}
+            onOpenSettings={() => setActiveTab("profile")}
             onOpenGroceries={() => setActiveTab("groceries")}
           />
         )
@@ -134,7 +138,7 @@ function AppContent() {
       default:
         return (
           <HomeScreenV2
-            onOpenSettings={() => setStackedView("settings")}
+            onOpenSettings={() => setActiveTab("profile")}
             onOpenGlucose={() => setActiveTab("glucose")}
           />
         )
@@ -144,15 +148,16 @@ function AppContent() {
   const screenKey = stackedView ?? activeTab
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="nv-app min-h-screen bg-background flex flex-col">
+      {process.env.NEXT_PUBLIC_UI_DEMO === "true" && <div className="nv-demo-banner" role="status">{language === "fr" ? "Démonstration · Données fictives · Réinitialisées au rechargement" : language === "en" ? "Demo · Fictional data · Reset on reload" : "\u0639\u0631\u0636 \u062a\u062c\u0631\u064a\u0628\u064a · \u0628\u064a\u0627\u0646\u0627\u062a \u0648\u0647\u0645\u064a\u0629"}</div>}
       {/* Fix BUG-2 (écran blanc au changement d'onglet) : l'ancien AnimatePresence
           mode="wait" + motion.div restait bloqué à son état initial (opacity:0,
           translateX 20px) quand la sortie ne se terminait pas → écran invisible.
           On rend l'écran directement (toujours visible). Le `key` force le remount
           par onglet (et déclenche le reset de scroll). */}
-      <div key={screenKey} className="flex-1 pb-20 w-full max-w-lg mx-auto">
+      <main key={screenKey} id="main-content" className="nv-main flex-1 pb-24 w-full max-w-lg mx-auto">
         {renderMainScreen()}
-      </div>
+      </main>
 
       {!stackedView && <BottomNavigation />}
       {!showAddSheet && <InstallPrompt />}
@@ -165,7 +170,7 @@ function AppContent() {
 export function NutriVitaApp() {
   return (
     <AppProvider>
-      <AppContent />
+      <ViewPreferences><AppContent /></ViewPreferences>
     </AppProvider>
   )
 }

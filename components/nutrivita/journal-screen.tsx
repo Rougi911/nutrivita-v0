@@ -33,6 +33,9 @@ import { getLocalDateStr } from "@/lib/date-utils"
 import { interpretMedia, getJournal } from "@/lib/api"
 import type { ApiInterpretResponse } from "@/lib/api-types"
 import { InterpretConfirm } from "./interpret-confirm"
+import { DailySummary } from "./redesign/daily-summary"
+import { ViewModeSwitch, IndicatorSection } from "./redesign/view-preferences"
+import { uiCopy } from "@/lib/redesign-copy"
 import { CalorieRing } from "./calorie-ring"
 import { MacroPillCard } from "./macro-pill-card"
 import { MealSectionCard } from "./meal-section-card"
@@ -63,6 +66,7 @@ export function JournalScreen() {
     isLoading,
     addMealEntry,
     incompleteMacroCount,
+    weightHistory,
   } = useApp()
 
   const [showVoiceInput, setShowVoiceInput] = useState(false)
@@ -122,8 +126,8 @@ export function JournalScreen() {
   )
 
   // Get yesterday's weight for comparison
-  const yesterdayWeight = 75.5 // Sample
-  const weightChange = dailyLog.weight
+  const yesterdayWeight = [...weightHistory].filter(w => w.date < currentDate).sort((a,b) => b.date.localeCompare(a.date))[0]?.weight
+  const weightChange = dailyLog.weight && yesterdayWeight != null
     ? dailyLog.weight - yesterdayWeight
     : null
 
@@ -173,98 +177,12 @@ export function JournalScreen() {
           ))}
         </div>
       )}
-      {/* Header */}
-      <div className="px-4 pt-6 pb-4 bg-background">
-        {/* Date Navigator */}
-        <div className="flex items-center justify-center gap-4 mb-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 rounded-full"
-            onClick={() => navigateDate(-1)}
-            aria-label={t("previousDay")}
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex items-center gap-2">
-            <span className="text-lg font-semibold text-foreground">
-              {formatDate(date)}
-            </span>
-            {isToday && (
-              <span className="h-2 w-2 rounded-full bg-primary" />
-            )}
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 rounded-full"
-            onClick={() => navigateDate(1)}
-            disabled={isToday}
-            aria-label={t("nextDay")}
-          >
-            <ChevronRight className="h-5 w-5" />
-          </Button>
-        </div>
-
-        {/* Greeting */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-semibold text-foreground">
-            {t("greeting")} {user.name}
-          </h1>
-          <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-amber/10 text-amber">
-            <Flame className="h-4 w-4" />
-            <span className="text-sm font-medium">
-              {user.streak} {t("streak")}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Main content */}
-      <div className="px-4 space-y-6">
-        {/* Calorie Ring */}
-        <div className="flex flex-col items-center">
-          <CalorieRing
-            consumed={dailyLog.totalCalories}
-            target={user.targetCalories}
-            burned={todayBurnedCalories}
-            size={200}
-          />
-          {/* P0-5 — signale les entrées avec kcal mais sans macros (photo IA incomplète) */}
-          {incompleteMacroCount > 0 && (
-            <p
-              className="mt-2 text-[11.5px] text-center px-3 py-1.5 rounded-full"
-              style={{ color: "var(--amber)", backgroundColor: "color-mix(in oklab, var(--amber) 12%, transparent)" }}
-            >
-              ⚠ {incompleteMacroCount} {t("incompleteMacros")}
-            </p>
-          )}
-        </div>
-
-        {/* Macro Row */}
-        <div className="grid grid-cols-3 gap-3">
-          <MacroPillCard
-            icon={Wheat}
-            value={dailyLog.totalCarbs}
-            target={carbsTarget}
-            label={t("carbs")}
-            color="var(--amber)"
-          />
-          <MacroPillCard
-            icon={Dumbbell}
-            value={dailyLog.totalProtein}
-            target={proteinTarget}
-            label={t("protein")}
-            color="var(--glucose)"
-          />
-          <MacroPillCard
-            icon={Droplets}
-            value={dailyLog.totalFat}
-            target={fatTarget}
-            label={t("fat")}
-            color="var(--lipids)"
-          />
-        </div>
+      <header className="nv-page-header px-4 pt-6"><div><p className="nv-eyebrow">NutraLance</p><h1>{uiCopy(language).journal}</h1></div></header>
+      <div className="px-4 mb-5"><ViewModeSwitch /></div>
+      <div className="px-4 space-y-5">
+        <div className="nv-date-nav"><Button variant="ghost" size="icon" onClick={()=>navigateDate(-1)} aria-label={t("previousDay")}><ChevronLeft /></Button><span className="font-semibold">{formatDate(date)}</span><Button variant="ghost" size="icon" onClick={()=>navigateDate(1)} disabled={isToday} aria-label={t("nextDay")}><ChevronRight /></Button></div>
+        <DailySummary compact />
+        <IndicatorSection title={uiCopy(language).nutritionDetail}><div className="flex justify-center py-4"><CalorieRing consumed={dailyLog.totalCalories} target={user.targetCalories} burned={todayBurnedCalories} size={200}/></div><div className="grid grid-cols-3 gap-2"><MacroPillCard icon={Wheat} value={dailyLog.totalCarbs} target={carbsTarget} label={t("carbs")} color="var(--amber)"/><MacroPillCard icon={Dumbbell} value={dailyLog.totalProtein} target={proteinTarget} label={t("protein")} color="var(--glucose)"/><MacroPillCard icon={Droplets} value={dailyLog.totalFat} target={fatTarget} label={t("fat")} color="var(--lipids)"/></div></IndicatorSection>
 
         {/* Quick Actions — round icon buttons */}
         <div className="flex justify-between gap-2">
@@ -283,6 +201,29 @@ export function JournalScreen() {
               </span>
             </motion.button>
           ))}
+        </div>
+
+        {/* Meals Section */}
+        <div className="space-y-4">
+          {MEALS.map((meal, index) => {
+            const mealEntries = dailyLog.meals.filter(
+              (m) => m.mealType === meal.type
+            )
+            return (
+              <motion.div
+                key={meal.type}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <MealSectionCard
+                  name={t(meal.type)}
+                  entries={mealEntries}
+                  onAddFood={() => handleAddFood(meal.type)}
+                />
+              </motion.div>
+            )
+          })}
         </div>
 
         {/* Weight Card */}
@@ -464,28 +405,6 @@ export function JournalScreen() {
           )}
         </motion.div>
 
-        {/* Meals Section */}
-        <div className="space-y-4">
-          {MEALS.map((meal, index) => {
-            const mealEntries = dailyLog.meals.filter(
-              (m) => m.mealType === meal.type
-            )
-            return (
-              <motion.div
-                key={meal.type}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <MealSectionCard
-                  name={t(meal.type)}
-                  entries={mealEntries}
-                  onAddFood={() => handleAddFood(meal.type)}
-                />
-              </motion.div>
-            )
-          })}
-        </div>
       </div>
 
       {/* InterpretConfirm affiché quand le vocal a produit un résultat (food + activity + glucose) */}

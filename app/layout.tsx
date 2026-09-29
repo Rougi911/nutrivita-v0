@@ -75,8 +75,8 @@ export const viewport: Viewport = {
   ],
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5,
+  userScalable: true,
   viewportFit: "cover",
   // Sans ce réglage, Android redimensionne la vue "visuelle" mais pas la vue
   // "layout" quand le clavier virtuel s'ouvre : les feuilles ancrées en

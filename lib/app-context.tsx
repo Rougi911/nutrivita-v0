@@ -1,4 +1,5 @@
 "use client"
+import { readProfileName, writeProfileName, clearProfileName } from "@/lib/profile-name-cache"
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from "react"
 import {
@@ -259,7 +260,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Cold-start (BUG-1) : cache le prénom pour l'afficher instantanément au
     // prochain reload, sans attendre getProfile (qui peut mettre 60 s au réveil).
     if (typeof window !== "undefined" && serverUser.name?.trim()) {
-      try { localStorage.setItem("nutrivita-profile-name", serverUser.name) } catch { /* quota */ }
+      try { writeProfileName(serverUser.name) } catch { /* quota */ }
     }
   }, [])
 
@@ -275,7 +276,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setIsOnboarded(false)
     // RGPD : purge aussi le prénom mis en cache pour le cold-start.
     if (typeof window !== "undefined") {
-      try { localStorage.removeItem("nutrivita-profile-name") } catch { /* ignore */ }
+      try { clearProfileName() } catch { /* ignore */ }
     }
   }, [])
 
@@ -365,13 +366,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Cold-start (BUG-1) : hydrate le prénom depuis le cache AVANT que getProfile
     // ne réponde (jusqu'à 60 s au réveil Render) → supprime le flash « Utilisateur ».
     if (typeof window !== "undefined") {
-      const cached = localStorage.getItem("nutrivita-profile-name")
+      const cached = readProfileName()
       if (cached?.trim()) setUser((prev) => (prev.name === cached ? prev : { ...prev, name: cached }))
     }
     getProfile()
       .then((p) => {
         if (typeof window !== "undefined" && p.user?.name?.trim()) {
-          try { localStorage.setItem("nutrivita-profile-name", p.user.name) } catch { /* quota */ }
+          try { writeProfileName(p.user.name) } catch { /* quota */ }
         }
         setUser((prev) => ({
           ...prev,

@@ -1,22 +1,17 @@
 "use client"
-
-// P2 — Bilan fusionné en un seul écran défilant (style Strava/Garmin) : apports,
-// composition corporelle, glycémie, carences, radar micronutriments, additifs,
-// puis tendances/adhérence, score santé, et le résumé produits transformés —
-// remplace l'ancien découpage en 4 sous-onglets (Bilan/Tendances/Score/Courses).
-// Rien n'est retiré : StatsScreen, TrendsScreen, HealthScoreScreen sont réutilisés
-// tels quels (juste allégés de leur propre chrome de page). GroceriesScreen reste
-// accessible en entier via le bouton "Voir mes courses" (scanner/gérer les
-// produits est un usage différent d'une page de bilan passive).
-
 import { useApp } from "@/lib/app-context"
-import { Button } from "@/components/ui/button"
-import { ChevronRight } from "lucide-react"
+import { uiCopy } from "@/lib/redesign-copy"
 import { StatsScreen } from "./stats-screen"
 import { TrendsScreen } from "./trends-screen"
 import { HealthScoreScreen } from "./health-score-screen"
 import { GrocerySummaryCard } from "./grocery-summary-card"
-
+import {
+  IndicatorSection,
+  ViewModeSwitch,
+  useViewMode,
+} from "./redesign/view-preferences"
+import { formatEnergy, formatWeight } from "@/lib/units"
+import { ChevronRight, UserRound } from "lucide-react"
 export function StatsTab({
   onOpenSettings,
   onOpenGroceries,
@@ -24,34 +19,74 @@ export function StatsTab({
   onOpenSettings: () => void
   onOpenGroceries: () => void
 }) {
-  const { t, isRTL } = useApp()
-
+  const { language, t, dailyLog, user, weightHistory, currentDate } = useApp()
+  const c = uiCopy(language)
+  const { mode } = useViewMode()
+  const latestWeight = [...weightHistory].sort((a, b) =>
+    b.date.localeCompare(a.date)
+  )[0]
   return (
-    <div className={isRTL ? "rtl" : ""}>
-      <StatsScreen onOpenSettings={onOpenSettings} />
-
-      <div className="px-4 pb-8 space-y-3 -mt-4">
-        <div className="pt-2 border-t border-border" />
-
-        {/* Tendances : heatmap adhérence, macros empilées, poids lissé */}
+    <div className="nv-page">
+      <header className="nv-page-header">
+        <div>
+          <p className="nv-eyebrow">NutraLance</p>
+          <h1>{c.balance}</h1>
+        </div>
+        <button
+          className="nv-avatar"
+          onClick={onOpenSettings}
+          aria-label={c.profile}
+        >
+          <UserRound size={22} />
+        </button>
+      </header>
+      <ViewModeSwitch hint />
+      {mode === "summary" && (
+        <section className="nv-card">
+          <p className="nv-caption mb-3">
+            {c.day} · {currentDate}
+          </p>
+          <div className="nv-two-cols">
+            <div>
+              <p className="nv-caption">{c.recorded}</p>
+              <p className="text-xl font-semibold mt-1">
+                {formatEnergy(dailyLog.totalCalories, user.units.energy)}
+              </p>
+              <p className="nv-caption mt-1">
+                {dailyLog.meals.length} {c.mealCount}
+              </p>
+            </div>
+            <div>
+              <p className="nv-caption">{t("weight")}</p>
+              <p className="text-xl font-semibold mt-1">
+                {latestWeight
+                  ? formatWeight(latestWeight.weight, user.units.weight)
+                  : "—"}
+              </p>
+              <p className="nv-caption mt-1">
+                {latestWeight?.date ?? c.noReading}
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+      <h2 className="nv-section-title mt-7">{c.explore}</h2>
+      <IndicatorSection title={c.nutrition} description={c.nutritionHint}>
+        <StatsScreen onOpenSettings={onOpenSettings} />
+      </IndicatorSection>
+      <IndicatorSection title={c.patterns} description={c.patternsHint}>
         <TrendsScreen />
-
-        <div className="pt-2 border-t border-border" />
-
-        {/* Score santé : 4 composantes, actions, évolution 8 semaines */}
+      </IndicatorSection>
+      <IndicatorSection title={c.score} description={c.scoreHint}>
         <HealthScoreScreen />
-
-        <div className="pt-2 border-t border-border" />
-
-        {/* Produits transformés : additifs/sel/sucre/graisses saturées vs OMS —
-            visible ici en plus de l'écran Courses complet (retour utilisateur). */}
-        <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">{t("myGroceries")}</p>
+      </IndicatorSection>
+      <IndicatorSection title={c.groceries} description={c.groceriesHint}>
         <GrocerySummaryCard />
-        <Button variant="outline" className="w-full gap-2 rounded-xl" onClick={onOpenGroceries}>
-          {t("openGroceries")}
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
+        <button className="nv-inline-card mt-3" onClick={onOpenGroceries}>
+          <span className="flex-1 text-start">{t("openGroceries")}</span>
+          <ChevronRight size={18} />
+        </button>
+      </IndicatorSection>
     </div>
   )
 }

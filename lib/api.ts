@@ -114,6 +114,10 @@ export function setSlowStartCallback(cb: SlowStartCallback | null) {
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  if (process.env.NEXT_PUBLIC_UI_DEMO === "true") {
+    const { demoRequest } = await import("./ui-demo")
+    return demoRequest<T>(path, init)
+  }
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
   const start = Date.now()
