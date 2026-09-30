@@ -357,3 +357,20 @@ export const sampleMonthCalories: DayCalories[] = [
 // ─── Today's water intake ────────────────────────────────────────────────────────
 
 export const defaultWaterIntake = 5 // glasses consumed today (mock)
+
+
+/** UI v2 demo only. Fixed patterns, local dates anchored on the selected day. */
+export function createUiDemoDataset(today: string) {
+  const meals = Array.from({ length: 14 }, (_, day) => {
+    const date = new Date(today + "T12:00:00"); date.setDate(date.getDate() - day)
+    const stamp = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`
+    return sampleMealEntries.slice(0, day === 0 ? 5 : 7).map((m,i) => ({ ...m, id: `demo-${day}-${i}`, date: stamp, createdAt: `${stamp}T${i < 2 ? "08:00" : i < 4 ? "12:35" : "16:00"}:00`, food: {...m.food} }))
+  }).flat()
+  const dates = [...new Set(meals.map(m=>m.date))]
+  return {
+    meals,
+    weight: dates.filter((_,i)=>i%2===0).map((date,i)=>({date,weight_kg:72.4+i*.1})),
+    glucose: dates.flatMap((date,day)=>[94,126,108,139].map((value,i)=>({id:`demo-g-${day}-${i}`,glucose_mg_dl:value+(day%3)*2,timestamp:`${date}T${["07:30","10:00","12:00","15:00"][i]}:00`,reading_type:i===0?"fasting":"random",source:"manual"}))),
+    activities: dates.map(date=>({id:`demo-a-${date}`,type:"marche",duration_min:30,calories_burned:120,date,source:"manual",created_at:`${date}T18:00:00`})),
+  }
+}

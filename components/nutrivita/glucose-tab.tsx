@@ -9,9 +9,13 @@
 // des sections d'une seule page plutôt que deux écrans séparés.
 
 import { useState } from "react"
+import { uiCopy } from "@/lib/redesign-copy"
+import { IndicatorSection, ViewModeSwitch } from "./redesign/view-preferences"
 import { ArrowLeft } from "lucide-react"
+import { formatGlucose } from "@/lib/glucose-units"
 import { useApp } from "@/lib/app-context"
 import { GlucoseMealsScreen } from "./glucose-meals-screen"
+import { GlucoseLowAlert } from "./redesign/glucose-low-alert"
 import { GlucoseScreen, type GlucosePeriod } from "./glucose-screen"
 import { GlucoseCorrelationChart } from "./glucose-correlation-chart"
 
@@ -21,7 +25,9 @@ interface GlucoseTabProps {
 }
 
 export function GlucoseTab({ onBack }: GlucoseTabProps = {}) {
-  const { t, isRTL, advancedCharts } = useApp()
+  const { t, isRTL, advancedCharts, language, glucoseReadings, user } = useApp()
+  const c = uiCopy(language)
+  const latest = [...glucoseReadings].sort((a,b)=>b.timestamp.localeCompare(a.timestamp))[0]
   const [period, setPeriod] = useState<GlucosePeriod>("14d")
 
   return (
@@ -40,23 +46,27 @@ export function GlucoseTab({ onBack }: GlucoseTabProps = {}) {
         <h1 className="text-[18px] font-semibold text-foreground">{t("glucoseTracking")}</h1>
       </div>
 
+      <div className="px-4 mb-4"><ViewModeSwitch hint /></div>
+
       {/* Disclaimer REG-04 unique — permanent, non-dismissable */}
       <div className="mx-4 mb-3 px-3 py-2 rounded-xl border border-border bg-muted/40">
         <p className="text-[11px] text-muted-foreground leading-snug">{t("glucoseDisclaimer")}</p>
       </div>
 
       <div className="px-4 space-y-3">
+        <GlucoseLowAlert period={period} />
+        <section className="nv-card"><p className="nv-caption">{c.lastReading}</p><p className="nv-number mt-2">{latest ? `${formatGlucose(latest.value,user.units.glucose)} ${user.units.glucose}` : "—"}</p><p className="nv-caption mt-2">{latest ? new Date(latest.timestamp).toLocaleString(language) : c.noReading}</p></section>
         {/* Aujourd'hui : TIR/pic, timeline, événements, pattern 14j (ex-« × Repas ») */}
-        <GlucoseMealsScreen />
+        <IndicatorSection title={c.glucoseDay}><GlucoseMealsScreen /></IndicatorSection>
 
         <div className="pt-2 border-t border-border" />
 
         {/* Tendances : période partagée, hypo alert, GMI/TIR/CV/Moyenne, scatter,
             répartition, stats par type de mesure (ex-« Suivi ») */}
-        <GlucoseScreen period={period} onPeriodChange={setPeriod} />
+        <IndicatorSection title={c.glucoseLong}><GlucoseScreen period={period} onPeriodChange={setPeriod} /></IndicatorSection>
 
         {/* Corrélation repas/sport — section avancée (réglage Profil), même période */}
-        {advancedCharts && <GlucoseCorrelationChart period={period} />}
+        {advancedCharts && <IndicatorSection title={c.correlations}><GlucoseCorrelationChart period={period} /></IndicatorSection>}
       </div>
     </div>
   )

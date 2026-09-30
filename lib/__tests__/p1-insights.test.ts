@@ -1,4 +1,5 @@
 // P1 — tests unitaires du moteur de calcul client (vitest, fonctions pures).
+import { getLocalDateStr } from "@/lib/date-utils"
 import { describe, it, expect } from "vitest"
 import {
   entryKcal,
@@ -32,7 +33,9 @@ function meal(p: Partial<MealEntry> & { cal: number; prot?: number; carb?: numbe
 }
 
 function today(offset = 0): string {
-  return new Date(Date.now() - offset * 86400000).toISOString().slice(0, 10)
+  const date = new Date()
+  date.setDate(date.getDate() - offset)
+  return getLocalDateStr(date)
 }
 
 const user = {

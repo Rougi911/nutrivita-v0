@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { Camera, Loader2, Mic, ScanLine, Search, X, KeyboardIcon, ShoppingBag, AlertTriangle } from "lucide-react"
+import { uiCopy } from "@/lib/redesign-copy"
 import { useApp } from "@/lib/app-context"
 import { interpretMedia, scanBarcode, scanCompositionImage, ProductUnknownError, addJournalEntry, type CompositionResult } from "@/lib/api"
 import { SAMPLE_FOODS, MEALS } from "@/lib/types"
@@ -57,6 +58,8 @@ const quickActions = [
 export function AddSheet() {
   const { setShowAddSheet, t, setShowFoodSearch, language, addMealEntry, updateMealEntryId, currentDate, addScannedProduct, selectedMealType, addSheetMode, setAddSheetMode } = useApp()
 
+  const c = uiCopy(language)
+
   const [interpResult, setInterpResult] = useState<ApiInterpretResponse | null>(null)
   const [interpreting, setInterpreting] = useState(false)
   const [interpError, setInterpError] = useState<string | null>(null)
@@ -66,6 +69,7 @@ export function AddSheet() {
   // P0 — le repas depuis lequel la feuille a ete ouverte prime sur la deduction
   // horaire : « Ajouter » dans Dejeuner ouvrait le formulaire sur Collation.
   const [pendingMealType, setPendingMealType] = useState<MealType>(selectedMealType ?? inferMealTypeFromTime())
+  const sheetRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // P1 — un raccourci Photo / Vocal / Scanner ouvre directement sa methode,
@@ -128,6 +132,24 @@ export function AddSheet() {
     }
   }
 
+  useEffect(() => {
+    if (showScanner || showVoiceModal) return
+    const previous = document.activeElement as HTMLElement | null
+    const root = sheetRef.current
+    const selector = 'button:not([disabled]), input:not([disabled]), select, textarea, a[href], [tabindex="0"]'
+    const frame = requestAnimationFrame(() => root?.querySelector<HTMLElement>(selector)?.focus())
+    const trap = (event: KeyboardEvent) => {
+      if (event.key !== "Tab" || !root) return
+      const items = [...root.querySelectorAll<HTMLElement>(selector)].filter(el => el.getClientRects().length)
+      if (!items.length) return
+      const first = items[0], last = items[items.length - 1]
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+    }
+    document.addEventListener("keydown", trap)
+    return () => { cancelAnimationFrame(frame); document.removeEventListener("keydown", trap); previous?.focus() }
+  }, [interpResult, showScanner, showVoiceModal])
+
   // Dismiss on Escape
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -139,7 +161,7 @@ export function AddSheet() {
 
   if (interpResult) {
     return (
-      <div className="fixed inset-0 z-50 bg-background">
+      <div ref={sheetRef} role="dialog" aria-modal="true" aria-label={c.add} className="fixed inset-0 z-50 bg-background">
         <InterpretConfirm
           result={interpResult}
           onBack={() => setInterpResult(null)}
@@ -166,7 +188,8 @@ export function AddSheet() {
 
         {/* Sheet */}
         <motion.div
-          className="relative w-full max-w-md mx-auto bg-background rounded-t-3xl border-t border-border overflow-hidden flex flex-col max-h-[88vh]"
+          ref={sheetRef} role="dialog" aria-modal="true" aria-label={t("addMeal")}
+          className="relative w-full max-w-lg mx-auto bg-background rounded-t-3xl border border-border overflow-hidden flex flex-col max-h-[92dvh]"
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
@@ -190,8 +213,9 @@ export function AddSheet() {
               </button>
             </div>
 
-            {/* 2×2 quick action grid */}
-            <div className="grid grid-cols-2 gap-3 mb-5">
+            <p className="text-base text-muted-foreground mb-5">{c.choose}</p>
+            {/* Existing methods, same contracts */}
+            <div className="nv-add-options mb-5">
               {quickActions.map((action) => {
                 const Icon = action.icon
                 return (
@@ -216,7 +240,7 @@ export function AddSheet() {
                         return
                       }
                     }}
-                    className="flex items-center gap-3 rounded-2xl border border-border p-3.5 active:scale-[0.97] transition-transform text-left"
+                    className={`nv-add-option ${action.id === "photo" ? "nv-add-photo" : ""}`}
                   >
                     <div
                       className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
@@ -226,11 +250,11 @@ export function AddSheet() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-[14px] font-semibold text-foreground leading-tight">
-                        {t(action.labelKey)}
+                        {action.id === "photo" ? c.photo : action.id === "voice" ? c.voice : action.id === "scanner" ? c.scan : c.manual}
                       </p>
                       {action.id === "photo" && (
                         <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
-                          {t("detectByPhoto")}
+                          {c.photoHint}
                         </p>
                       )}
                       {action.id === "voice" && (

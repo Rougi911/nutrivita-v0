@@ -1,5 +1,7 @@
 "use client"
 
+import { withPortion } from "@/lib/interpret-portion"
+import { uiCopy } from "@/lib/redesign-copy"
 import { useState } from "react"
 import { ArrowLeft, Check, X } from "lucide-react"
 import { useApp } from "@/lib/app-context"
@@ -39,9 +41,12 @@ function intentColor(type: ApiIntent["type"]): string {
 }
 
 export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmProps) {
-  const { t, addMealEntry, updateMealEntryId, addActivity, addGlucoseReading, currentDate, user } = useApp()
+  const { t, addMealEntry, updateMealEntryId, addActivity, addGlucoseReading, currentDate, user, language } = useApp()
+  const c = uiCopy(language)
+  const [quantities, setQuantities] = useState(result.intents.map(i => String(i.quantity_g ?? i.nutrition?.quantity_g ?? 100)))
 
   const [selected, setSelected] = useState<boolean[]>(result.intents.map(() => true))
+  const invalidPortion = result.intents.some((i,index) => i.type === "food" && selected[index] && (!Number.isFinite(Number(quantities[index])) || Number(quantities[index]) < 1 || Number(quantities[index]) > 5000))
   const [confirmError, setConfirmError] = useState<string | null>(null)
   const [mealTypes, setMealTypes] = useState<MealType[]>(
     result.intents.map((intent) => {
@@ -89,9 +94,11 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
   ]
 
   const handleConfirm = () => {
+    if (invalidPortion) { setConfirmError(c.quantityError); return }
     setConfirmError(null)
     let processed = 0
-    result.intents.forEach((intent, i) => {
+    result.intents.forEach((original, i) => {
+      const intent = original.type === "food" && selected[i] ? withPortion(original, Number(quantities[i])) : original
       if (!selected[i]) return
 
       if (intent.type === "food" && intent.name) {
@@ -105,9 +112,9 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
           return Math.round(val * 100 / qg)
         }
         const food: FoodItem =
-          SAMPLE_FOODS.find((f) =>
+          (n ? undefined : SAMPLE_FOODS.find((f) =>
             f.name.toLowerCase().includes(intent.name!.toLowerCase())
-          ) ?? {
+          )) ?? {
             id: `ai-${Date.now()}-${intent.name}`,
             name: intent.name,
             nameEn: intent.name,
@@ -168,9 +175,10 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
         >
           <ArrowLeft className="h-4 w-4 text-foreground" />
         </button>
-        <h1 className="text-[18px] font-semibold text-foreground">{t("detectedFoods")}</h1>
+        <h1 className="text-[18px] font-semibold text-foreground">{c.verify}</h1>
       </div>
 
+      <p className="px-4 pb-4 text-sm text-muted-foreground">{c.portionHint}</p>
       <div className="flex-1 min-h-0 px-4 pb-6 space-y-3 overflow-y-auto overscroll-contain">
         {result.intents.map((intent, i) => (
           <div key={i} className="space-y-2">
@@ -191,7 +199,7 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
               />
               <div className="flex-1 min-w-0">
                 <p className="text-[14px] font-semibold text-foreground leading-tight">
-                  {intentLabel(intent)}
+                  {intentLabel(intent.type === "food" && Number(quantities[i]) >= 1 && Number(quantities[i]) <= 5000 ? withPortion(intent, Number(quantities[i])) : intent)}
                 </p>
                 <p
                   className="text-[11px] mt-0.5"
@@ -208,6 +216,7 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
               )}
             </button>
 
+            {intent.type === "food" && selected[i] && <label className="flex items-center justify-between gap-4 rounded-xl border border-border bg-card p-3"><span className="text-sm">{c.quantity}</span><input type="number" inputMode="decimal" min="1" max="5000" step="1" value={quantities[i]} onChange={event => setQuantities(prev => prev.map((value,index) => index === i ? event.target.value : value))} className="w-28 min-h-11 rounded-lg border border-border bg-background px-3 text-base" /></label>}
             {/* Sélecteur de repas — uniquement pour les intents food sélectionnés */}
             {intent.type === "food" && selected[i] && (
               <div className="flex gap-1.5">
@@ -254,6 +263,7 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
       </div>
 
       <div className="shrink-0 px-4 pt-3 border-t border-border bg-background" style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom))" }}>
+        {invalidPortion && <p role="alert" className="text-sm text-destructive mb-2">{c.quantityError}</p>}
         {confirmError && (
           <p className="text-[12px] text-center mb-2" style={{ color: "var(--risk)" }}>
             {confirmError}
@@ -262,7 +272,7 @@ export function InterpretConfirm({ result, onBack, onDone }: InterpretConfirmPro
         <Button
           className="w-full gap-2 rounded-2xl h-12 text-[15px] font-semibold"
           onClick={handleConfirm}
-          disabled={selected.every((v) => !v)}
+          disabled={invalidPortion || selected.every((v) => !v)}
         >
           <Check className="h-4 w-4" />
           {t("add")} ({selected.filter(Boolean).length})

@@ -600,3 +600,14 @@ Les fichiers `add-sheet.tsx` et `groceries-screen.tsx` portaient des modificatio
 **Verdict réglementaire :** GO — après 1 itération. MAJEUR (purge partielle laissant `scannedProducts`/4 tableaux santé/PII en mémoire → régression vs ancien chemin offline + risque de contamination inter-utilisateurs même session sans reload) corrigé : la branche session morte appelle `logout()` (minimisation RGPD/REG-03). REG-05 amélioré : plus d'affichage indéfini de données périmées. REG-04 N.A. : aucun texte utilisateur ajouté (logique + commentaires seuls). Aucune donnée santé en `localStorage` (seuls `token`/`language`).
 **Résiduels MINEURS (non bloquants) :** classification d'un 403 non-auth tombe en offline sans déconnexion (défaut prudent assumé) ; `isDiabetic` non réinitialisé par `logout()` (comportement pré-existant de la déconnexion volontaire, hors périmètre).
 **Dette suivie (autre repo, hors boucle frontend) :** DEF-4 (logger `err.name`/`err.message` dans le `catch` de `auth.js` backend) et DEF-2 (double-secret transitoire sur rotation `JWT_SECRET`) restent côté `nutridz`.
+
+## 2026-09-29 — Proposition UI Synthèse / Détails (branche de travail)
+
+Base : d18d793e523dac1a0d69cd3e0ebfb75caafa862b. Demande utilisateur : implémenter la direction visuelle sur une branche, conserver les indicateurs et pouvoir ajuster avant merge.
+
+- Implémentation préparée ; voir docs/ui-redesign.md pour périmètre, traçabilité, isolation démo et réserves d'intégration.
+- TypeScript, suite Vitest, builds normal/démo et revue navigateur effectués ; résultats finaux consignés dans docs/ui-review/validation.md.
+- Relecture technique par l'agent producteur : contrats normaux conservés, quantités bornées, préférence indépendante des données et des graphiques avancés, demo sans fallback HTTP. Défauts du simulateur identifiés puis corrigés pendant le test navigateur.
+- Aucun diagnostic ou conseil thérapeutique nouveau. Avertissements existants conservés. Les limites scientifiques et RGPD de l'audit précédent restent ouvertes ; cette refonte n'est pas une validation réglementaire.
+- Revues indépendantes `revue-code` et `reglementaire` : **GO commit de branche** après correction : alerte hypo hors accordéons, streak rétabli, cache nominatif isolé en démo. Tests ciblés 3/3.
+- Gate avant commit demandé par CLAUDE.md : **GO pour la branche de revue uniquement**. 316 tests passent ; builds normal et démo réussis. Main inchangée ; aucun merge ni déploiement autorisé par ce document. Production : NO-GO distinct, réserves historiques scientifiques/RGPD/intégration ouvertes.

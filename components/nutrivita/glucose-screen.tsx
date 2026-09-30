@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { AlertTriangle, Mic, Plus } from "lucide-react"
+import { Mic, Plus } from "lucide-react"
 import {
   ScatterChart,
   Scatter,
@@ -86,8 +86,6 @@ export function GlucoseScreen({ period, onPeriodChange }: GlucoseScreenProps) {
     [values, glucoseTarget]
   )
 
-  // Hypo alert: count episodes < 54 mg/dL
-  const hypoCount = values.filter((v) => v < 54).length
 
   // Context stats per measurement type (b)
   const contextStats = useMemo(() => {
@@ -158,19 +156,6 @@ export function GlucoseScreen({ period, onPeriodChange }: GlucoseScreenProps) {
             {t("addReading")}
           </Button>
         </div>
-
-        {/* Hypo alert card (c) — neutral text, no therapeutic advice (REG-05) */}
-        {hypoCount > 0 && (
-          <div
-            className="rounded-2xl border px-4 py-3 flex items-start gap-3"
-            style={{ borderColor: "var(--risk)", backgroundColor: "var(--risk-bg)" }}
-          >
-            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" style={{ color: "var(--risk)" }} />
-            <p className="text-[13px] font-medium" style={{ color: "var(--risk)" }}>
-              {hypoCount} {t("hypoAlert")}
-            </p>
-          </div>
-        )}
 
         {/* Period selector — partagé avec le graphe de corrélation (P2) */}
         <div className="flex gap-2">
